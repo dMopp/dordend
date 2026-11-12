@@ -158,6 +158,7 @@ std::vector<PaletteItem> Browser::palette_items() {
     if (editable) {
         command(Command::add_bookmark, "add_bookmark", "Add to Sidebar");
     }
+    command(Command::go_to, "go_to", "Go to Folder or Server…");
 
     // Views.
     if (pane().mode != Mode::columns) {

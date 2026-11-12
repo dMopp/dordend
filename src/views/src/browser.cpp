@@ -69,6 +69,7 @@ Browser::Browser(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWat
       conflict_{redraw},
       confirm_{redraw},
       password_{redraw},
+      location_{redraw},
       menu_{std::move(redraw)},
       palette_{redraw_},
       trash_model_{loop, pool, watcher, std::move(mime)},
@@ -568,6 +569,8 @@ void Browser::paste_text() {
                          }
                          if (password_.is_open()) {
                              password_.paste(*text);
+                         } else if (location_.is_open()) {
+                             location_.paste(*text);
                          } else if (palette_.is_open()) {
                              palette_.paste(*text);
                          } else {
@@ -2213,6 +2216,7 @@ void Browser::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme::
     palette_.draw(renderer, bounds, palette);
     conflict_.draw(renderer, bounds, palette);  // last: over everything else
     confirm_.draw(renderer, bounds, palette);
+    location_.draw(renderer, bounds, palette);
     password_.draw(renderer, bounds, palette);
     if (thumbnails_) {
         thumbnails_->end_frame();
@@ -2320,6 +2324,9 @@ ui::CursorShape Browser::cursor_at(float x, float y) const {
     if (password_.is_open()) {
         return hand(password_.clickable_at(x, y));
     }
+    if (location_.is_open()) {
+        return location_.field_at(x, y) ? Shape::text : hand(location_.clickable_at(x, y));
+    }
     if (palette_.is_open()) {
         if (palette_.field_bounds().contains(x, y)) {
             return Shape::text;
@@ -2352,8 +2359,8 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
         found_after_.reset();
     }
     if (event.kind == ui::PointerEvent::Kind::release &&
-        (conflict_.is_open() || confirm_.is_open() || password_.is_open() || palette_.is_open() ||
-         menu_.is_open() || shortcuts_.is_open() || quick_look_.is_open())) {
+        (conflict_.is_open() || confirm_.is_open() || password_.is_open() || location_.is_open() ||
+         palette_.is_open() || menu_.is_open() || shortcuts_.is_open() || quick_look_.is_open())) {
         // Taken by what the press opened (a menu from a right click): the button is up all the
         // same, and the next press finds its target again.
         button_held_ = false;
@@ -2370,6 +2377,10 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
     }
     if (password_.is_open()) {
         password_.pointer(event);
+        return;
+    }
+    if (location_.is_open()) {
+        location_.pointer(event);
         return;
     }
     if (palette_.is_open()) {
@@ -3088,6 +3099,14 @@ void Browser::next_bookmark_change() {
                     outcome.removed = change.remove->filename().string();
                 }
             }
+            if (change.add_uri) {
+                if (std::optional<std::string> more =
+                        fs::add_remote_bookmark(text, *change.add_uri)) {
+                    text = std::move(*more);
+                    changed = true;
+                    outcome.added.push_back(change.add_label);
+                }  // there already: nothing to say, the connecting says enough
+            }
             if (change.remove_uri) {
                 if (std::optional<std::string> less =
                         fs::remove_remote_bookmark(text, *change.remove_uri)) {
@@ -3262,6 +3281,46 @@ void Browser::mount_remote(const fs::Place& place, bool open) {
                    });
 }
 
+void Browser::open_location() {
+    const std::shared_ptr<Folder> shown = current_folder();
+    location_.open(shown ? shown->path().string() : std::string{},
+                   [this](const std::string& text, bool add) { return go_to(text, add); });
+}
+
+std::string Browser::go_to(std::string_view text, bool add) {
+    const std::optional<fs::Location> location = fs::parse_location(text, place_sources_.home);
+    if (!location) {
+        return std::string{
+            i18n::tr("Not a folder or a server: start with /, ~, smb:// or sftp://")};
+    }
+    if (location->uri.empty()) {
+        std::error_code ignored;
+        if (!std::filesystem::is_directory(location->folder, ignored)) {
+            return i18n::trf("There is no folder “{}”", location->folder.string());
+        }
+        open(location->folder);
+        return {};
+    }
+    if (!remotes_.mount) {
+        return std::string{i18n::tr("Servers are mounted through gvfs, which is not available")};
+    }
+    const std::optional<fs::RemoteUri> remote = fs::parse_remote_uri(location->uri);
+    std::string label = remote ? fs::remote_label(*remote) : location->uri;
+    if (add) {
+        bookmark_changes_.push_back(
+            {.add = {}, .remove = std::nullopt, .add_uri = location->uri, .add_label = label});
+        next_bookmark_change();
+    }
+    mount_remote({.section = fs::Place::Section::bookmarks,
+                  .label = std::move(label),
+                  .path = {},
+                  .icon = "server",
+                  .disk = {.volume = {}, .mounted = false, .ejectable = false},
+                  .uri = location->uri},
+                 true);
+    return {};
+}
+
 void Browser::unmount_remote(const fs::Place& place) {
     if (!remotes_.unmount || place.uri.empty()) {
         return;
@@ -3389,6 +3448,14 @@ bool Browser::take_key(const ui::KeyEvent& event, Clock::time_point now) {
             return true;
         }
         return password_.key(event);  // every key is the card's meanwhile
+    }
+    if (location_.is_open()) {
+        if (event.modifiers == ui::Modifiers{.ctrl = true} &&
+            (event.keysym == XKB_KEY_v || event.keysym == XKB_KEY_V)) {
+            paste_text();
+            return true;
+        }
+        return location_.key(event);
     }
     found_after_.reset();  // a key while a file found is on its way: it stays shown, no more
     if (palette_.is_open()) {
@@ -3613,6 +3680,9 @@ void Browser::run(Command command, Clock::time_point now) {
             break;
         case Command::find_files:
             open_finder();
+            break;
+        case Command::go_to:
+            open_location();
             break;
     }
 }

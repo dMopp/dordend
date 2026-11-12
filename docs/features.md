@@ -326,6 +326,10 @@ README's [What's next](../README.md#whats-next).
   dots, "Anonymous" when the server allows it, and "Remember the password" (gvfs keeps it in the
   keyring). A mounted share has an eject icon that unmounts it; the right click mounts, unmounts and
   removes the bookmark. Without gvfs a message says so.
+- **Go to (Ctrl+L):** a card with one line for where to go: a folder (`/data`, `~/Bilder`,
+  `file://…`) or a server (`smb://server/share`, `sftp://user@host/path`, or a Windows share
+  `\\server\share`). A server is added to the sidebar too (unless unticked) and mounted. A wrong
+  address says what is wrong and the card stays open. Also in the command palette.
 - **Favourites:** Ctrl+D adds the folder shown, "Add to Sidebar" the folders selected (or the
   folder, from its empty part), and folders dragged onto the "BOOKMARKS" title or below the last
   place are added at the end, a line showing where; dropping onto a place still moves into it.

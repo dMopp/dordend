@@ -110,6 +110,25 @@ struct RemoteUri {
 [[nodiscard]] std::optional<std::string> remove_bookmark(std::string_view text,
                                                          const std::filesystem::path& folder);
 
+// A bookmarks file's text with the remote bookmark uri added at the end (as typed, without a
+// label); nullopt when a line names it already. The other lines stay as they are.
+[[nodiscard]] std::optional<std::string> add_remote_bookmark(std::string_view text,
+                                                             std::string_view uri);
+
+// Where an address typed to go somewhere leads: a local folder, or a server's URI.
+struct Location {
+    std::filesystem::path folder;  // "/data", "~/Pictures", "file:///data"
+    std::string uri;               // "smb://server/share", "sftp://me@host/srv"
+
+    bool operator==(const Location&) const = default;
+};
+
+// text as a Location: an absolute path, ~ for home, a file:// URI, an smb:// or sftp:// URI, or
+// a Windows share ("\\server\share\dir", which is smb://server/share/dir); nullopt for anything
+// else. Spaces around it do not count.
+[[nodiscard]] std::optional<Location> parse_location(std::string_view text,
+                                                     const std::filesystem::path& home);
+
 // The text without the lines naming uri (a remote bookmark, compared as written); nullopt when it
 // has none. The other lines stay as they are.
 [[nodiscard]] std::optional<std::string> remove_remote_bookmark(std::string_view text,

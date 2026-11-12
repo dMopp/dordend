@@ -350,6 +350,67 @@ std::optional<std::string> remove_bookmark(std::string_view text,
     return out;
 }
 
+std::optional<std::string> add_remote_bookmark(std::string_view text, std::string_view uri) {
+    if (!parse_remote_uri(uri)) {
+        return std::nullopt;
+    }
+    bool present = false;
+    for_each_line(text, [&](std::string_view line) {
+        line = trim(line);
+        present = present || line.substr(0, line.find(' ')) == uri;
+    });
+    if (present) {
+        return std::nullopt;
+    }
+    std::string out{text};
+    if (!out.empty() && out.back() != '\n') {
+        out += '\n';
+    }
+    out += uri;
+    out += '\n';
+    return out;
+}
+
+std::optional<Location> parse_location(std::string_view text, const std::filesystem::path& home) {
+    text = trim(text);
+    if (text.empty()) {
+        return std::nullopt;
+    }
+    if (text.starts_with("\\\\")) {  // \\server\share\dir
+        std::string uri{"smb://"};
+        for (const char c : text.substr(2)) {
+            uri += c == '\\' ? '/' : c;
+        }
+        if (!parse_remote_uri(uri)) {
+            return std::nullopt;
+        }
+        return Location{.folder = {}, .uri = std::move(uri)};
+    }
+    if (text.starts_with("file://")) {
+        std::string path = percent_decode(text.substr(7));
+        if (path.empty() || path.front() != '/') {
+            return std::nullopt;
+        }
+        return Location{.folder = std::move(path), .uri = {}};
+    }
+    if (text.find("://") != std::string_view::npos) {
+        if (!parse_remote_uri(text)) {
+            return std::nullopt;
+        }
+        return Location{.folder = {}, .uri = std::string{text}};
+    }
+    if (text == "~") {
+        return Location{.folder = home, .uri = {}};
+    }
+    if (text.starts_with("~/")) {
+        return Location{.folder = home / std::string{text.substr(2)}, .uri = {}};
+    }
+    if (text.starts_with('/')) {
+        return Location{.folder = std::string{text}, .uri = {}};
+    }
+    return std::nullopt;
+}
+
 std::optional<std::string> remove_remote_bookmark(std::string_view text, std::string_view uri) {
     std::string out;
     bool removed = false;
