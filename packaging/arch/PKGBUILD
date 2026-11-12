@@ -1,0 +1,32 @@
+# Build from the checksum-verified checkout archive supplied by scripts/ci/native.sh.
+pkgname=nordend
+pkgver=0.5.0
+pkgrel=1
+pkgdesc='Native Wayland file manager'
+arch=('x86_64')
+url='https://github.com/barrulus/bordend-fm'
+license=('MIT' 'Apache-2.0')
+depends=('glibc' 'gcc-libs' 'wayland' 'libglvnd' 'libxkbcommon' 'harfbuzz'
+         'freetype2' 'fontconfig' 'tomlplusplus' 'libwebp' 'libjxl' 'zlib'
+         'sdbus-cpp>=2' 'shared-mime-info' 'hicolor-icon-theme')
+makedepends=('cmake' 'ninja' 'pkgconf' 'wayland-protocols')
+source=('nordend-source.tar.gz')
+# The checkout builder sets this to the verified source SHA-256, never SKIP.
+sha256sums=('CHECKOUT_SHA256')
+
+build() {
+    cmake -S nordend-checkout -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+        -DBUILD_SHARED_LIBS=OFF -DNORDEND_BUILD_TESTS=OFF -DNORDEND_WERROR=OFF
+    cmake --build build --parallel "${CI_JOBS:-2}" --target nordend nordend-preview
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+    install -Dm644 nordend-checkout/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 nordend-checkout/third_party/tabler-icons/LICENSE "$pkgdir/usr/share/licenses/$pkgname/tabler-icons-LICENSE"
+    install -Dm644 nordend-checkout/third_party/fzy/LICENSE "$pkgdir/usr/share/licenses/$pkgname/fzy-LICENSE"
+    install -Dm644 nordend-checkout/third_party/wuffs/LICENSE-MIT "$pkgdir/usr/share/licenses/$pkgname/wuffs-LICENSE-MIT"
+    install -Dm644 nordend-checkout/third_party/wuffs/LICENSE-APACHE "$pkgdir/usr/share/licenses/$pkgname/wuffs-LICENSE-APACHE"
+    install -Dm644 nordend-checkout/THIRD_PARTY.md "$pkgdir/usr/share/doc/$pkgname/THIRD_PARTY.md"
+}

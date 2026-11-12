@@ -27,7 +27,7 @@ class DownloadsTest(unittest.TestCase):
         self.identity = dict(commit=COMMIT, version='0.5.0', timestamp='20261112000000',
                              sha256=hashlib.sha256(b'source').hexdigest())
         self.roots = {}
-        for kind in ('void', 'deb', 'rpm'):
+        for kind in ('void', 'deb', 'rpm', 'arch', 'tumbleweed'):
             root = self.artifacts / f'{kind}-x86_64-{COMMIT}' / ('void-package' if kind == 'void' else 'native-package')
             self.roots[kind] = root
             (root / 'packages').mkdir(parents=True)
@@ -38,6 +38,8 @@ class DownloadsTest(unittest.TestCase):
                 (root / 'input/source.tar.gz').write_bytes(b'source')
         for kind, names in {
             'void': ['nordend-0.5.0_1.x86_64.xbps', 'x86_64-repodata'],
+            'arch': ['nordend-0.5.0-1-x86_64.pkg.tar.zst', 'nordend-debug-0.5.0-1-x86_64.pkg.tar.zst'],
+            'tumbleweed': ['nordend-0.5.0-1.1.x86_64.rpm'],
             'deb': ['nordend_0.5.0_amd64.deb', 'nordend-dbgsym_0.5.0_amd64.deb'],
             'rpm': ['nordend-0.5.0.x86_64.rpm', 'nordend-debuginfo-0.5.0.x86_64.rpm', 'nordend-0.5.0.src.rpm'],
         }.items():
@@ -49,9 +51,11 @@ class DownloadsTest(unittest.TestCase):
 
     def test_assets_and_instructions(self):
         self.prepare()
-        self.assertEqual(len(list(self.output.iterdir())), 7)
+        self.assertEqual(len(list(self.output.iterdir())), 9)
         self.assertEqual((self.output / 'nordend-debian13-amd64.deb').read_bytes(), b'nordend_0.5.0_amd64.deb')
         self.assertEqual((self.output / 'nordend-fedora44-x86_64.rpm').read_bytes(), b'nordend-0.5.0.x86_64.rpm')
+        self.assertEqual((self.output / 'nordend-arch-x86_64.pkg.tar.zst').read_bytes(), b'nordend-0.5.0-1-x86_64.pkg.tar.zst')
+        self.assertEqual((self.output / 'nordend-tumbleweed-x86_64.rpm').read_bytes(), b'nordend-0.5.0-1.1.x86_64.rpm')
         with tarfile.open(self.output / 'nordend-void-glibc-x86_64.tar.gz') as archive:
             self.assertIn('nordend-void-x86_64/packages/x86_64-repodata', archive.getnames())
         for line in (self.output / 'SHA256SUMS').read_text().splitlines():
@@ -124,7 +128,7 @@ elif args[0] == 'api' and '/compare/' in args[1]:
         result, calls = self.publish('existing')
         self.assertEqual(result.returncode, 0, result.stderr)
         uploads = [c for c in calls if c[:2] == ['release', 'upload']]
-        self.assertEqual(len(uploads), 6)
+        self.assertEqual(len(uploads), 8)
         self.assertTrue(uploads[-1][3].endswith('/SHA256SUMS'))
         self.assertTrue(any('sha=' + COMMIT in c for c in calls))
 
@@ -142,3 +146,14 @@ elif args[0] == 'api' and '/compare/' in args[1]:
         result, calls = self.publish('older')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(any(c[0] == 'release' or '--method' in c for c in calls))
+
+    def test_missing_arch_blocks_preparation(self):
+        (self.roots['arch'] / 'packages/nordend-0.5.0-1-x86_64.pkg.tar.zst').unlink()
+        with self.assertRaisesRegex(ValueError, 'exactly one'):
+            self.prepare()
+
+    def test_tumbleweed_must_match_other_packages(self):
+        self.identity['commit'] = 'b' * 40
+        (self.roots['tumbleweed'] / 'input/source.json').write_text(json.dumps(self.identity))
+        with self.assertRaisesRegex(ValueError, 'source revision'):
+            self.prepare()

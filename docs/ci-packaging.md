@@ -2,7 +2,8 @@
 
 The fork's [workflow](../.github/workflows/ci.yml) runs on pull requests, pushes to `main`,
 and manual dispatch. It currently validates **x86_64 Linux with glibc**. The flake still
-exposes aarch64 packages, but this workflow does not claim to build or run them. Debian 13 and Fedora 44 are also built as native packages. Void musl, older Debian/Ubuntu
+exposes aarch64 packages, but this workflow does not claim to build or run them. Debian 13,
+Fedora 44, Arch Linux and openSUSE Tumbleweed are also built as native packages. Void musl, older Debian/Ubuntu
 releases, other RPM distributions and signed/stable releases are outside the validated scope.
 
 ## Nix
@@ -161,10 +162,40 @@ commit timestamp increases. Container images are pinned in
 updates, so builds are not claimed to be bit-for-bit reproducible. Run `native.sh` rather
 than invoking `native-build.sh` or `native-install.sh` on the host.
 
+## Arch Linux and openSUSE Tumbleweed
+
+These are separate **x86_64 rolling-distribution** targets. Arch uses the
+[`PKGBUILD`](../packaging/arch/PKGBUILD) with `makepkg`; Tumbleweed builds the shared
+[RPM recipe](../packaging/rpm/nordend.spec) using openSUSE dependencies and RPM macros.
+Neither the Fedora RPM nor the Tumbleweed RPM is claimed to support Leap, RHEL or other
+RPM distributions. Ubuntu is not a CI target.
+
+```sh
+bash scripts/ci/native.sh arch /tmp/nordend-arch-package
+bash scripts/ci/native.sh tumbleweed /tmp/nordend-tumbleweed-package
+```
+
+Both builders use pinned base images and fully update the disposable container first to
+avoid partial upgrades against rolling repositories. Package repositories still change over
+time. Arch runs `makepkg` as an ordinary build user; root is used only for installing build
+dependencies. Its recipe gets the archive's verified SHA-256 and a source-derived snapshot
+version. The checked-in PKGBUILD is a checkout-build template, not an AUR submission.
+
+A second, fresh container installs the resulting package with pacman or zypper. CI checks
+package integrity, shared-library dependencies, installed assets and a rendered window under
+headless Weston. Test fixtures are installed after the runtime dependency checks. The complete
+unit suite continues to run in Nix. Both jobs must pass before any development downloads are
+published, and the release preparer requires all five native package identities to match.
+
+The README provides stable links and installation commands. Arch and Tumbleweed users should
+fully update their systems before installing these snapshots. These are unsigned local
+packages, not configured pacman/zypper repositories; Tumbleweed's install command explicitly
+allows the unsigned local RPM without changing global signature settings.
+
 ## Automatic development downloads
 
 The README has stable links to the `development` prerelease and fixed asset names. Once all
-checks succeed, `prepare-downloads.py` checks that all three package artifacts identify the
+checks succeed, `prepare-downloads.py` checks that all five package artifacts identify the
 same source commit and checksum. It selects only the main DEB/RPM, bundles the Void package
 with its repository index, and adds the source archive, `source.json` and `SHA256SUMS`.
 Release install instructions are copied from the marked README section, so they stay in sync.
@@ -187,7 +218,7 @@ mutable; repositories enforcing immutable releases need a different publishing s
 
 Release assets stay available until replaced or removed, independently of the 14-day CI
 artifact retention. They are unsigned snapshots and must not be presented as stable releases,
-an official distribution repository, or packages for untested distributions such as openSUSE.
+an official distribution repository, or packages for untested distributions such as Leap or Ubuntu.
 
 ## GitHub setup and scope
 
@@ -195,7 +226,7 @@ GitHub Actions must be enabled on the fork. Build and preparation jobs use read-
 permissions, pinned action commits, and `pull_request`, not `pull_request_target`. Only the
 publication job has `contents: write`, using the built-in GitHub token; no extra secret is
 needed. It runs exclusively on pushes to `main` or manual runs targeting `main`, after all
-four checks and download preparation pass. It never commits to a branch.
+six checks and download preparation pass. It never commits to a branch.
 
 After a successful run, configure a branch ruleset for `main` requiring these checks:
 
@@ -203,6 +234,8 @@ After a successful run, configure a branch ruleset for `main` requiring these ch
 - `Void glibc package and clean install`
 - `Debian 13 package and clean install`
 - `Fedora 44 package and clean install`
+- `Arch Linux package and clean install`
+- `openSUSE Tumbleweed package and clean install`
 
 Package artifacts are retained for 14 days. Neither a passing container check nor a headless
 window proves integration with every compositor, GPU, removable drive, or desktop portal

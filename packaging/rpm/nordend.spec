@@ -8,7 +8,13 @@ Source0:        nordend-source.tar.gz
 
 BuildRequires:  gcc-c++
 BuildRequires:  cmake
+%if 0%{?suse_version}
+# openSUSE packages the GLES 3 headers separately from pkgconfig(glesv2).
+BuildRequires:  Mesa-libGLESv3-devel
+BuildRequires:  ninja
+%else
 BuildRequires:  ninja-build
+%endif
 BuildRequires:  pkgconfig
 BuildRequires:  pkgconfig(wayland-client)
 BuildRequires:  pkgconfig(wayland-egl)
@@ -38,20 +44,27 @@ custom actions and an optional desktop file chooser portal.
 %autosetup -n nordend-checkout
 
 %build
+%if 0%{?suse_version}
+%define __builder ninja
+%endif
 %cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DNORDEND_BUILD_TESTS=OFF -DNORDEND_WERROR=OFF
+%if 0%{?suse_version}
+%cmake_build nordend nordend-preview
+%else
 %cmake_build --target nordend nordend-preview
+%endif
 
 %install
 %cmake_install
 # Preserve bundled license notices under distinct names.
-install -Dm644 third_party/tabler-icons/LICENSE %{buildroot}%{_licensedir}/%{name}/tabler-icons-LICENSE
-install -Dm644 third_party/fzy/LICENSE %{buildroot}%{_licensedir}/%{name}/fzy-LICENSE
-install -Dm644 third_party/wuffs/LICENSE-MIT %{buildroot}%{_licensedir}/%{name}/wuffs-LICENSE-MIT
-install -Dm644 third_party/wuffs/LICENSE-APACHE %{buildroot}%{_licensedir}/%{name}/wuffs-LICENSE-APACHE
+install -Dm644 third_party/tabler-icons/LICENSE %{buildroot}%{_datadir}/licenses/%{name}/tabler-icons-LICENSE
+install -Dm644 third_party/fzy/LICENSE %{buildroot}%{_datadir}/licenses/%{name}/fzy-LICENSE
+install -Dm644 third_party/wuffs/LICENSE-MIT %{buildroot}%{_datadir}/licenses/%{name}/wuffs-LICENSE-MIT
+install -Dm644 third_party/wuffs/LICENSE-APACHE %{buildroot}%{_datadir}/licenses/%{name}/wuffs-LICENSE-APACHE
 
 %files
 %license LICENSE
-%license %{_licensedir}/%{name}/*-LICENSE*
+%license %{_datadir}/licenses/%{name}/*-LICENSE*
 %doc THIRD_PARTY.md
 %{_bindir}/nordend
 %{_libexecdir}/nordend/

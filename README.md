@@ -134,12 +134,14 @@ tried on GNOME, Plasma and niri) and a GPU driver with OpenGL ES 3.0 (Mesa).
 The [latest development build](https://github.com/barrulus/bordend-fm/releases/tag/development)
 is refreshed automatically after **all checks pass on `main`**. These are unsigned Linux
 x86_64 development snapshots. Choose your exact distribution; the Fedora RPM is **not
-validated for openSUSE or RHEL**, and the DEB is not validated for Ubuntu or older Debian.
+validated for Leap or RHEL**, and the DEB is not validated for Ubuntu or older Debian.
 
 | System | Download | Install after downloading |
 |---|---|---|
 | Debian 13 (trixie), amd64 | [DEB](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-debian13-amd64.deb) | `sudo apt install ./nordend-debian13-amd64.deb` |
 | Fedora 44, x86_64 | [RPM](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-fedora44-x86_64.rpm) | `sudo dnf install ./nordend-fedora44-x86_64.rpm` |
+| Arch Linux, x86_64 | [Arch package](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-arch-x86_64.pkg.tar.zst) | `sudo pacman -Syu`, then `sudo pacman -U ./nordend-arch-x86_64.pkg.tar.zst` |
+| openSUSE Tumbleweed, x86_64 | [Tumbleweed RPM](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-tumbleweed-x86_64.rpm) | `sudo zypper dup`, then `sudo zypper install --allow-unsigned-rpm ./nordend-tumbleweed-x86_64.rpm` |
 | Void glibc, x86_64 | [XBPS bundle](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-void-glibc-x86_64.tar.gz) | See the two commands below. |
 
 For Void, extract the bundle and keep its package and repository index together:
@@ -504,7 +506,8 @@ existing configuration.
 
 Pull requests run the full Nix test suite, NixOS module checks, installed-package checks,
 and native Void XBPS, Debian 13 DEB and Fedora 44 RPM build/install checks against the PR
-checkout. All installed packages must
+checkout. Arch and openSUSE Tumbleweed are also built and installed in fresh containers.
+All installed packages must
 render a window under headless Weston. Initial coverage is x86_64 Linux/glibc; ARM, musl,
 and other distribution packages are not yet covered by this workflow.
 

@@ -75,6 +75,10 @@ jobs:
             distro: Debian 13
           - format: rpm
             distro: Fedora 44
+          - format: arch
+            distro: Arch Linux
+          - format: tumbleweed
+            distro: openSUSE Tumbleweed
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

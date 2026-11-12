@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare stable release assets from the three tested artifacts of one CI run."""
+"""Prepare stable release assets from the five tested artifacts of one CI run."""
 import argparse
 import hashlib
 import json
@@ -27,17 +27,21 @@ def prepare(artifacts, output, commit, repository, run_id, readme):
         'void': artifacts / f'void-x86_64-{commit}' / 'void-package',
         'deb': artifacts / f'deb-x86_64-{commit}' / 'native-package',
         'rpm': artifacts / f'rpm-x86_64-{commit}' / 'native-package',
+        'arch': artifacts / f'arch-x86_64-{commit}' / 'native-package',
+        'tumbleweed': artifacts / f'tumbleweed-x86_64-{commit}' / 'native-package',
     }
     identities = [json.loads((root / ('source.json' if kind == 'void' else 'input/source.json')).read_text())
                   for kind, root in roots.items()]
     identity = identities[0]
     if any(item != identity for item in identities) or identity['commit'] != commit:
         raise ValueError('Package artifacts do not all match the expected source revision')
-    sources = [roots[kind] / 'input/source.tar.gz' for kind in ('deb', 'rpm')]
+    sources = [roots[kind] / 'input/source.tar.gz' for kind in ('deb', 'rpm', 'arch', 'tumbleweed')]
     if any(hashlib.sha256(source.read_bytes()).hexdigest() != identity['sha256'] for source in sources):
         raise ValueError('Source archive checksum mismatch')
     deb = only(roots['deb'] / 'packages', 'nordend_*_amd64.deb')
     rpm = only(roots['rpm'] / 'packages', 'nordend-[0-9]*.x86_64.rpm')
+    arch = only(roots['arch'] / 'packages', 'nordend-[0-9]*-x86_64.pkg.tar.zst')
+    tumbleweed = only(roots['tumbleweed'] / 'packages', 'nordend-[0-9]*.x86_64.rpm')
     void = only(roots['void'] / 'packages', 'nordend-*.x86_64.xbps')
     index = roots['void'] / 'packages/x86_64-repodata'
     if not index.is_file() or index.stat().st_size == 0:
@@ -47,6 +51,8 @@ def prepare(artifacts, output, commit, repository, run_id, readme):
     output.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(deb, output / 'nordend-debian13-amd64.deb')
     shutil.copyfile(rpm, output / 'nordend-fedora44-x86_64.rpm')
+    shutil.copyfile(arch, output / 'nordend-arch-x86_64.pkg.tar.zst')
+    shutil.copyfile(tumbleweed, output / 'nordend-tumbleweed-x86_64.rpm')
     with tarfile.open(output / 'nordend-void-glibc-x86_64.tar.gz', 'w:gz') as archive:
         for source in (void, index):
             archive.add(source, arcname=f'nordend-void-x86_64/packages/{source.name}')
