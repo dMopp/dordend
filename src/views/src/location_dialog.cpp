@@ -1,3 +1,4 @@
+#include "nordend/core/i18n.hpp"
 #include "nordend/views/location_dialog.hpp"
 
 #include <algorithm>
@@ -174,7 +175,7 @@ void LocationDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     const float left = card.x + kPadding;
     const float room = width - (2.0F * kPadding);
     float y = card.y + kPadding;
-    renderer.draw_text("Go to Folder or Server", left, y, kTitleSize, palette.on_surface,
+    renderer.draw_text(i18n::tr("Go to Folder or Server"), left, y, kTitleSize, palette.on_surface,
                        room);
     y += 30.0F;
 
@@ -187,7 +188,7 @@ void LocationDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     field_.draw(renderer, {left, y, room, kFieldHeight}, kTextSize, colors);
     y += kFieldHeight + 8.0F;
     if (error_.empty()) {
-        renderer.draw_text("/path, ~/path, smb://server/share, sftp://user@host/path",
+        renderer.draw_text(i18n::tr("/path, ~/path, smb://server/share, sftp://user@host/path"),
                            left, y, kTextSize, palette.on_surface_variant, room);
     } else {
         renderer.draw_text(error_, left, y, kTextSize, palette.error, room);
@@ -203,7 +204,7 @@ void LocationDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     if (add_) {
         renderer.fill_rect(box.inset(4.5F), palette.on_primary);
     }
-    renderer.draw_text("Add a server to the sidebar", box.right() + 10.0F,
+    renderer.draw_text(i18n::tr("Add a server to the sidebar"), box.right() + 10.0F,
                        y + ((kCheckSize - kTextSize) / 2.0F) - 2.0F, kTextSize,
                        hovered_ == Target::add ? palette.on_surface : palette.on_surface_variant,
                        room - kCheckSize - 10.0F);
@@ -221,7 +222,7 @@ void LocationDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
             text = go ? palette.on_primary_container : palette.on_surface;
         }
         renderer.draw_box(button, {.fill = fill, .radius = ui::Corners::all(8.0F)});
-        renderer.draw_text(go ? "Go   ↵" : "Cancel   Esc", button.x + 14.0F,
+        renderer.draw_text(go ? i18n::tr("Go   ↵") : i18n::tr("Cancel   Esc"), button.x + 14.0F,
                            button.y + ((kButtonHeight - kTextSize) / 2.0F) - 2.0F, kTextSize, text,
                            button.width - 20.0F);
     }
