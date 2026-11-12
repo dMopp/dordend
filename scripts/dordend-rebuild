@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Rebuilds dordend's main from bordend's current main and the topic branches (see DORDEND.md).
+# Usage: scripts/dordend-rebuild [--push] [--no-test]
+set -euo pipefail
+
+# Topics: each based directly on upstream/main, merged into main in this order.
+TOPICS=(stack/dordend-tools stack/text-rendering stack/remote-bookmarks stack/german)
+# Glue: commits on top of the merged topics; <branch>-base marks where they start.
+GLUE=(stack/german-remotes)
+
+# The topics are switched below, this file with them: run a copy that stays put.
+if [[ -z ${DORDEND_REBUILD_COPY:-} ]]; then
+    copy=$(mktemp)
+    cp "$0" "$copy"
+    DORDEND_REBUILD_COPY=1 exec bash "$copy" "$@"
+fi
+
+push=false
+test=true
+for arg in "$@"; do
+    case $arg in
+        --push) push=true ;;
+        --no-test) test=false ;;
+        *) echo "unknown option: $arg" >&2; exit 2 ;;
+    esac
+done
+
+cd "$(git rev-parse --show-toplevel)"
+if [[ -n $(git status --porcelain --untracked-files=no) ]]; then
+    echo "the working tree has changes: commit or stash them first" >&2
+    exit 1
+fi
+git config rerere.enabled true
+git config rerere.autoUpdate true
+
+stop() {
+    echo >&2
+    echo "stopped: $1" >&2
+    echo "solve it (git add …, then git rebase --continue or git commit), then run this again" >&2
+    exit 1
+}
+
+# A merge or rebase that rerere solved completely goes on by itself.
+solved() { [[ -z $(git diff --name-only --diff-filter=U) ]]; }
+
+git fetch --quiet upstream
+git fetch --quiet origin
+
+for topic in "${TOPICS[@]}"; do
+    echo "== $topic onto upstream/main"
+    if ! git rebase --quiet upstream/main "$topic"; then
+        while solved && GIT_EDITOR=true git rebase --continue >/dev/null 2>&1; do :; done
+        [[ -d $(git rev-parse --git-path rebase-merge) ]] && stop "rebasing $topic"
+    fi
+done
+
+echo "== main = upstream/main + topics"
+git switch --quiet -C main upstream/main
+for topic in "${TOPICS[@]}"; do
+    if ! git merge --quiet --no-ff --no-edit "$topic"; then
+        solved || stop "merging $topic into main"
+        git commit --quiet --no-edit
+    fi
+done
+
+for glue in "${GLUE[@]}"; do
+    echo "== $glue onto main"
+    if ! git rebase --quiet --onto main "$glue-base" "$glue"; then
+        while solved && GIT_EDITOR=true git rebase --continue >/dev/null 2>&1; do :; done
+        [[ -d $(git rev-parse --git-path rebase-merge) ]] && stop "rebasing $glue"
+    fi
+    git branch --force "$glue-base" main
+    git switch --quiet main
+    git merge --quiet --ff-only "$glue"
+done
+
+git log --oneline --first-parent upstream/main..main
+
+if $test; then
+    echo "== build and tests"
+    build=$(mktemp -d)
+    nix develop --command sh -c "
+        cmake -S . -B '$build' -G Ninja -DCMAKE_BUILD_TYPE=Debug -DNORDEND_BUILD_TESTS=ON \
+            -DNORDEND_WERROR=OFF >/dev/null &&
+        cmake --build '$build' >/dev/null &&
+        cd '$build' && ctest --output-on-failure -j\"\$(nproc)\"" 2>&1 |
+        grep -v 'pkg-config search path\|PKG_CONFIG_PATH\|Perhaps you should\|^Package .* not found'
+    rm -rf "$build"
+fi
+
+if $push; then
+    echo "== push"
+    branches=(main "${TOPICS[@]}")
+    for glue in "${GLUE[@]}"; do branches+=("$glue" "$glue-base"); done
+    git push --force-with-lease origin "${branches[@]}"
+fi
