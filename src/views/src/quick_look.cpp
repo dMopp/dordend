@@ -12,6 +12,7 @@
 #include "nordend/core/log.hpp"
 #include "nordend/fs/icon.hpp"
 #include "nordend/views/format.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -659,7 +660,7 @@ void QuickLook::draw_text(ui::Renderer& renderer, const ui::Rect& area,
     if (!text.language.empty()) {
         caption += "   " + text.language;
         if (text::looks_minified(text)) {
-            caption += " (minified)";
+            caption += i18n::tr(" (minified)");
         }
     }
     caption += "   ";
@@ -669,11 +670,11 @@ void QuickLook::draw_text(ui::Renderer& renderer, const ui::Rect& area,
     }
     caption += "   ";
     if (text.tail) {
-        caption += std::format("last {} lines", count);
+        caption += i18n::trf("last {} lines", count);
     } else if (text.truncated) {
-        caption += std::format("first {} lines", count);
+        caption += i18n::trf("first {} lines", count);
     } else {
-        caption += count == 1 ? std::string{"1 line"} : std::format("{} lines", count);
+        caption += count == 1 ? std::string{i18n::tr("1 line")} : i18n::trf("{} lines", count);
     }
     caption += "   " + format_size(entry.size);
     draw_caption(renderer, area, palette, caption, fade);
@@ -730,7 +731,7 @@ void QuickLook::draw_card(ui::Renderer& renderer, const ui::Rect& area,
     draw_centered(renderer, type, card, y, 12.0F, palette.on_surface_variant.with_alpha(fade));
     y += 20.0F + 4.0F;
     for (const Row& row : rows) {
-        const float label_width = renderer.draw_text(row.label, card.x + 20.0F, y, 13.0F,
+        const float label_width = renderer.draw_text(i18n::tr(row.label), card.x + 20.0F, y, 13.0F,
                                                      palette.on_surface_variant.with_alpha(fade));
         // Long values (a link target) are cut in the middle, keeping their end.
         const float room = kCardWidth - 40.0F - label_width - 16.0F;

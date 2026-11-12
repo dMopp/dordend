@@ -1,4 +1,5 @@
 #include "nordend/views/confirm_dialog.hpp"
+#include "nordend/core/i18n.hpp"
 
 #include <algorithm>
 #include <format>
@@ -140,7 +141,7 @@ void ConfirmDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         }
         renderer.draw_box(button, {.fill = fill, .radius = ui::Corners::all(8.0F)});
         const std::string label =
-            action ? std::format("{}   ↵", action_) : std::string{"Cancel   Esc"};
+            action ? std::format("{}   ↵", action_) : std::string{i18n::tr("Cancel   Esc")};
         renderer.draw_text(label, button.x + 14.0F,
                            button.y + ((kButtonHeight - kTextSize) / 2.0F) - 2.0F, kTextSize, text,
                            button.width - 20.0F);

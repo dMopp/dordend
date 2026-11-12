@@ -15,6 +15,7 @@
 #include "nordend/fs/icon.hpp"
 #include "nordend/ui/text_field.hpp"
 #include "nordend/views/format.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -463,7 +464,7 @@ void DetailsView::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         const float width = layout_.width.at(i);
         const bool sorted = sort_key(field) == order.key;
         const ui::Color color = sorted ? palette.on_surface : palette.on_surface_variant;
-        const std::string_view title = kTitles.at(i);
+        const std::string_view title = i18n::tr(kTitles.at(i));
         const float title_width = text_width(renderer, title, kTitleSize);
         const float text_y = header_.y + ((kHeaderHeight - kTitleSize) / 2.0F) - 2.0F;
         // Sizes are numbers: right-aligned, title included.
@@ -578,10 +579,10 @@ void DetailsView::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         std::string size_text = entry.is_directory() ? std::string{"—"} : format_size(entry.size);
         if (child != expanded_.end()) {
             if (child->second->model().loading())
-                size_text = "Loading…";
+                size_text = i18n::tr("Loading…");
             else if (!child->second->model().error()) {
                 const auto count = child->second->entries().size();
-                size_text = std::to_string(count) + (count == 1 ? " item" : " items");
+                size_text = count == 1 ? std::string{i18n::tr("1 item")} : i18n::trf("{} items", count);
             }
         }
         cell(Field::size, size_text, true);
@@ -599,7 +600,7 @@ void DetailsView::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         draw_centered(renderer, model.error().message(), rows_, rows_.y + 24.0F, size_.text,
                       palette.error);
     } else if (entries.empty() && !model.loading()) {
-        draw_centered(renderer, "Empty folder", rows_, rows_.y + 24.0F, size_.text,
+        draw_centered(renderer, i18n::tr("Empty folder"), rows_, rows_.y + 24.0F, size_.text,
                       palette.on_surface_variant);
     }
 

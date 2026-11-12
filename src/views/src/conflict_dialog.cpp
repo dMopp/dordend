@@ -1,4 +1,5 @@
 #include "nordend/views/conflict_dialog.hpp"
+#include "nordend/core/i18n.hpp"
 
 #include <algorithm>
 #include <format>
@@ -146,16 +147,16 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     const float left = card.x + kPadding;
     const float room = width - (2.0F * kPadding);
     float y = card.y + kPadding;
-    renderer.draw_text(std::format("“{}” is already in {}", conflict_.name, destination_), left, y,
+    renderer.draw_text(i18n::trf("“{}” is already in {}", conflict_.name, destination_), left, y,
                        kTitleSize, palette.on_surface, room, ui::Ellipsis::middle);
     y += 30.0F;
-    std::string_view note = "Replace keeps the new one; the old one goes once it is complete.";
+    std::string_view note = i18n::tr("Replace keeps the new one; the old one goes once it is complete.");
     if (!can_replace()) {
         note = conflict_.directory == conflict_.target_directory
-                   ? "A folder is not replaced: keep both or skip."
-                   : "A file and a folder cannot replace each other.";
+                   ? i18n::tr("A folder is not replaced: keep both or skip.")
+                   : i18n::tr("A file and a folder cannot replace each other.");
     } else if (conflict_.directory) {
-        note = "Replace merges the folders: files with the same name are replaced.";
+        note = i18n::tr("Replace merges the folders: files with the same name are replaced.");
     }
     renderer.draw_text(note, left, y, kTextSize, palette.on_surface_variant, room);
     y += 30.0F;
@@ -170,11 +171,11 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     if (for_the_rest_) {
         renderer.fill_rect({left + 4.0F, y + 5.0F, kBox - 8.0F, kBox - 8.0F}, palette.on_primary);
     }
-    const float label = renderer.draw_text("Do the same for the rest", left + kBox + 10.0F, y,
+    const float label = renderer.draw_text(i18n::tr("Do the same for the rest"), left + kBox + 10.0F, y,
                                            kTextSize, palette.on_surface, room - kBox - 10.0F);
     renderer.draw_text("A", left + kBox + 10.0F + label + 10.0F, y, kTextSize, palette.primary);
     checkbox_.width = kBox + 10.0F + label;  // the label is clickable too
-    constexpr std::string_view stop = "Escape stops";
+    const std::string_view stop = i18n::tr("Escape stops");
     const float stop_width =
         renderer.fonts().layout(stop, kTextSize, renderer.scale()).width / renderer.scale();
     renderer.draw_text(stop, card.right() - kPadding - stop_width, y, kTextSize,
@@ -183,8 +184,14 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
 
     float x = card.right() - kPadding;
     for (std::size_t i = kButtons; i-- > 0;) {
-        x -= kWidths.at(i);
-        buttons_.at(i) = {x, y, kWidths.at(i), kButtonHeight};
+        // At least the usual width, wider when a translation needs it.
+        const float button_width = std::max(
+            kWidths.at(i),
+            (renderer.fonts().layout(i18n::tr(kLabels.at(i)), kTextSize, renderer.scale()).width /
+             renderer.scale()) +
+                28.0F);
+        x -= button_width;
+        buttons_.at(i) = {x, y, button_width, kButtonHeight};
         x -= kButtonGap;
     }
     for (std::size_t i = 0; i < kButtons; ++i) {
@@ -200,7 +207,7 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         if (!usable) {
             text = palette.outline;
         }
-        renderer.draw_text(kLabels.at(i), button.x + 14.0F,
+        renderer.draw_text(i18n::tr(kLabels.at(i)), button.x + 14.0F,
                            button.y + ((kButtonHeight - kTextSize) / 2.0F) - 2.0F, kTextSize, text,
                            button.width - 20.0F);
     }

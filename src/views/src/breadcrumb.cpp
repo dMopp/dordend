@@ -5,6 +5,7 @@
 
 #include "draw_helpers.hpp"
 #include "nordend/fs/trash.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -24,7 +25,7 @@ std::vector<Crumb> crumbs_of(const std::filesystem::path& folder,
                              const std::filesystem::path& home) {
     if (fs::is_trash(folder)) {
         return {{.path = folder, .label = {}, .icon = "trash"},
-                {.path = folder, .label = "Trash", .icon = {}}};
+                {.path = folder, .label = std::string{i18n::tr("Trash")}, .icon = {}}};
     }
     const std::filesystem::path normal = folder.lexically_normal();
     std::filesystem::path base{"/"};

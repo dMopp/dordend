@@ -1,4 +1,5 @@
 #include "nordend/fs/operations.hpp"
+#include "nordend/core/i18n.hpp"
 
 #include <algorithm>
 #include <array>
@@ -50,19 +51,19 @@ std::pair<std::string_view, std::string_view> split_extension(std::string_view n
 
 std::optional<std::string> name_problem(std::string_view name) {
     if (name.empty()) {
-        return "A name cannot be empty";
+        return std::string{i18n::tr("A name cannot be empty")};
     }
     if (name == "." || name == "..") {
-        return "A name cannot be . or ..";
+        return std::string{i18n::tr("A name cannot be . or ..")};
     }
     if (name.find('/') != std::string_view::npos) {
-        return "A name cannot contain /";
+        return std::string{i18n::tr("A name cannot contain /")};
     }
     if (name.find('\0') != std::string_view::npos) {
-        return "A name cannot contain a NUL character";
+        return std::string{i18n::tr("A name cannot contain a NUL character")};
     }
     if (name.size() > NAME_MAX) {
-        return std::format("The name is too long ({} bytes at most)", NAME_MAX);
+        return i18n::trf("The name is too long ({} bytes at most)", NAME_MAX);
     }
     return std::nullopt;
 }
@@ -241,7 +242,7 @@ Renamed rename_entry(const std::filesystem::path& directory, const std::string& 
     struct stat info{};
     if (lstat((directory / from).c_str(), &info) != 0) {
         result.error = last_error();
-        result.problem = std::format("Cannot rename {}: {}", from, result.error.message());
+        result.problem = i18n::trf("Cannot rename {}: {}", from, result.error.message());
         return result;
     }
 
@@ -257,7 +258,7 @@ Renamed rename_entry(const std::filesystem::path& directory, const std::string& 
         for (const auto& [old_name, new_name] : sidecars) {
             if (taken(directory / new_name)) {
                 result.error = std::make_error_code(std::errc::file_exists);
-                result.problem = std::format("{} already exists", new_name);
+                result.problem = i18n::trf("{} already exists", new_name);
                 return result;
             }
         }
@@ -265,11 +266,11 @@ Renamed rename_entry(const std::filesystem::path& directory, const std::string& 
 
     result.error = rename_noreplace(directory / from, directory / to);
     if (result.error == std::errc::file_exists) {
-        result.problem = std::format("{} already exists", to);
+        result.problem = i18n::trf("{} already exists", to);
         return result;
     }
     if (result.error) {
-        result.problem = std::format("Cannot rename {}: {}", from, result.error.message());
+        result.problem = i18n::trf("Cannot rename {}: {}", from, result.error.message());
         return result;
     }
     for (const auto& [old_name, new_name] : sidecars) {
@@ -277,7 +278,7 @@ Renamed rename_entry(const std::filesystem::path& directory, const std::string& 
                 rename_noreplace(directory / old_name, directory / new_name)) {
             if (result.problem.empty()) {
                 result.problem =
-                    std::format("Renamed, but {} could not follow: {}", old_name, error.message());
+                    i18n::trf("Renamed, but {} could not follow: {}", old_name, error.message());
             }
             continue;
         }

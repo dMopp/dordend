@@ -10,6 +10,7 @@
 #include "draw_helpers.hpp"
 #include "nordend/fs/icon.hpp"
 #include "nordend/views/format.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -31,7 +32,13 @@ constexpr std::size_t kPageLines = 14;  // at most, under the name
 
 // "1 file", "3 files".
 std::string count_of(std::size_t count, std::string_view noun) {
-    return std::format("{} {}{}", count, noun, count == 1 ? "" : "s");
+    if (noun == "folder") {
+        return count == 1 ? std::string{i18n::tr("1 folder")} : i18n::trf("{} folders", count);
+    }
+    if (noun == "file") {
+        return count == 1 ? std::string{i18n::tr("1 file")} : i18n::trf("{} files", count);
+    }
+    return count == 1 ? std::string{i18n::tr("1 item")} : i18n::trf("{} items", count);
 }
 
 // "1/2000 s · F5.6 · ISO 200", leaving out what is missing.
@@ -50,7 +57,7 @@ std::string exposure_of(const picture::PhotoInfo& photo) {
 
 std::string rating_of(int rating) {
     if (rating < 0) {
-        return "Rejected";
+        return std::string{i18n::tr("Rejected")};
     }
     std::string stars;
     for (int i = 0; i < 5; ++i) {
@@ -90,7 +97,7 @@ public:
         renderer_.fill_rect({left_, y_, width_, 1.0F / renderer_.scale()},
                             palette_.outline_variant);
         y_ += 12.0F;
-        renderer_.draw_text(title, left_, y_, kSectionSize, palette_.on_surface_variant);
+        renderer_.draw_text(i18n::tr(title), left_, y_, kSectionSize, palette_.on_surface_variant);
         y_ += 20.0F;
     }
 
@@ -102,7 +109,7 @@ public:
             return;
         }
         const float label_width =
-            renderer_.draw_text(label, left_, y_, kTextSize, palette_.on_surface_variant);
+            renderer_.draw_text(i18n::tr(label), left_, y_, kTextSize, palette_.on_surface_variant);
         const float room = std::max(1.0F, width_ - label_width - 12.0F);
         const float full =
             renderer_.fonts()
@@ -329,7 +336,7 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
         name = folder.path().string();  // the root
     }
     out.centered(name, 15.0F, palette.on_surface, 22.0F);
-    std::string type = "Folder";
+    std::string type{i18n::tr("Folder")};
     if (single != nullptr) {
         type =
             typed.mime == fs::kUnknownMime ? std::string{"…"} : std::string{mime.name(typed.mime)};
@@ -382,7 +389,8 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
     // The rest, on request.
     if (info != nullptr) {
         out.skip(8.0F);
-        const std::string_view label = expanded_ ? "Fewer details" : "More details";
+        const std::string_view label =
+            expanded_ ? i18n::tr("Fewer details") : i18n::tr("More details");
         const float label_width = text_width(renderer, label, kTextSize);
         const float total = label_width + 6.0F + 12.0F;
         const float x = out.left() + ((out.width() - total) / 2.0F);

@@ -1,4 +1,5 @@
 #include "nordend/views/format.hpp"
+#include "nordend/core/i18n.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,11 +11,11 @@ namespace nordend::views {
 
 std::string format_size(std::uint64_t bytes) {
     if (bytes == 1) {
-        return "1 byte";
+        return std::string{i18n::tr("1 byte")};
     }
     constexpr std::uint64_t step = 1000;
     if (bytes < step) {
-        return std::format("{} bytes", bytes);
+        return i18n::trf("{} bytes", bytes);
     }
     constexpr std::array<const char*, 6> units{"kB", "MB", "GB", "TB", "PB", "EB"};
     auto value = static_cast<double>(bytes) / static_cast<double>(step);
@@ -25,7 +26,7 @@ std::string format_size(std::uint64_t bytes) {
         value /= static_cast<double>(step);
         ++unit;
     }
-    return std::format("{:.1f} {}", value, units.at(unit));
+    return i18n::decimal(std::format("{:.1f} {}", value, units.at(unit)));
 }
 
 std::string format_time(std::int64_t nanoseconds_since_epoch) {

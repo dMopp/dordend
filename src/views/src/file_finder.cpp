@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "nordend/views/fuzzy.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -194,12 +195,12 @@ void FileFinder::fill_nearest() {
 
 std::string FileFinder::status() const {
     if (scanning_) {
-        return std::format("Searching… {} items", count(entries_));
+        return i18n::trf("Searching… {} items", count(entries_));
     }
     if (walked_.truncated) {
-        return std::format("Stopped at {} items", count(entries_));
+        return i18n::trf("Stopped at {} items", count(entries_));
     }
-    return std::format("{} items", count(entries_));
+    return i18n::trf("{} items", count(entries_));
 }
 
 std::size_t FileFinder::bytes() const noexcept {
