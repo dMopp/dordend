@@ -20,6 +20,8 @@
   sdbus-cpp_2,
   shared-mime-info,
   hicolor-icon-theme,
+  # Plugins (plugins/<id>) to leave out of the build, e.g. [ "remotes" ]; all are built otherwise.
+  disabledPlugins ? [ ],
 }:
 
 stdenv.mkDerivation {
@@ -34,6 +36,7 @@ stdenv.mkDerivation {
       ../cmake
       ../data
       ../docs/config.example.toml
+      ../plugins
       ../src
       # The preview helper embeds these images to warm up codecs before sandboxing.
       ../tests/data/image
@@ -69,7 +72,8 @@ stdenv.mkDerivation {
   cmakeFlags = [
     "-DNORDEND_WERROR=OFF"
     "-DNORDEND_BUILD_TESTS=OFF"
-  ];
+  ]
+  ++ map (id: "-DNORDEND_PLUGIN_${lib.toUpper id}=OFF") disabledPlugins;
 
   postInstall = ''
     install -Dm644 "$src/LICENSE" "$out/share/licenses/nordend/LICENSE"
