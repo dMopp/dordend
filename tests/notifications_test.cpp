@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "bus_loop.hpp"
+#include "nordend/core/i18n.hpp"
 #include "nordend/platform/action_handoff.hpp"
 
 namespace {
@@ -34,6 +35,8 @@ struct Notice {
 }  // namespace
 
 int main() {
+    // The checks below compare English texts, whatever the locale of the machine running them.
+    nordend::i18n::set_language(nordend::i18n::Language::english);
     try {
         nordend::core::EventLoop loop;
         nordend::platform::Notifications notifications{loop};

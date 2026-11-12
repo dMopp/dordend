@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <utility>
 
+#include "nordend/core/i18n.hpp"
 #include "nordend/fs/operations.hpp"
 
 namespace nordend::platform {
@@ -65,7 +66,8 @@ void ActionHandoff::run(const core::Action& action, const core::ActionContext& c
     }
     if (action.destination != core::Action::Destination::none) {
         if (action.argv.empty() || !available(action.argv.front())) {
-            report_("The action program is not installed or executable", true);
+            report_(std::string{i18n::tr("The action program is not installed or executable")},
+                    true);
             return;
         }
         core::PickerRequest request;
@@ -81,7 +83,7 @@ void ActionHandoff::run(const core::Action& action, const core::ActionContext& c
                 return;
             }
             if (!valid_destination(*path, directory)) {
-                report_("The selected destination is no longer valid", true);
+                report_(std::string{i18n::tr("The selected destination is no longer valid")}, true);
                 return;
             }
             launch(action, context, *path);
@@ -126,16 +128,16 @@ void ActionHandoff::launch(const core::Action& action, const core::ActionContext
                 const bool failed = result.status != 0 || result.signal != 0;
                 const auto message =
                     result.signal != 0
-                        ? std::format("Program stopped by signal {}", result.signal)
+                        ? i18n::trf("Program stopped by signal {}", result.signal)
                         : (result.status != 0
-                               ? std::format("Program exited with status {}", result.status)
-                               : std::string{"Completed successfully"});
+                               ? i18n::trf("Program exited with status {}", result.status)
+                               : std::string{i18n::tr("Completed successfully")});
                 if (failed || notify) {
                     report_(std::format("{}: {}", label, message), failed);
                 }
                 if (notify) {
-                    const auto title =
-                        std::format("{}: {}", failed ? "Failed" : "Completed", label);
+                    const auto title = std::format(
+                        "{}: {}", failed ? i18n::tr("Failed") : i18n::tr("Completed"), label);
                     if (notify_) {
                         notify_(title, message, failed);
                     } else {
@@ -143,8 +145,8 @@ void ActionHandoff::launch(const core::Action& action, const core::ActionContext
                     }
                 }
             });
-        report_(error ? std::format("Could not start {}: {}", label, error.message())
-                      : std::format("Handed off: {}", label),
+        report_(error ? i18n::trf("Could not start {}: {}", label, error.message())
+                      : i18n::trf("Handed off: {}", label),
                 static_cast<bool>(error));
     };
     if (activate_) {
@@ -238,7 +240,8 @@ bool ActionHandoff::available(const core::Action& action,
 
 void ActionHandoff::run_archive(const core::Action& action, const core::ActionContext& context) {
     if (!available(action, context)) {
-        report_("No installed extractor supports every selected archive", true);
+        report_(std::string{i18n::tr("No installed extractor supports every selected archive")},
+                true);
         return;
     }
     // A GUI archive manager owns its chooser, passwords and conflict dialogs.
@@ -261,7 +264,9 @@ void ActionHandoff::run_archive(const core::Action& action, const core::ActionCo
         for (const auto& target : context.targets) {
             const auto backend = archive_backend(target, environment_);
             if (!backend || backend->kind == ArchiveBackend::Kind::file_roller) {
-                report_("Available archive programs changed; please try again", true);
+                report_(
+                    std::string{i18n::tr("Available archive programs changed; please try again")},
+                    true);
                 return;
             }
             backends.push_back(*backend);
@@ -285,7 +290,7 @@ void ActionHandoff::choose_destination(const std::filesystem::path& initial,
     core::PickerRequest request;
     request.directory = true;
     request.folder = initial.string();
-    request.title = "Extract To…";
+    request.title = std::string{i18n::tr("Extract To…")};
     choose_path(request, std::move(chosen));
 }
 
@@ -294,7 +299,7 @@ void ActionHandoff::choose_path(const core::PickerRequest& request, DirectoryCho
     std::error_code lookup_error;
     const auto program = std::filesystem::read_symlink("/proc/self/exe", lookup_error);
     if (output->fd < 3 || lookup_error) {
-        report_("Cannot create the destination picker", true);
+        report_(std::string{i18n::tr("Cannot create the destination picker")}, true);
         chosen(std::nullopt);
         return;
     }
@@ -331,12 +336,14 @@ void ActionHandoff::choose_path(const core::PickerRequest& request, DirectoryCho
                         return;
                     }
                 }
-                report_("The destination picker could not select a valid path", true);
+                report_(
+                    std::string{i18n::tr("The destination picker could not select a valid path")},
+                    true);
                 chosen(std::nullopt);
             },
             output->fd);
         if (error) {
-            report_("Could not open destination picker: " + error.message(), true);
+            report_(i18n::trf("Could not open destination picker: {}", error.message()), true);
             chosen(std::nullopt);
         }
     };
@@ -359,12 +366,12 @@ void ActionHandoff::extract(const core::ActionTarget& target, const ArchiveBacke
     struct stat info{};
     if (job->input->fd < 3 || job->errors->fd < 3 || fstat(job->input->fd, &info) != 0 ||
         !S_ISREG(info.st_mode)) {
-        report_("Cannot read archive: " + target.path.string(), true);
+        report_(i18n::trf("Cannot read archive: {}", target.path.string()), true);
         return;
     }
     const auto made = fs::make_folder(destination, job->name + " (extracting)");
     if (made.error) {
-        report_("Cannot create extraction folder: " + made.error.message(), true);
+        report_(i18n::trf("Cannot create extraction folder: {}", made.error.message()), true);
         return;
     }
     job->staging = destination / made.name;
@@ -374,10 +381,10 @@ void ActionHandoff::extract(const core::ActionTarget& target, const ArchiveBacke
     if (!error)
         std::filesystem::create_directory(job->contents, error);
     if (error) {
-        report_("Cannot prepare extraction: " + error.message(), true);
+        report_(i18n::trf("Cannot prepare extraction: {}", error.message()), true);
         return;
     }
-    report_("Extracting " + target.path.filename().string() + "…", false);
+    report_(i18n::trf("Extracting {}…", target.path.filename().string()), false);
     extract_step(std::move(job));
 }
 
@@ -396,7 +403,7 @@ void ActionHandoff::extract_step(std::shared_ptr<Extraction> job, bool second_pa
             (job->staging / "payload").c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600));
     }
     if (job->input->fd < 3 || (stream && job->output->fd < 3)) {
-        report_("Cannot prepare archive output in " + job->staging.string(), true);
+        report_(i18n::trf("Cannot prepare archive output in {}", job->staging.string()), true);
         return;
     }
     // A regular inherited fd avoids filename wildcard expansion inside unzip and 7z, and
@@ -410,11 +417,11 @@ void ActionHandoff::extract_step(std::shared_ptr<Extraction> job, bool second_pa
             if (!*alive)
                 return;
             if (result.status != 0 || result.signal != 0) {
-                report_(std::format(
-                            "Could not extract {} (status {}, signal {}). Partial output: {}. {}",
-                            job->source.filename().string(), result.status, result.signal,
-                            job->staging.string(), diagnostic(job->errors->fd)),
-                        true);
+                report_(
+                    i18n::trf("Could not extract {} (status {}, signal {}). Partial output: {}. {}",
+                              job->source.filename().string(), result.status, result.signal,
+                              job->staging.string(), diagnostic(job->errors->fd)),
+                    true);
                 return;
             }
             if (job->backend.tar_layer && !second_pass) {
@@ -426,8 +433,8 @@ void ActionHandoff::extract_step(std::shared_ptr<Extraction> job, bool second_pa
                 publish(job->backend.single_file ? job->staging / "payload" : job->contents,
                         job->destination, job->name, publish_error);
             if (publish_error) {
-                report_("Extraction finished but could not be renamed: " + publish_error.message() +
-                            ". Output: " + job->staging.string(),
+                report_(i18n::trf("Extraction finished but could not be renamed: {}. Output: {}",
+                                  publish_error.message(), job->staging.string()),
                         true);
                 return;
             }
@@ -438,13 +445,13 @@ void ActionHandoff::extract_step(std::shared_ptr<Extraction> job, bool second_pa
             if (job->backend.tar_layer)
                 std::filesystem::remove(job->staging / "payload", ignored);
             std::filesystem::remove(job->staging, ignored);
-            report_("Extracted to " + output.string(), false);
+            report_(i18n::trf("Extracted to {}", output.string()), false);
         },
         stream ? job->output->fd : -1, job->errors->fd, job->input->fd);
     if (error) {
-        report_(
-            "Could not start extractor: " + error.message() + ". Output: " + job->staging.string(),
-            true);
+        report_(i18n::trf("Could not start extractor: {}. Output: {}", error.message(),
+                          job->staging.string()),
+                true);
     }
 }
 

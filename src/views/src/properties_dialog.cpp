@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
+#include "nordend/core/i18n.hpp"
 #include "nordend/fs/directory.hpp"
 #include "nordend/fs/folder_icon.hpp"
 #include "nordend/fs/icon.hpp"
@@ -448,14 +449,14 @@ void PropertiesDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
                                  .radius = ui::Corners::all(7),
                                  .border_width = focus_ == id ? 2.0F : 0.0F,
                                  .border = palette.primary});
-        renderer.draw_text(label, rect.x + 12, rect.y + 7, 13,
+        renderer.draw_text(i18n::tr(label), rect.x + 12, rect.y + 7, 13,
                            (primary && enabled ? palette.on_primary : palette.on_surface)
                                .with_alpha(enabled ? 1.0F : 0.4F),
                            rect.width - 20);
         controls_.push_back({std::move(id), rect, enabled});
     };
     const float bottom = top + natural_height - 56;
-    text(picking_ ? "Choose Folder Icon" : "Properties", left, top + 20, 18, room);
+    text(i18n::tr(picking_ ? "Choose Folder Icon" : "Properties"), left, top + 20, 18, room);
     if (picking_) {
         load_catalogue(icons.selected_theme());
         if (!preview_icons_)
@@ -467,14 +468,14 @@ void PropertiesDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
                                    palette.on_surface, palette.primary_container,
                                    focused ? palette.primary : ui::Color{}};
         };
-        text("Search folder icons", left, top + 55, 12, room, true);
+        text(i18n::tr("Search folder icons"), left, top + 55, 12, room, true);
         search_.draw(renderer, {left, top + 76, room, 30}, 13, field_colors(focus_ == "search"));
         grid_ = {left, top + 120, room, std::max(90.0F, bottom - (top + 120) - 136)};
         const float cell_width = room / 5;
         const float cell_height = grid_.height / 3;
         if (filtered_.empty())
-            text(icons_loading_ ? "Loading icons…"
-                                : "No matching icons. You can enter an image path below.",
+            text(i18n::tr(icons_loading_ ? "Loading icons…"
+                                         : "No matching icons. You can enter an image path below."),
                  left, grid_.y + 12, 13, room, true);
         for (std::size_t index = page_ * kPageSize;
              index < std::min(filtered_.size(), (page_ + 1) * kPageSize); ++index) {
@@ -507,7 +508,7 @@ void PropertiesDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
              left + 108, pager + 6, 12, room - 210, true);
         button("next", "Next", {card.right() - 106, pager, 82, 30},
                (page_ + 1) * kPageSize < filtered_.size());
-        text("Custom icon name or SVG/PNG path", left, pager + 42, 12, room, true);
+        text(i18n::tr("Custom icon name or SVG/PNG path"), left, pager + 42, 12, room, true);
         custom_.draw(renderer, {left, pager + 63, room, 30}, 13, field_colors(focus_ == "custom"));
 
     } else {
@@ -519,12 +520,13 @@ void PropertiesDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
                         left, top + 60, 56, palette.primary, preferred);
         text(path_.filename().empty() ? path_.string() : path_.filename().string(), left + 76,
              top + 60, 16, room - 76);
-        text(loading_ ? "Loading…" : std::string{mime_->name(data_.entry.mime)}, left + 76,
-             top + 87, 12, room - 76, true);
+        text(loading_ ? std::string{i18n::tr("Loading…")}
+                      : std::string{mime_->name(data_.entry.mime)},
+             left + 76, top + 87, 12, room - 76, true);
         float y = top + 132;
         const float row_height = 26.0F;
         const auto row = [&](std::string_view label, const std::string& value) {
-            text(label, left, y, 12, 90, true);
+            text(i18n::tr(label), left, y, 12, 90, true);
             text(value, left + 102, y, 12, room - 102);
             y += row_height;
         };
@@ -532,13 +534,16 @@ void PropertiesDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         row(data_.entry.is_directory() ? "Contents" : "Size",
             loading_ ? "…"
             : data_.entry.is_directory()
-                ? (data_.info.items ? std::format("{} {} ({} hidden)", *data_.info.items,
-                                                  *data_.info.items == 1 ? "item" : "items",
-                                                  data_.info.hidden_items)
-                                    : "Unavailable")
-                : std::format("{} ({} bytes)", format_size(data_.entry.size), data_.entry.size));
+                ? (data_.info.items ? std::format("{} ({})",
+                                                  *data_.info.items == 1
+                                                      ? std::string{i18n::tr("1 item")}
+                                                      : i18n::trf("{} items", *data_.info.items),
+                                                  i18n::trf("{} hidden", data_.info.hidden_items))
+                                    : std::string{i18n::tr("Unavailable")})
+                : i18n::trf("{} ({} bytes)", format_size(data_.entry.size), data_.entry.size));
         row("Modified", loading_ ? "…" : format_time(data_.entry.modified_ns));
-        row("Created", data_.info.created_ns ? format_time(*data_.info.created_ns) : "Unavailable");
+        row("Created", data_.info.created_ns ? format_time(*data_.info.created_ns)
+                                             : std::string{i18n::tr("Unavailable")});
         row("Owner", data_.info.owner);
         row("Group", data_.info.group);
         row("Permissions", data_.info.permissions);
@@ -548,18 +553,18 @@ void PropertiesDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
             button("change", "Change Icon…", {left, bottom - 79, 144, 32}, can_edit_icon());
             button("default", "Default", {left + 152, bottom - 79, 92, 32},
                    can_edit_icon() && !draft_.empty());
-            text(draft_.empty() ? "Default folder icon" : draft_, left + 256, bottom - 72, 12,
-                 room - 256, true);
+            text(draft_.empty() ? std::string{i18n::tr("Default folder icon")} : draft_, left + 256,
+                 bottom - 72, 12, room - 256, true);
             if (icons.selected_theme() == "builtin")
-                text("Custom icons appear when using a system icon theme.", left, bottom - 40, 12,
-                     room, true);
+                text(i18n::tr("Custom icons appear when using a system icon theme."), left,
+                     bottom - 40, 12, room, true);
             else if (data_.entry.is_link)
-                text("Changing this icon affects the linked folder.", left, bottom - 40, 12, room,
-                     true);
+                text(i18n::tr("Changing this icon affects the linked folder."), left, bottom - 40,
+                     12, room, true);
         }
         const auto message = !error_.empty() ? error_ : data_.icon_error;
         if (!message.empty())
-            renderer.draw_text(message, left, bottom - 22, 12, palette.error, room,
+            renderer.draw_text(i18n::tr(message), left, bottom - 22, 12, palette.error, room,
                                ui::Ellipsis::middle);
     }
     renderer.pop_clip();

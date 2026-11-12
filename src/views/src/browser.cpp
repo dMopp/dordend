@@ -1526,7 +1526,7 @@ std::vector<MenuItem> Browser::entry_menu(const std::shared_ptr<Folder>& folder)
         items.push_back(std::move(gone));
         MenuItem properties;
         properties.id = "properties";
-        properties.label = "Properties…";
+        properties.label = i18n::tr("Properties…");
         properties.keys = keys_for(Command::properties);
         properties.separator = true;
         properties.enabled = names.size() == 1;
@@ -1732,7 +1732,7 @@ std::vector<MenuItem> Browser::folder_menu() {
     items.push_back(sort_menu());
     MenuItem properties;
     properties.id = "properties";
-    properties.label = "Properties…";
+    properties.label = i18n::tr("Properties…");
     properties.keys = keys_for(Command::properties);
     properties.separator = true;
     properties.action = [this] { show_properties(); };
@@ -2271,7 +2271,7 @@ void Browser::draw_toolbar(ui::Renderer& renderer, const ui::Rect& bounds,
     renderer.fill_background(bounds, palette.surface_container);
     const float button_width = 104;
     const float field_width = std::max(1.0F, bounds.width - button_width - 76);
-    renderer.draw_text("Filter", bounds.x + 10, bounds.y + 14, 13, palette.on_surface);
+    renderer.draw_text(i18n::tr("Filter"), bounds.x + 10, bounds.y + 14, 13, palette.on_surface);
     filter_bounds_ = {bounds.x + 54, bounds.y + 6, field_width, 32};
     if (!name_filter().empty() && field_width > 100) {
         filter_bounds_.width -= 68;
@@ -2284,13 +2284,14 @@ void Browser::draw_toolbar(ui::Renderer& renderer, const ui::Rect& bounds,
          .selection = palette.primary_container,
          .caret = filter_focused_ ? palette.primary : palette.primary.with_alpha(0)});
     if (name_filter().empty() && !filter_focused_) {
-        renderer.draw_text("Filter names…", filter_bounds_.x + 6, filter_bounds_.y + 8, 13,
-                           palette.on_surface_variant, filter_bounds_.width - 12);
+        renderer.draw_text(i18n::tr("Filter names…"), filter_bounds_.x + 6, filter_bounds_.y + 8,
+                           13, palette.on_surface_variant, filter_bounds_.width - 12);
     }
     const auto button = [&](const ui::Rect& rect, const char* label) {
         renderer.draw_box(
             rect, {.fill = palette.surface_container_highest, .radius = ui::Corners::all(6)});
-        renderer.draw_text(label, rect.x + 10, rect.y + 8, 13, palette.on_surface, rect.width - 20);
+        renderer.draw_text(i18n::tr(label), rect.x + 10, rect.y + 8, 13, palette.on_surface,
+                           rect.width - 20);
     };
     if (!name_filter().empty() && field_width > 100) {
         // The clear button has its own space, outside the editable text.

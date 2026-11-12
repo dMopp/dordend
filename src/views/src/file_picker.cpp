@@ -98,29 +98,38 @@ PickerSelection picker_selection(const core::PickerRequest& request,
         const auto status = std::filesystem::status(path, ec);
         const bool exists = std::filesystem::exists(status);
         if (ec && ec != std::errc::no_such_file_or_directory) {
-            return fail("Cannot access “" + path.string() + "”: " + ec.message() + ".");
+            return fail(i18n::trf("Cannot access “{}”: {}.", path.string(), ec.message()));
         }
         if (request.mode == Mode::open) {
             if (!exists) {
                 const auto link = std::filesystem::symlink_status(path, ec);
                 if (std::filesystem::is_symlink(link)) {
-                    return fail("“" + path.filename().string() + "” is a broken symbolic link.");
+                    return fail(
+                        i18n::trf("“{}” is a broken symbolic link.", path.filename().string()));
                 }
-                const std::string kind = request.directory ? "Folder" : "File";
                 if (!typed.empty()) {
-                    return fail(kind + " “" + typed + "” does not exist." +
-                                (request.directory
-                                     ? " Use New Folder to create it first."
-                                     : " Check the name or choose an existing file."));
+                    return fail(
+                        request.directory
+                            ? i18n::trf(
+                                  "Folder “{}” does not exist. Use New Folder to create it first.",
+                                  typed)
+                            : i18n::trf("File “{}” does not exist. Check the name or choose an "
+                                        "existing file.",
+                                        typed));
                 }
-                return fail("The selected " + std::string{request.directory ? "folder" : "file"} +
-                            " “" + path.filename().string() +
-                            "” no longer exists. Choose another.");
+                return fail(
+                    request.directory
+                        ? i18n::trf("The selected folder “{}” no longer exists. Choose another.",
+                                    path.filename().string())
+                        : i18n::trf("The selected file “{}” no longer exists. Choose another.",
+                                    path.filename().string()));
             }
             if (request.directory != std::filesystem::is_directory(status)) {
-                return fail("“" + path.filename().string() + "” " +
-                            (request.directory ? "is not a folder. Choose a folder."
-                                               : "is a folder. Open it to choose a file."));
+                return fail(request.directory
+                                ? i18n::trf("“{}” is not a folder. Choose a folder.",
+                                            path.filename().string())
+                                : i18n::trf("“{}” is a folder. Open it to choose a file.",
+                                            path.filename().string()));
             }
         } else {
             if (!std::filesystem::is_directory(path.parent_path(), ec)) {

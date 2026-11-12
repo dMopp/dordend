@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "nordend/core/i18n.hpp"
 #include "nordend/views/browser.hpp"
 
 namespace nordend::views {
@@ -58,7 +59,7 @@ std::vector<MenuItem> Browser::action_items(const core::ActionContext& context) 
     std::vector<MenuItem> items;
     MenuItem custom;
     custom.id = "actions";
-    custom.label = "Actions";
+    custom.label = i18n::tr("Actions");
     custom.submenu = true;
     for (const auto& action : actions_) {
         if (!core::action_matches(action, context) ||
@@ -67,12 +68,12 @@ std::vector<MenuItem> Browser::action_items(const core::ActionContext& context) 
         }
         MenuItem item;
         item.id = "action:" + action.id;
-        item.label = action.label;
+        item.label = i18n::tr(action.label);
         item.keys = keys_for_action(action.id);
         item.enabled = action.kind == core::Action::Kind::copy_location || !action_available_ ||
                        action_available_(action, context);
         if (!item.enabled) {
-            item.label += " (not installed)";
+            item.label += i18n::tr(" (not installed)");
         }
         item.action = [this, action, context] { invoke_action(action, context); };
         if (action.placement == core::Action::Placement::menu) {
@@ -102,7 +103,9 @@ void Browser::invoke_action(const core::Action& action, const core::ActionContex
         copy_text(context.targets.empty() ? context.directory.string() : std::move(text));
     } else if (action_handoff_) {
         if (action_available_ && !action_available_(action, context)) {
-            show_message("No installed program supports this action and selection", true);
+            show_message(
+                std::string{i18n::tr("No installed program supports this action and selection")},
+                true);
             return;
         }
         action_handoff_(action, context);
