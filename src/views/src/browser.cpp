@@ -68,6 +68,7 @@ Browser::Browser(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWat
       conflict_{redraw},
       confirm_{redraw},
       properties_{pool, mime, redraw},
+      password_{redraw},
       menu_{std::move(redraw)},
       palette_{redraw_},
       trash_model_{loop, pool, watcher, std::move(mime)},
@@ -574,7 +575,9 @@ void Browser::paste_text() {
                                  properties_.paste(*text);
                              return;
                          }
-                         if (palette_.is_open()) {
+                         if (password_.is_open()) {
+                             password_.paste(*text);
+                         } else if (palette_.is_open()) {
                              palette_.paste(*text);
                          } else if (filter_focused_) {
                              filter_field_.insert(
@@ -878,11 +881,30 @@ void Browser::place_menu(const fs::Place& place, float x, float y) {
     if (place.section == fs::Place::Section::bookmarks) {
         ++menu_generation_;
         menu_loaders_.clear();
+        std::vector<MenuItem> items;
         MenuItem remove;
         remove.id = "remove_bookmark";
         remove.label = "Remove from Sidebar";
-        remove.action = [this, path = place.path] { remove_from_sidebar(path); };
-        std::vector<MenuItem> items;
+        if (!place.uri.empty()) {
+            MenuItem mount;
+            mount.id = "mount";
+            mount.label = "Mount";
+            mount.enabled = !place.disk.mounted && remotes_.mount != nullptr;
+            mount.action = [this, place] { mount_remote(place, false); };
+            items.push_back(std::move(mount));
+            MenuItem unmount;
+            unmount.id = "unmount";
+            unmount.label = "Unmount";
+            unmount.enabled = place.disk.mounted && remotes_.unmount != nullptr;
+            unmount.action = [this, place] { unmount_remote(place); };
+            items.push_back(std::move(unmount));
+            remove.separator = true;
+            remove.action = [this, uri = place.uri, label = place.label] {
+                remove_remote_from_sidebar(uri, label);
+            };
+        } else {
+            remove.action = [this, path = place.path] { remove_from_sidebar(path); };
+        }
         items.push_back(std::move(remove));
         menu_.open(x, y, configured_menu(std::move(items), menu_layout_.sidebar), false);
         return;
@@ -2323,6 +2345,7 @@ void Browser::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme::
     properties_.draw(renderer, bounds, palette, icons);
     conflict_.draw(renderer, bounds, palette);  // last: over everything else
     confirm_.draw(renderer, bounds, palette);
+    password_.draw(renderer, bounds, palette);
     if (thumbnails_) {
         thumbnails_->end_frame();
     }
@@ -2427,6 +2450,9 @@ ui::CursorShape Browser::cursor_at(float x, float y) const {
     if (confirm_.is_open()) {
         return hand(confirm_.clickable_at(x, y));
     }
+    if (password_.is_open()) {
+        return hand(password_.clickable_at(x, y));
+    }
     if (properties_.is_open())
         return properties_.cursor_at(x, y);
     if (palette_.is_open()) {
@@ -2467,7 +2493,8 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
         found_after_.reset();
     }
     if (event.kind == ui::PointerEvent::Kind::release &&
-        (conflict_.is_open() || confirm_.is_open() || properties_.is_open() || palette_.is_open() ||
+        (conflict_.is_open() || confirm_.is_open() || password_.is_open() ||
+         properties_.is_open() || palette_.is_open() ||
          menu_.is_open() || shortcuts_.is_open() || quick_look_.is_open())) {
         // Taken by what the press opened (a menu from a right click): the button is up all the
         // same, and the next press finds its target again.
@@ -2481,6 +2508,10 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
     }
     if (confirm_.is_open()) {
         confirm_.pointer(event);
+        return;
+    }
+    if (password_.is_open()) {
+        password_.pointer(event);
         return;
     }
     if (properties_.is_open()) {
@@ -3153,6 +3184,12 @@ void Browser::remove_from_sidebar(const std::filesystem::path& folder) {
     next_bookmark_change();
 }
 
+void Browser::remove_remote_from_sidebar(const std::string& uri, const std::string& label) {
+    bookmark_changes_.push_back(
+        {.add = {}, .remove = std::nullopt, .remove_uri = uri, .remove_label = label});
+    next_bookmark_change();
+}
+
 void Browser::next_bookmark_change() {
     if (bookmark_busy_ || bookmark_changes_.empty()) {
         return;
@@ -3206,6 +3243,14 @@ void Browser::next_bookmark_change() {
                     outcome.removed = change.remove->filename().string();
                 }
             }
+            if (change.remove_uri) {
+                if (std::optional<std::string> less =
+                        fs::remove_remote_bookmark(text, *change.remove_uri)) {
+                    text = std::move(*less);
+                    changed = true;
+                    outcome.removed = change.remove_label;
+                }
+            }
             if (changed) {
                 if (const std::error_code error = core::write_file_atomically(file, text)) {
                     outcome.error = error.message();
@@ -3245,6 +3290,10 @@ void Browser::next_bookmark_change() {
 }
 
 void Browser::open_place(const fs::Place& place) {
+    if (!place.uri.empty() && !place.disk.mounted) {
+        mount_remote(place, true);
+        return;
+    }
     if (!place.disk.mounted) {
         mount_place(place, true);
         return;
@@ -3295,6 +3344,101 @@ void Browser::mount_place(const fs::Place& place, bool open) {
         });
 }
 
+void Browser::mount_remote(const fs::Place& place, bool open) {
+    if (place.uri.empty()) {
+        return;
+    }
+    if (!remotes_.mount) {
+        show_message(std::format("“{}” could not be mounted: gvfs is not available", place.label),
+                     true);
+        return;
+    }
+    show_message(std::format("Connecting to “{}”…", place.label), false);
+    ++operations_;
+    Remotes::Prompts prompts{
+        .login =
+            [this, alive = alive_, name = place.label](
+                const LoginRequest& request,
+                const std::function<void(std::optional<Login>)>& answer) {
+                if (!*alive) {
+                    answer(std::nullopt);
+                    return;
+                }
+                password_.open(std::format("Connect to “{}”", name), request, answer);
+            },
+        .question =
+            [this, alive = alive_](const std::string& message,
+                                   const std::vector<std::string>& choices,
+                                   const std::function<void(std::optional<std::size_t>)>& answer) {
+                if (!*alive || choices.empty()) {
+                    answer(std::nullopt);
+                    return;
+                }
+                // The first line is the question, the rest says why.
+                const std::size_t line = message.find('\n');
+                confirm_.open(message.substr(0, line),
+                              line == std::string::npos ? std::string{} : message.substr(line + 1),
+                              choices.front(),
+                              [answer](bool confirmed) {
+                                  answer(confirmed ? std::optional<std::size_t>{0} : std::nullopt);
+                              },
+                              {});
+            },
+        .cancel =
+            [this, alive = alive_] {
+                if (*alive) {
+                    password_.close();
+                    confirm_.close();
+                }
+            },
+    };
+    remotes_.mount(place.uri, std::move(prompts),
+                   [this, alive = alive_, name = place.label, open](
+                       const std::filesystem::path& where, const std::string& error) {
+                       if (!*alive) {
+                           return;
+                       }
+                       --operations_;
+                       password_.close();
+                       if (error == "cancelled") {
+                           show_message(std::format("Not connected to “{}”", name), false);
+                           return;
+                       }
+                       if (!error.empty()) {
+                           show_message(
+                               std::format("“{}” could not be mounted: {}", name, error),
+                               true);
+                           return;
+                       }
+                       if (open) {
+                           this->open(where);
+                       }
+                       show_message(std::format("“{}” mounted", name), false);
+                   });
+}
+
+void Browser::unmount_remote(const fs::Place& place) {
+    if (!remotes_.unmount || place.uri.empty()) {
+        return;
+    }
+    leave_disk(place.path);
+    ++operations_;
+    remotes_.unmount(place.uri, [this, alive = alive_,
+                                 name = place.label](const std::string& error) {
+        if (!*alive) {
+            return;
+        }
+        --operations_;
+        if (error == "in use") {
+            show_message(std::format("“{}” is in use: close the files open from it", name), true);
+        } else if (!error.empty()) {
+            show_message(std::format("“{}” could not be unmounted: {}", name, error), true);
+        } else {
+            show_message(std::format("“{}” unmounted", name), false);
+        }
+    });
+}
+
 void Browser::leave_disk(const std::filesystem::path& mount_point) {
     const std::shared_ptr<Folder> shown = current_folder();
     if (!shown || mount_point.empty()) {
@@ -3330,6 +3474,10 @@ void Browser::unmount_place(const fs::Place& place) {
 }
 
 void Browser::eject_place(const fs::Place& place) {
+    if (!place.uri.empty()) {
+        unmount_remote(place);  // a network folder's eject icon
+        return;
+    }
     if (!devices_.eject || place.disk.volume.empty()) {
         return;
     }
@@ -3388,6 +3536,14 @@ bool Browser::take_key(const ui::KeyEvent& event, Clock::time_point now) {
     }
     if (confirm_.is_open()) {
         return confirm_.key(event);
+    }
+    if (password_.is_open()) {
+        if (event.modifiers == ui::Modifiers{.ctrl = true} &&
+            (event.keysym == XKB_KEY_v || event.keysym == XKB_KEY_V)) {
+            paste_text();
+            return true;
+        }
+        return password_.key(event);  // every key is the card's meanwhile
     }
     if (properties_.is_open()) {
         if (event.modifiers == ui::Modifiers{.ctrl = true} &&

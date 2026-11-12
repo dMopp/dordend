@@ -4,6 +4,38 @@ Work log, newest first. Each entry: what was done, decisions, measurements, open
 
 ---
 
+## 2026-11-12 — Network bookmarks through gvfs
+
+**Done:** `smb://` and `sftp://` lines in the GTK bookmarks file are sidebar places now, without a
+path until mounted. `platform::Gvfs` talks to gvfsd on the session bus through sdbus-c++
+(`MountTracker.MountLocation`, `ListMounts`, `Mount.Unmount`) and exports an
+`org.gtk.vfs.MountOperation` object per mount, so `AskPassword` and `AskQuestion` arrive on the
+loop thread and are answered from Nordend's own cards (`PasswordDialog`, `ConfirmDialog`). A mounted
+share opens through gvfsd-fuse's folder (`$XDG_RUNTIME_DIR/gvfs/smb-share:server=…,share=…`) and
+gets the eject icon. `TextField` gained a masked mode for the password.
+
+**Decisions:** gvfs's D-Bus protocol rather than `gio mount` in a child process: no GLib or gio
+binary needed, structured errors, and the password dialog stays Nordend's. URIs map to mount specs
+as gvfs's own mappers do (smb: server and share case-folded, `DOMAIN;user` split, port 445
+dropped; sftp: host, user, port); a mount matches when it has every key asked for, since gvfs adds
+the user who logged in. gvfsd is only asked for its mounts when it already runs, so Nordend does
+not start it for people without network bookmarks. Without a session bus or gvfs a message says
+so; nothing else changes.
+
+**Validation:** 14 new cases (URI parsing, labels, removal by URI, smb/sftp mount specs, matching,
+local paths, places with mounts, the password card, the browser flow with a fake gvfs, the masked
+field, and a read-only check of the real session bus). End to end in a headless Umbriel with its
+own runtime dir and session bus: a guest share on a local Samba server mounted from the sidebar and
+showed its files, unmounted from the eject icon; a real server's share asked for a password and
+cancelling it said so; on a bus without gvfs the message appeared. Full suite: 521 of 523 cases
+pass; the two failures (`column_view_test.cpp:334`, `transfer_test.cpp:249`) fail the same way
+before the change in this environment.
+
+**Open:** AskQuestion (sftp host keys) uses the two-button confirm card with the first choice; a
+card for more choices could come later. The breadcrumb shows the FUSE path of a mounted share.
+
+---
+
 ## 2026-11-11 — SVG icons prepared against fork main
 
 **Integration:** rebased the icon-theme prerequisite and six SVG commits onto the fork's
