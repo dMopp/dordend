@@ -23,6 +23,7 @@
 #include "nordend/fs/places.hpp"
 #include "nordend/fs/trash.hpp"
 #include "nordend/views/format.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -223,7 +224,7 @@ void Browser::open_tab_behind(const std::filesystem::path& directory) {
     pane().mode = mode;
     open(directory);
     active_ = from;
-    show_message(std::format("Opened “{}” in a new tab", directory.filename().string()), false);
+    show_message(i18n::trf("Opened “{}” in a new tab", directory.filename().string()), false);
     redraw_();
 }
 
@@ -235,7 +236,7 @@ void Browser::open_tabs(const std::vector<std::filesystem::path>& folders) {
     }
     active_ = from;
     if (folders.size() > 1) {
-        show_message(std::format("Opened {} folders in new tabs", folders.size()), false);
+        show_message(i18n::trf("Opened {} folders in new tabs", folders.size()), false);
     }
 }
 
@@ -290,9 +291,9 @@ std::vector<std::string> Browser::tab_titles() const {
         if (!folder) {
             titles.emplace_back();
         } else if (folder->is_trash()) {
-            titles.emplace_back("Trash");
+            titles.emplace_back(i18n::tr("Trash"));
         } else if (folder->path() == home) {
-            titles.emplace_back("Home");
+            titles.emplace_back(i18n::tr("Home"));
         } else if (!folder->path().has_relative_path()) {
             titles.push_back(folder->path().string());  // the root
         } else {
@@ -383,9 +384,9 @@ void Browser::take_selection(bool cut) {
         system_.offer(std::move(formats));
     }
     const std::string items =
-        count == 1 ? std::format("“{}”", clipboard_.names.front()) : std::format("{} items", count);
-    show_message(cut ? std::format("Ctrl+V moves {} where you want them", items)
-                     : std::format("Ctrl+V copies {} where you want them", items),
+        count == 1 ? std::format("“{}”", clipboard_.names.front()) : i18n::trf("{} items", count);
+    show_message(cut ? i18n::trf("Ctrl+V moves {} where you want them", items)
+                     : i18n::trf("Ctrl+V copies {} where you want them", items),
                  false);
 }
 
@@ -395,12 +396,12 @@ void Browser::copy_text(std::string text) {
     cut_marks_ = {};
     const auto lines = static_cast<std::size_t>(std::ranges::count(text, '\n')) + 1;
     const std::string what = lines == 1
-                                 ? std::format("{} characters", column_at_byte(text, text.size()))
-                                 : std::format("{} lines", lines);
+                                 ? i18n::trf("{} characters", column_at_byte(text, text.size()))
+                                 : i18n::trf("{} lines", lines);
     if (system_.offer) {
         system_.offer({{std::string{kText}, text}, {"UTF8_STRING", text}, {"text/plain", text}});
     }
-    show_message(std::format("Copied {}", what), false);
+    show_message(i18n::trf("Copied {}", what), false);
 }
 
 void Browser::paste() {
@@ -433,7 +434,7 @@ void Browser::paste() {
                                                    : parse_uri_list(*data);
                                  }
                                  if (!files) {
-                                     show_message("The clipboard could not be read", true);
+                                     show_message(std::string{i18n::tr("The clipboard could not be read")}, true);
                                      return;
                                  }
                                  files->cut = files->cut || kde_cut;
@@ -457,12 +458,12 @@ void Browser::paste() {
             return;
         }
         if (!types.empty()) {
-            show_message("The clipboard holds no files", false);
+            show_message(std::string{i18n::tr("The clipboard holds no files")}, false);
             return;
         }
     }
     if (clipboard_.names.empty()) {
-        show_message("Nothing to paste: Ctrl+C or Ctrl+X first", false);
+        show_message(std::string{i18n::tr("Nothing to paste: Ctrl+C or Ctrl+X first")}, false);
         return;
     }
     const bool cut = clipboard_.cut;
@@ -481,7 +482,7 @@ void Browser::paste() {
     }
     if (!status_bar_.transfer()) {
         status_bar_.set_transfer(TransferStatus{
-            .text = cut ? "Getting ready to move…" : "Getting ready to copy…", .fraction = -1.0F});
+            .text = std::string{cut ? i18n::tr("Getting ready to move…") : i18n::tr("Getting ready to copy…")}, .fraction = -1.0F});
     }
     redraw_();
 }
@@ -508,8 +509,8 @@ void Browser::paste_files(const std::filesystem::path& destination, const Clipbo
         return;
     }
     if (files.paths.empty()) {
-        show_message(files.refused > 0 ? "Only files on this computer can be pasted"
-                                       : "The clipboard holds no files",
+        show_message(std::string{files.refused > 0 ? i18n::tr("Only files on this computer can be pasted")
+                                                   : i18n::tr("The clipboard holds no files")},
                      false);
         return;
     }
@@ -543,7 +544,7 @@ void Browser::transfer_paths(const std::filesystem::path& destination,
     }
     if (!status_bar_.transfer()) {
         status_bar_.set_transfer(TransferStatus{
-            .text = move ? "Getting ready to move…" : "Getting ready to copy…", .fraction = -1.0F});
+            .text = std::string{move ? i18n::tr("Getting ready to move…") : i18n::tr("Getting ready to copy…")}, .fraction = -1.0F});
     }
     redraw_();
 }
@@ -705,15 +706,15 @@ std::string erase_detail(const fs::ErasePlan& plan, bool emptying) {
     std::vector<std::string> parts;
     const std::size_t items = plan.names.size();
     if (emptying) {
-        parts.push_back(std::format("{} {}", items, items == 1 ? "item" : "items"));
+        parts.push_back(items == 1 ? std::string{i18n::tr("1 item")} : i18n::trf("{} items", items));
     } else if (plan.sidecars == 1) {
-        parts.emplace_back(items == 1 ? "With its darktable sidecar" : "With 1 darktable sidecar");
+        parts.emplace_back(items == 1 ? i18n::tr("With its darktable sidecar") : i18n::tr("With 1 darktable sidecar"));
     } else if (plan.sidecars > 1) {
-        parts.push_back(std::format("With {} darktable sidecars", plan.sidecars));
+        parts.push_back(i18n::trf("With {} darktable sidecars", plan.sidecars));
     }
     parts.push_back(format_size(plan.bytes));
     if (plan.entries > plan.items.size()) {
-        parts.push_back(std::format("{} files and folders in all", plan.entries));
+        parts.push_back(i18n::trf("{} files and folders in all", plan.entries));
     }
     std::string text;
     for (const std::string& part : parts) {
@@ -734,8 +735,8 @@ void Browser::erase() {
         return;
     }
     std::string title = names.size() == 1
-                            ? std::format("Delete “{}” permanently?", names.front())
-                            : std::format("Delete {} items permanently?", names.size());
+                            ? i18n::trf("Delete “{}” permanently?", names.front())
+                            : i18n::trf("Delete {} items permanently?", names.size());
     fs::TransferRequest request{.kind = fs::TransferKind::erase,
                                 .source = folder->path(),
                                 .names = {},
@@ -762,7 +763,7 @@ void Browser::empty_trash() {
                .names = {},
                .destination = {},
                .force_copy = false},
-              "Empty the trash?", nullptr);
+              std::string{i18n::tr("Empty the trash?")}, nullptr);
 }
 
 void Browser::ask_erase(fs::TransferRequest request, std::string title,
@@ -770,7 +771,8 @@ void Browser::ask_erase(fs::TransferRequest request, std::string title,
     const std::uint64_t id = ++erase_ids_;
     const bool emptying = request.kind == fs::TransferKind::empty_trash;
     erase_ = PendingErase{.id = id, .request = request, .planned = false, .confirmed = false};
-    confirm_.open(std::move(title), "Adding up the size…", emptying ? "Empty" : "Delete",
+    confirm_.open(std::move(title), std::string{i18n::tr("Adding up the size…")},
+                  std::string{emptying ? i18n::tr("Empty") : i18n::tr("Delete")},
                   [this, id, after = std::move(after)](bool confirmed) {
                       if (!erase_ || erase_->id != id) {
                           return;
@@ -818,9 +820,9 @@ void Browser::ask_erase(fs::TransferRequest request, std::string title,
                 confirm_.close();
                 erase_.reset();
                 if (emptying) {
-                    show_message("The trash is empty already", false);
+                    show_message(std::string{i18n::tr("The trash is empty already")}, false);
                 } else {
-                    show_message(plan.errors.empty() ? std::string{"Nothing to delete"}
+                    show_message(plan.errors.empty() ? std::string{i18n::tr("Nothing to delete")}
                                                      : plan.errors.front(),
                                  !plan.errors.empty());
                 }
@@ -846,7 +848,7 @@ void Browser::submit_erase() {
     redo_.reset();
     if (!status_bar_.transfer()) {
         status_bar_.set_transfer(TransferStatus{
-            .text = emptying ? "Getting ready to empty the trash…" : "Getting ready to delete…",
+            .text = std::string{emptying ? i18n::tr("Getting ready to empty the trash…") : i18n::tr("Getting ready to delete…")},
             .fraction = -1.0F});
     }
     redraw_();
@@ -860,20 +862,20 @@ void Browser::place_menu(const fs::Place& place, float x, float y) {
         std::vector<MenuItem> items;
         MenuItem mount;
         mount.id = "mount";
-        mount.label = "Mount";
+        mount.label = i18n::tr("Mount");
         mount.enabled = !place.disk.mounted;
         mount.action = [this, place] { mount_place(place, false); };
         items.push_back(std::move(mount));
         MenuItem unmount;
         unmount.id = "unmount";
-        unmount.label = "Unmount";
+        unmount.label = i18n::tr("Unmount");
         unmount.enabled = place.disk.mounted;
         unmount.action = [this, place] { unmount_place(place); };
         items.push_back(std::move(unmount));
         if (place.disk.ejectable) {
             MenuItem eject;
             eject.id = "eject";
-            eject.label = "Eject";
+            eject.label = i18n::tr("Eject");
             eject.separator = true;
             eject.action = [this, place] { eject_place(place); };
             items.push_back(std::move(eject));
@@ -887,17 +889,17 @@ void Browser::place_menu(const fs::Place& place, float x, float y) {
         std::vector<MenuItem> items;
         MenuItem remove;
         remove.id = "remove_bookmark";
-        remove.label = "Remove from Sidebar";
+        remove.label = i18n::tr("Remove from Sidebar");
         if (!place.uri.empty()) {
             MenuItem mount;
             mount.id = "mount";
-            mount.label = "Mount";
+            mount.label = i18n::tr("Mount");
             mount.enabled = !place.disk.mounted && remotes_.mount != nullptr;
             mount.action = [this, place] { mount_remote(place, false); };
             items.push_back(std::move(mount));
             MenuItem unmount;
             unmount.id = "unmount";
-            unmount.label = "Unmount";
+            unmount.label = i18n::tr("Unmount");
             unmount.enabled = place.disk.mounted && remotes_.unmount != nullptr;
             unmount.action = [this, place] { unmount_remote(place); };
             items.push_back(std::move(unmount));
@@ -919,7 +921,7 @@ void Browser::place_menu(const fs::Place& place, float x, float y) {
     menu_loaders_.clear();
     MenuItem empty;
     empty.id = "empty_trash";
-    empty.label = "Empty Trash…";
+    empty.label = i18n::tr("Empty Trash…");
     empty.enabled = trash_full_;
     empty.action = [this] { empty_trash(); };
     std::vector<MenuItem> items;
@@ -990,31 +992,39 @@ void Browser::transfer_progress(const fs::TransferRequest& request,
                                                          static_cast<float>(progress.files_total)
                                                    : -1.0F;
         status.text =
-            std::format("Restoring {} of {} items", progress.files_done, progress.files_total);
+            i18n::trf("Restoring {} of {} items", progress.files_done, progress.files_total);
     } else if (request.kind == fs::TransferKind::trash) {
         status.fraction = progress.files_total > 0 ? static_cast<float>(progress.files_done) /
                                                          static_cast<float>(progress.files_total)
                                                    : -1.0F;
-        status.text = std::format("Moving {} of {} items to the trash", progress.files_done,
+        status.text = i18n::trf("Moving {} of {} items to the trash", progress.files_done,
                                   progress.files_total);
     } else if (request.kind == fs::TransferKind::erase ||
                request.kind == fs::TransferKind::empty_trash) {
         const bool emptying = request.kind == fs::TransferKind::empty_trash;
         if (progress.preparing) {
             status.text =
-                emptying ? "Getting ready to empty the trash…" : "Getting ready to delete…";
+                std::string{emptying ? i18n::tr("Getting ready to empty the trash…")
+                                     : i18n::tr("Getting ready to delete…")};
         } else {
             status.fraction = progress.files_total > 0
                                   ? static_cast<float>(progress.files_done) /
                                         static_cast<float>(progress.files_total)
                                   : -1.0F;
-            status.text = std::format("{} {} of {} files and folders",
-                                      emptying ? "Emptying the trash:" : "Deleting",
-                                      progress.files_done, progress.files_total);
+            status.text =
+                emptying ? i18n::trf("Emptying the trash: {} of {} files and folders",
+                                     progress.files_done, progress.files_total)
+                         : i18n::trf("Deleting {} of {} files and folders", progress.files_done,
+                                     progress.files_total);
         }
     } else if (progress.preparing) {
-        status.text = std::format("Getting ready to {} {} {}…", copy ? "copy" : "move", items,
-                                  items == 1 ? "item" : "items");
+        if (copy) {
+            status.text = items == 1 ? std::string{i18n::tr("Getting ready to copy 1 item…")}
+                                     : i18n::trf("Getting ready to copy {} items…", items);
+        } else {
+            status.text = items == 1 ? std::string{i18n::tr("Getting ready to move 1 item…")}
+                                     : i18n::trf("Getting ready to move {} items…", items);
+        }
     } else if (progress.bytes_total > 0) {
         const auto now = std::chrono::steady_clock::now();
         if (!copy_started_) {
@@ -1022,15 +1032,23 @@ void Browser::transfer_progress(const fs::TransferRequest& request,
         }
         status.fraction = static_cast<float>(static_cast<double>(progress.bytes_done) /
                                              static_cast<double>(progress.bytes_total));
-        status.text =
-            std::format("{} {} {} · {} of {}", copy ? "Copying" : "Moving", progress.files_total,
-                        progress.files_total == 1 ? "file" : "files",
-                        format_size(progress.bytes_done), format_size(progress.bytes_total));
+        const std::string done = format_size(progress.bytes_done);
+        const std::string total = format_size(progress.bytes_total);
+        const bool one = progress.files_total == 1;
+        if (copy) {
+            status.text = one ? i18n::trf("Copying 1 file · {} of {}", done, total)
+                              : i18n::trf("Copying {} files · {} of {}", progress.files_total,
+                                          done, total);
+        } else {
+            status.text = one ? i18n::trf("Moving 1 file · {} of {}", done, total)
+                              : i18n::trf("Moving {} files · {} of {}", progress.files_total,
+                                          done, total);
+        }
         const double seconds = std::chrono::duration<double>(now - copy_started_->time).count();
         if (seconds >= 1.0 && progress.bytes_done > copy_started_->bytes) {
             const double rate =
                 static_cast<double>(progress.bytes_done - copy_started_->bytes) / seconds;
-            status.text += std::format(
+            status.text += i18n::trf(
                 " · {}/s · {} left", format_size(static_cast<std::uint64_t>(rate)),
                 format_duration(static_cast<double>(progress.bytes_total - progress.bytes_done) /
                                 rate));
@@ -1040,10 +1058,10 @@ void Browser::transfer_progress(const fs::TransferRequest& request,
                                                          static_cast<float>(progress.files_total)
                                                    : -1.0F;
         status.text =
-            std::format("Moving {} of {} items", progress.files_done, progress.files_total);
+            i18n::trf("Moving {} of {} items", progress.files_done, progress.files_total);
     }
     if (transfers_.pending() > 1) {
-        status.text += std::format(" · {} more waiting", transfers_.pending() - 1);
+        status.text += i18n::trf(" · {} more waiting", transfers_.pending() - 1);
     }
     status_bar_.set_transfer(std::move(status));
 }
@@ -1097,23 +1115,30 @@ void Browser::report_done(const fs::TransferRequest& request, const fs::Transfer
         return;
     }
     const bool copy = request.kind == fs::TransferKind::copy;
-    const std::string_view done = copy ? "Copied" : "Moved";
     const std::size_t files = result.files_done;
-    const std::string what = std::format("{} {}", files, files == 1 ? "file" : "files");
+    const std::string what =
+        files == 1 ? std::string{i18n::tr("1 file")} : i18n::trf("{} files", files);
     if (!result.refused.empty()) {
         show_message(result.refused, true);
     } else if (result.cancelled) {
-        show_message(std::format("Stopped: {} {} so far", what, copy ? "copied" : "moved"), false);
+        show_message(copy ? i18n::trf("Stopped: {} copied so far", what)
+                          : i18n::trf("Stopped: {} moved so far", what),
+                     false);
     } else if (!result.errors.empty()) {
-        show_message(std::format("{} {}; {} could not be: {}", done, what, result.errors.size(),
-                                 result.errors.front()),
+        show_message(copy ? i18n::trf("Copied {}; {} could not be: {}", what, result.errors.size(),
+                                      result.errors.front())
+                          : i18n::trf("Moved {}; {} could not be: {}", what, result.errors.size(),
+                                      result.errors.front()),
                      true);
     } else if (result.placed.empty()) {
-        show_message("Nothing to do: every name was skipped", false);
+        show_message(std::string{i18n::tr("Nothing to do: every name was skipped")}, false);
     } else if (result.bytes_done > 0) {
-        show_message(std::format("{} {} ({})", done, what, format_size(result.bytes_done)), false);
+        const std::string size = format_size(result.bytes_done);
+        show_message(copy ? i18n::trf("Copied {} ({})", what, size)
+                          : i18n::trf("Moved {} ({})", what, size),
+                     false);
     } else {
-        show_message(std::format("{} {}", done, what), false);
+        show_message(copy ? i18n::trf("Copied {}", what) : i18n::trf("Moved {}", what), false);
     }
     // What arrived is selected, when its folder is the one shown.
     if (const std::shared_ptr<Folder> folder = current_folder();
@@ -1125,61 +1150,63 @@ void Browser::report_done(const fs::TransferRequest& request, const fs::Transfer
 void Browser::trash_done(const fs::TransferResult& result) {
     const std::size_t items = result.placed.size();
     std::string what =
-        items == 1 ? std::format("“{}”", result.placed.front()) : std::format("{} items", items);
+        items == 1 ? std::format("“{}”", result.placed.front()) : i18n::trf("{} items", items);
     if (const std::size_t sidecars = result.files_done - items; sidecars > 0) {
-        what += std::format(" with {} darktable sidecar{}", sidecars, sidecars == 1 ? "" : "s");
+        what += sidecars == 1 ? std::string{i18n::tr(" with 1 darktable sidecar")}
+                              : i18n::trf(" with {} darktable sidecars", sidecars);
     }
     if (!result.refused.empty()) {
         show_message(result.refused, true);
     } else if (result.cancelled) {
-        show_message(std::format("Stopped: {} moved to the trash so far", what), false);
+        show_message(i18n::trf("Stopped: {} moved to the trash so far", what), false);
     } else if (!result.errors.empty()) {
-        show_message(std::format("{} moved to the trash; {} could not be: {}", what,
+        show_message(i18n::trf("{} moved to the trash; {} could not be: {}", what,
                                  result.errors.size(), result.errors.front()),
                      true);
     } else if (items > 0) {
-        show_message(std::format("{} moved to the trash", what), false);
+        show_message(i18n::trf("{} moved to the trash", what), false);
     }
 }
 
 void Browser::restore_done(const fs::TransferResult& result) {
     const std::size_t items = result.placed.size();
     std::string what =
-        items == 1 ? std::format("“{}”", result.placed.front()) : std::format("{} items", items);
+        items == 1 ? std::format("“{}”", result.placed.front()) : i18n::trf("{} items", items);
     if (const std::size_t sidecars = result.files_done - items; sidecars > 0) {
-        what += std::format(" with {} darktable sidecar{}", sidecars, sidecars == 1 ? "" : "s");
+        what += sidecars == 1 ? std::string{i18n::tr(" with 1 darktable sidecar")}
+                              : i18n::trf(" with {} darktable sidecars", sidecars);
     }
     if (!result.refused.empty()) {
         show_message(result.refused, true);
     } else if (result.cancelled) {
-        show_message(std::format("Stopped: {} restored so far", what), false);
+        show_message(i18n::trf("Stopped: {} restored so far", what), false);
     } else if (!result.errors.empty()) {
-        show_message(std::format("Restored {}; {} could not be: {}", what, result.errors.size(),
+        show_message(i18n::trf("Restored {}; {} could not be: {}", what, result.errors.size(),
                                  result.errors.front()),
                      true);
     } else if (items == 0) {
-        show_message("Nothing restored: every name was skipped", false);
+        show_message(std::string{i18n::tr("Nothing restored: every name was skipped")}, false);
     } else {
-        show_message(std::format("Restored {}", what), false);
+        show_message(i18n::trf("Restored {}", what), false);
     }
 }
 
 void Browser::erase_done(const fs::TransferRequest& request, const fs::TransferResult& result) {
     const std::size_t items = result.placed.size();
     const std::string what =
-        items == 1 ? std::format("“{}”", result.placed.front()) : std::format("{} items", items);
+        items == 1 ? std::format("“{}”", result.placed.front()) : i18n::trf("{} items", items);
     const std::string size =
-        result.bytes_done > 0 ? std::format(" ({})", format_size(result.bytes_done)) : "";
+        result.bytes_done > 0 ? i18n::trf(" ({})", format_size(result.bytes_done)) : "";
     if (result.cancelled) {
-        show_message(std::format("Stopped: {} deleted so far", what), false);
+        show_message(i18n::trf("Stopped: {} deleted so far", what), false);
     } else if (!result.errors.empty()) {
-        show_message(std::format("Deleted {}; {} could not be: {}", what, result.errors.size(),
+        show_message(i18n::trf("Deleted {}; {} could not be: {}", what, result.errors.size(),
                                  result.errors.front()),
                      true);
     } else if (request.kind == fs::TransferKind::empty_trash) {
-        show_message(std::format("Emptied the trash: {} deleted{}", what, size), false);
+        show_message(i18n::trf("Emptied the trash: {} deleted{}", what, size), false);
     } else {
-        show_message(std::format("Deleted {} permanently{}", what, size), false);
+        show_message(i18n::trf("Deleted {} permanently{}", what, size), false);
     }
 }
 
@@ -1235,16 +1262,17 @@ void Browser::record(FileOperation operation, Purpose purpose, bool failed) {
             break;
     }
     if (!failed) {  // otherwise the transfer's own message says what went wrong
-        show_message(std::format("{}: {}", purpose == Purpose::undo ? "Undone" : "Redone", what),
+        show_message(purpose == Purpose::undo ? i18n::trf("Undone: {}", what)
+                                              : i18n::trf("Redone: {}", what),
                      false);
     }
 }
 
 void Browser::undo() {
     if (undoing_) {
-        show_message("Still undoing the last one", false);
+        show_message(std::string{i18n::tr("Still undoing the last one")}, false);
     } else if (!undo_) {
-        show_message("Nothing to undo", false);
+        show_message(std::string{i18n::tr("Nothing to undo")}, false);
     } else {
         start_inverse(*undo_, Purpose::undo);
     }
@@ -1252,9 +1280,9 @@ void Browser::undo() {
 
 void Browser::redo() {
     if (undoing_) {
-        show_message("Still undoing the last one", false);
+        show_message(std::string{i18n::tr("Still undoing the last one")}, false);
     } else if (!redo_) {
-        show_message("Nothing to redo", false);
+        show_message(std::string{i18n::tr("Nothing to redo")}, false);
     } else {
         start_inverse(*redo_, Purpose::redo);
     }
@@ -1293,7 +1321,7 @@ void Browser::start_inverse(const FileOperation& operation, Purpose purpose) {
     }
     switch (operation.kind) {
         case FileOperation::Kind::erase:
-            show_message("A permanent delete cannot be undone", false);
+            show_message(std::string{i18n::tr("A permanent delete cannot be undone")}, false);
             return;
         case FileOperation::Kind::rename: {
             const fs::PlacedItem item = operation.items.front();
@@ -1338,7 +1366,7 @@ void Browser::start_inverse(const FileOperation& operation, Purpose purpose) {
                     --operations_;
                     if (!unchanged) {
                         undoing_ = false;
-                        show_message(std::format("“{}” has changed since it was made: not undone",
+                        show_message(i18n::trf("“{}” has changed since it was made: not undone",
                                                  item.to.filename().string()),
                                      false);
                         return;
@@ -1424,7 +1452,7 @@ void Browser::new_folder() {
     pool_.submit(
         core::Priority::visible,
         [directory = folder->path()](const core::CancelToken& /*token*/) {
-            return fs::make_folder(directory, "New Folder");
+            return fs::make_folder(directory, std::string{i18n::tr("New Folder")});
         },
         [this, alive = alive_, folder](const fs::MadeFolder& made) {
             if (!*alive) {
@@ -1432,7 +1460,7 @@ void Browser::new_folder() {
             }
             --operations_;
             if (made.error) {
-                show_message(std::format("Cannot make a folder in {}: {}",
+                show_message(i18n::trf("Cannot make a folder in {}: {}",
                                          folder->path().filename().string(), made.error.message()),
                              true);
                 return;
@@ -1464,7 +1492,7 @@ void Browser::new_file(const std::string& name, const std::filesystem::path& fro
             }
             --operations_;
             if (made.error) {
-                show_message(std::format("Cannot make a file in {}: {}",
+                show_message(i18n::trf("Cannot make a file in {}: {}",
                                          folder->path().filename().string(), made.error.message()),
                              true);
                 return;
@@ -1486,12 +1514,12 @@ std::vector<MenuItem> Browser::entry_menu(const std::shared_ptr<Folder>& folder)
     if (folder->is_trash()) {
         MenuItem back;
         back.id = "restore";
-        back.label = "Restore";
+        back.label = i18n::tr("Restore");
         back.action = [this] { restore(); };
         items.push_back(std::move(back));
         MenuItem gone;
         gone.id = "erase";
-        gone.label = "Delete Permanently…";
+        gone.label = i18n::tr("Delete Permanently…");
         gone.keys = keys_for(Command::trash);
         gone.separator = true;
         gone.action = [this] { erase(); };
@@ -1511,7 +1539,7 @@ std::vector<MenuItem> Browser::entry_menu(const std::shared_ptr<Folder>& folder)
                               bool enabled = true) {
         MenuItem item;
         item.id = std::move(id);
-        item.label = std::move(label);
+        item.label = i18n::tr(label);
         item.keys = std::move(keys);
         item.action = std::move(action);
         item.separator = separator;
@@ -1526,9 +1554,9 @@ std::vector<MenuItem> Browser::entry_menu(const std::shared_ptr<Folder>& folder)
     if (cursor != nullptr && choices_ && open_with_) {
         MenuItem with;
         with.id = "open_with";
-        with.label = "Open With";
+        with.label = i18n::tr("Open With");
         with.submenu = true;
-        with.empty_text = "Looking for applications…";
+        with.empty_text = i18n::tr("Looking for applications…");
         items.push_back(std::move(with));
         // What it would open: the selected entries of the cursor's kind (files, or folders), else
         // the cursor's; their types as known.
@@ -1560,7 +1588,7 @@ std::vector<MenuItem> Browser::entry_menu(const std::shared_ptr<Folder>& folder)
                          for (const AppChoice& app : apps) {
                              MenuItem item;
                              item.id = app.id;
-                             item.label = app.is_default ? app.name + " (default)" : app.name;
+                             item.label = app.is_default ? app.name + std::string{i18n::tr(" (default)")} : app.name;
                              item.action = [this, directory, files, id = app.id] {
                                  open_with_(directory, files, id);
                              };
@@ -1568,7 +1596,7 @@ std::vector<MenuItem> Browser::entry_menu(const std::shared_ptr<Folder>& folder)
                          }
                          if (children.empty()) {
                              MenuItem none;  // a dimmed line says so
-                             none.label = "No applications";
+                             none.label = i18n::tr("No applications");
                              none.enabled = false;
                              children.push_back(std::move(none));
                          }
@@ -1620,7 +1648,7 @@ std::vector<MenuItem> Browser::folder_menu() {
     std::vector<MenuItem> items;
     MenuItem make_folder;
     make_folder.id = "new_folder";
-    make_folder.label = "New Folder";
+    make_folder.label = i18n::tr("New Folder");
     make_folder.keys = keys_for(Command::new_folder);
     make_folder.action = [this] { new_folder(); };
     items.push_back(std::move(make_folder));
@@ -1629,13 +1657,13 @@ std::vector<MenuItem> Browser::folder_menu() {
     const auto empty_file = [this] {
         MenuItem item;
         item.id = "empty_file";
-        item.label = "Empty File";
-        item.action = [this] { new_file("New File", {}); };
+        item.label = i18n::tr("Empty File");
+        item.action = [this] { new_file(std::string{i18n::tr("New File")}, {}); };
         return item;
     };
     MenuItem make_file;
     make_file.id = "new_file";
-    make_file.label = "New File";
+    make_file.label = i18n::tr("New File");
     make_file.submenu = true;
     make_file.children.push_back(empty_file());
     items.push_back(std::move(make_file));
@@ -1674,7 +1702,7 @@ std::vector<MenuItem> Browser::folder_menu() {
 
     MenuItem paste_here;
     paste_here.id = "paste";
-    paste_here.label = "Paste";
+    paste_here.label = i18n::tr("Paste");
     paste_here.keys = keys_for(Command::paste);
     paste_here.separator = true;
     paste_here.enabled = !clipboard_.names.empty();
@@ -1684,7 +1712,7 @@ std::vector<MenuItem> Browser::folder_menu() {
     if (const std::shared_ptr<Folder> shown = current_folder()) {
         MenuItem bookmark;
         bookmark.id = "add_bookmark";
-        bookmark.label = "Add to Sidebar";
+        bookmark.label = i18n::tr("Add to Sidebar");
         bookmark.keys = keys_for(Command::add_bookmark);
         bookmark.separator = true;
         bookmark.action = [this, path = shown->path()] { add_to_sidebar({path}); };
@@ -1692,7 +1720,7 @@ std::vector<MenuItem> Browser::folder_menu() {
         if (terminal_) {
             MenuItem terminal;
             terminal.id = "open_terminal";
-            terminal.label = "Open in Terminal";
+            terminal.label = i18n::tr("Open in Terminal");
             terminal.keys = keys_for(Command::open_terminal);
             terminal.action = [this, path = shown->path()] { terminal_(path); };
             items.push_back(std::move(terminal));
@@ -1768,7 +1796,7 @@ void Browser::open_menu(float x, float y, bool keyboard) {
     } else {
         MenuItem empty;  // nothing is made in the trash
         empty.id = "empty_trash";
-        empty.label = "Empty Trash…";
+        empty.label = i18n::tr("Empty Trash…");
         empty.enabled = !folder->entries().empty();
         empty.action = [this] { empty_trash(); };
         items.push_back(std::move(empty));
@@ -1837,8 +1865,10 @@ void Browser::rename(const std::shared_ptr<Folder>& folder, const std::string& f
             if (!renamed.problem.empty()) {
                 show_message(renamed.problem, true);
             } else if (renamed.sidecars > 0) {
-                show_message(std::format("Renamed {} with {} darktable sidecar{}", to,
-                                         renamed.sidecars, renamed.sidecars == 1 ? "" : "s"),
+                show_message(renamed.sidecars == 1
+                             ? i18n::trf("Renamed {} with 1 darktable sidecar", to)
+                             : i18n::trf("Renamed {} with {} darktable sidecars", to,
+                                         renamed.sidecars),
                              false);
             }
             editor_.finished(true);
@@ -1903,8 +1933,8 @@ void Browser::travel(int direction) {
     std::vector<std::string> gone;
     const auto report_gone = [&] {
         if (!gone.empty()) {
-            show_message(gone.size() == 1 ? std::format("{} no longer exists", gone.front())
-                                          : std::format("{} folders no longer exist", gone.size()),
+            show_message(gone.size() == 1 ? i18n::trf("{} no longer exists", gone.front())
+                                          : i18n::trf("{} folders no longer exist", gone.size()),
                          true);
         }
     };
@@ -1967,14 +1997,14 @@ MenuItem Browser::sort_menu() {
     const fs::SortOrder& now = sort_order();
     MenuItem sort;
     sort.id = "sort";
-    sort.label = "Sort By";
+    sort.label = i18n::tr("Sort By");
     sort.submenu = true;
     sort.separator = true;
     const auto choice = [](std::string id, std::string label, bool checked,
                            std::function<void()> action, bool separator = false) {
         MenuItem item;
         item.id = std::move(id);
-        item.label = std::move(label);
+        item.label = i18n::tr(label);
         item.radio = true;
         item.checked = checked;
         item.separator = separator;
@@ -2041,7 +2071,7 @@ void Browser::set_show_hidden(bool show) {
         each->grid.set_show_hidden(show);
         each->details.set_show_hidden(show);
     }
-    show_message(show ? "Hidden files shown" : "Hidden files hidden", false);
+    show_message(std::string{show ? i18n::tr("Hidden files shown") : i18n::tr("Hidden files hidden")}, false);
     redraw_();
 }
 
@@ -2951,7 +2981,7 @@ void Browser::draw_drag_icon(ui::Renderer& renderer, const ui::Rect& bounds,
                icon_size, palette.primary);
     const std::string label = drag_->names.size() == 1
                                   ? drag_->names.front()
-                                  : std::format("{} items", drag_->names.size());
+                                  : i18n::trf("{} items", drag_->names.size());
     const float text_x = left + icon_size + 8.0F;
     renderer.draw_text(label, text_x, bounds.y + ((bounds.height - text_size) / 2.0F) - 2.0F,
                        text_size, palette.on_surface,
@@ -3003,13 +3033,13 @@ std::string Browser::refusal(const std::filesystem::path& folder,
     for (const std::filesystem::path& path : paths) {
         const std::filesystem::path inside = folder.lexically_relative(path);
         if (!inside.empty() && *inside.begin() != "..") {
-            return std::format("“{}” cannot go into itself", path.filename().string());
+            return i18n::trf("“{}” cannot go into itself", path.filename().string());
         }
     }
     if (std::ranges::all_of(paths, [&folder](const std::filesystem::path& path) {
             return path.parent_path() == folder;
         })) {
-        return "Already here";
+        return std::string{i18n::tr("Already here")};
     }
     return {};
 }
@@ -3077,8 +3107,8 @@ void Browser::drop_event(const ui::DropEvent& event) {
                       --operations_;
                       ClipboardFiles dropped = data ? parse_uri_list(*data) : ClipboardFiles{};
                       if (dropped.paths.empty()) {
-                          show_message(dropped.refused > 0 ? "Only files can be dropped"
-                                                           : "Nothing could be read from the drop",
+                          show_message(std::string{dropped.refused > 0 ? i18n::tr("Only files can be dropped")
+                                                                       : i18n::tr("Nothing could be read from the drop")},
                                        false);
                           return;
                       }
@@ -3183,7 +3213,7 @@ void Browser::drop_paths(const std::filesystem::path& folder,
 void Browser::add_to_sidebar(std::vector<std::filesystem::path> folders) {
     std::erase_if(folders, [](const std::filesystem::path& path) { return fs::is_trash(path); });
     if (folders.empty()) {
-        show_message("Already in the sidebar", false);
+        show_message(std::string{i18n::tr("Already in the sidebar")}, false);
         return;
     }
     bookmark_changes_.push_back({.add = std::move(folders), .remove = std::nullopt});
@@ -3286,20 +3316,20 @@ void Browser::next_bookmark_change() {
             --operations_;
             bookmark_busy_ = false;
             if (!outcome.error.empty()) {
-                show_message(std::format("The sidebar could not be changed: {}", outcome.error),
+                show_message(i18n::trf("The sidebar could not be changed: {}", outcome.error),
                              true);
             } else if (outcome.added.size() == 1) {
-                show_message(std::format("“{}” added to the sidebar", outcome.added.front()),
+                show_message(i18n::trf("“{}” added to the sidebar", outcome.added.front()),
                              false);
             } else if (!outcome.added.empty()) {
-                show_message(std::format("{} folders added to the sidebar", outcome.added.size()),
+                show_message(i18n::trf("{} folders added to the sidebar", outcome.added.size()),
                              false);
             } else if (!outcome.removed.empty()) {
-                show_message(std::format("“{}” removed from the sidebar", outcome.removed), false);
+                show_message(i18n::trf("“{}” removed from the sidebar", outcome.removed), false);
             } else if (outcome.present > 0) {
-                show_message("Already in the sidebar", false);
+                show_message(std::string{i18n::tr("Already in the sidebar")}, false);
             } else if (outcome.not_folders > 0) {
-                show_message("Only folders go in the sidebar", false);
+                show_message(std::string{i18n::tr("Only folders go in the sidebar")}, false);
             }
             if ((!outcome.added.empty() || !outcome.removed.empty()) && places_reload_) {
                 places_reload_();
@@ -3324,7 +3354,7 @@ void Browser::mount_place(const fs::Place& place, bool open) {
     if (!devices_.mount || place.disk.volume.empty()) {
         return;
     }
-    show_message(std::format("Mounting “{}”…", place.label), false);
+    show_message(i18n::trf("Mounting “{}”…", place.label), false);
     ++operations_;
     devices_.mount(
         place.disk.volume, [this, alive = alive_, name = place.label, open](
@@ -3334,7 +3364,7 @@ void Browser::mount_place(const fs::Place& place, bool open) {
             }
             --operations_;
             if (!error.empty()) {
-                show_message(std::format("“{}” could not be mounted: {}", name, error), true);
+                show_message(i18n::trf("“{}” could not be mounted: {}", name, i18n::tr(error)), true);
                 return;
             }
             if (open) {
@@ -3353,11 +3383,11 @@ void Browser::mount_place(const fs::Place& place, bool open) {
                         return;
                     }
                     --operations_;
-                    show_message(read_only ? std::format("“{}” is read-only: it was not closed "
+                    show_message(read_only ? i18n::trf("“{}” is read-only: it was not closed "
                                                          "properly (Windows' chkdsk or ntfsfix -d "
                                                          "fixes it)",
                                                          name)
-                                           : std::format("“{}” mounted", name),
+                                           : i18n::trf("“{}” mounted", name),
                                  read_only);
                 });
         });
@@ -3523,11 +3553,11 @@ void Browser::unmount_place(const fs::Place& place) {
         }
         --operations_;
         if (error == "in use") {
-            show_message(std::format("“{}” is in use: close the files open from it", name), true);
+            show_message(i18n::trf("“{}” is in use: close the files open from it", name), true);
         } else if (!error.empty()) {
-            show_message(std::format("“{}” could not be unmounted: {}", name, error), true);
+            show_message(i18n::trf("“{}” could not be unmounted: {}", name, i18n::tr(error)), true);
         } else {
-            show_message(std::format("“{}” unmounted", name), false);
+            show_message(i18n::trf("“{}” unmounted", name), false);
         }
     });
 }
@@ -3541,7 +3571,7 @@ void Browser::eject_place(const fs::Place& place) {
         return;
     }
     leave_disk(place.path);
-    show_message(std::format("Ejecting “{}”…", place.label), false);
+    show_message(i18n::trf("Ejecting “{}”…", place.label), false);
     ++operations_;
     devices_.eject(place.disk.volume, [this, alive = alive_,
                                        name = place.label](const std::string& error) {
@@ -3550,11 +3580,11 @@ void Browser::eject_place(const fs::Place& place) {
         }
         --operations_;
         if (error == "in use") {
-            show_message(std::format("“{}” is in use: close the files open from it", name), true);
+            show_message(i18n::trf("“{}” is in use: close the files open from it", name), true);
         } else if (!error.empty()) {
-            show_message(std::format("“{}” could not be ejected: {}", name, error), true);
+            show_message(i18n::trf("“{}” could not be ejected: {}", name, i18n::tr(error)), true);
         } else {
-            show_message(std::format("“{}” can be unplugged now", name), false);
+            show_message(i18n::trf("“{}” can be unplugged now", name), false);
         }
     });
 }
@@ -3768,7 +3798,7 @@ void Browser::run(Command command, Clock::time_point now) {
             case Command::copy:
             case Command::cut:
             case Command::paste:
-                show_message("The trash only gives back: right click, Restore", false);
+                show_message(std::string{i18n::tr("The trash only gives back: right click, Restore")}, false);
                 return;
             case Command::trash:
                 erase();  // from the trash, only for good
@@ -3904,7 +3934,7 @@ bool Browser::open_selection() {
         return false;
     }
     if (folder->is_trash()) {
-        show_message("Restore it first to open it", false);
+        show_message(std::string{i18n::tr("Restore it first to open it")}, false);
         return true;
     }
     if (!open_) {
@@ -3934,7 +3964,7 @@ void Browser::open_terminal() {
         return;
     }
     if (folder->is_trash()) {
-        show_message("Restore it first to open it", false);
+        show_message(std::string{i18n::tr("Restore it first to open it")}, false);
         return;
     }
     const fs::Entry* const cursor = folder->cursor_entry();

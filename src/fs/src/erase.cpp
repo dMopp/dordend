@@ -18,6 +18,7 @@
 
 #include "nordend/fs/operations.hpp"
 #include "nordend/fs/trash.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::fs {
 namespace {
@@ -89,7 +90,7 @@ std::vector<Group> groups_of(const TransferRequest& request, std::vector<std::st
             std::optional<TrashedGroup>& group = found[i];
             if (!group) {
                 errors.push_back(
-                    std::format("{}: not in the trash any more", paths[i].filename().string()));
+                    i18n::trf("{}: not in the trash any more", paths[i].filename().string()));
                 continue;
             }
             groups.push_back({.item = std::move(group->item),

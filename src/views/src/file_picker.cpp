@@ -1,4 +1,5 @@
 #include "nordend/views/file_picker.hpp"
+#include "nordend/core/i18n.hpp"
 
 #include <algorithm>
 #include <fnmatch.h>
@@ -44,7 +45,7 @@ PickerSelection picker_selection(const core::PickerRequest& request,
     PickerSelection out;
     const auto fail = [&](std::string error) {
         out.paths.clear();
-        out.error = std::move(error);
+        out.error = std::string{i18n::tr(error)};
         return out;
     };
     if (!folder.is_absolute() || folder == fs::trash_path()) {
@@ -235,16 +236,16 @@ void FilePicker::accept() {
         if (result.overwrite) {
             confirm_.open(
                 result.paths.size() == 1
-                    ? "Replace “" +
-                          std::filesystem::path{result.paths.front()}.filename().string() + "”?"
-                    : "Replace existing files?",
-                folder->path().string(), "Replace",
+                    ? i18n::trf("Replace “{}”?",
+                                std::filesystem::path{result.paths.front()}.filename().string())
+                    : std::string{i18n::tr("Replace existing files?")},
+                folder->path().string(), std::string{i18n::tr("Replace")},
                 [this, paths = result.paths](bool yes) {
                     if (yes) {
                         finish(paths);
                     }
                 },
-                "The application will overwrite the selected file when it saves.");
+                std::string{i18n::tr("The application will overwrite the selected file when it saves.")});
         } else {
             finish(result.paths);
         }
@@ -502,7 +503,7 @@ void FilePicker::draw(ui::Renderer& renderer, const ui::Rect& bounds, const them
     controls_.fill({});
     float y = footer_.y + 10.0F;
     if (request_.mode != Mode::save_files) {
-        renderer.draw_text(name_label(), bounds.x + 12, y + 7, 13, palette.on_surface);
+        renderer.draw_text(i18n::tr(name_label()), bounds.x + 12, y + 7, 13, palette.on_surface);
         controls_[1] = {bounds.x + 64, y, std::max(1.0F, bounds.width - 76), 32};
         name_.draw(renderer, controls_[1], 14,
                    {.background = palette.surface,
@@ -524,20 +525,21 @@ void FilePicker::draw(ui::Renderer& renderer, const ui::Rect& bounds, const them
     };
     const float right = bounds.right() - 12;
     button(5,
-           request_.accept_label.empty() ? (request_.mode == Mode::open ? "Select" : "Save")
-                                         : request_.accept_label,
+           request_.accept_label.empty()
+               ? std::string{request_.mode == Mode::open ? i18n::tr("Select") : i18n::tr("Save")}
+               : request_.accept_label,
            {right - 108, y, 108, 32}, true);
-    button(4, "Cancel", {right - 212, y, 96, 32}, false);
+    button(4, std::string{i18n::tr("Cancel")}, {right - 212, y, 96, 32}, false);
     float x = bounds.x + 12;
     if (!request_.choices.empty()) {
-        button(3, "Options", {x, y, 86, 32}, false);
+        button(3, std::string{i18n::tr("Options")}, {x, y, 86, 32}, false);
         x += 94;
     }
     if (!request_.filters.empty()) {
         button(2, request_.filters[request_.filter].label,
                {x, y, std::max(24.0F, right - 224 - x), 32}, false);
     }
-    renderer.draw_text(error_.empty() ? "Ctrl+Enter selects · Esc cancels" : error_, bounds.x + 12,
+    renderer.draw_text(error_.empty() ? std::string{i18n::tr("Ctrl+Enter selects · Esc cancels")} : error_, bounds.x + 12,
                        footer_.bottom() - 27, 13,
                        error_.empty() ? palette.on_surface_variant : palette.error,
                        bounds.width - 24);

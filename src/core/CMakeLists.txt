@@ -11,6 +11,8 @@ add_library(nordend_core
     src/file.cpp
     src/file_picker.cpp
     src/file_watcher.cpp
+    src/i18n.cpp
+    src/i18n_de.cpp
     src/log.cpp
     src/memory.cpp
     src/worker_pool.cpp)

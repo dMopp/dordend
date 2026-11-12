@@ -7,6 +7,7 @@
 
 #include "nordend/core/log.hpp"
 #include "nordend/platform/exec.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::platform {
 namespace {
@@ -32,12 +33,12 @@ std::string opening_message(const OpenPlan& plan) {
         }
     }
     if (apps.size() > 1) {
-        return std::format("Opening {} files with {} applications…", plan.files, apps.size());
+        return i18n::trf("Opening {} files with {} applications…", plan.files, apps.size());
     }
     if (plan.files == 1) {
-        return std::format("Opening {} with {}…", plan.first_name, apps.front());
+        return i18n::trf("Opening {} with {}…", plan.first_name, apps.front());
     }
-    return std::format("Opening {} files with {}…", plan.files, apps.front());
+    return i18n::trf("Opening {} files with {}…", plan.files, apps.front());
 }
 
 }  // namespace
@@ -52,8 +53,8 @@ OpenPlan plan_open(std::span<const OpenFile> files, const Applications& apps,
             app_id.empty() ? apps.default_for(file.mime, database) : apps.find(app_id);
         if (app == nullptr) {
             add_problem(plan.problems, app_id.empty()
-                                           ? std::format("No application opens {}", file.mime)
-                                           : std::format("{} is not installed", app_id));
+                                           ? i18n::trf("No application opens {}", file.mime)
+                                           : i18n::trf("{} is not installed", app_id));
             continue;
         }
         auto group = std::ranges::find(groups, app, &Group::app);
@@ -69,7 +70,7 @@ OpenPlan plan_open(std::span<const OpenFile> files, const Applications& apps,
         std::vector<std::vector<std::string>> lines = expand_exec(app, group.files);
         if (lines.empty()) {
             add_problem(plan.problems,
-                        std::format("{} has an Exec line Nordend cannot read", name));
+                        i18n::trf("{} has an Exec line Nordend cannot read", name));
             continue;
         }
         const std::size_t per_line = lines.size() == 1 ? group.files.size() : 1;
@@ -79,7 +80,7 @@ OpenPlan plan_open(std::span<const OpenFile> files, const Applications& apps,
                 std::optional<std::vector<std::string>> wrapped = in_terminal(line, environment);
                 if (!wrapped) {
                     add_problem(plan.problems,
-                                std::format("No terminal to run {} in: set $TERMINAL", name));
+                                i18n::trf("No terminal to run {} in: set $TERMINAL", name));
                     break;
                 }
                 line = std::move(*wrapped);
@@ -197,7 +198,7 @@ void Opener::open_terminal(const std::filesystem::path& directory) {
             OpenPlan plan;
             std::optional<std::vector<std::string>> line = terminal_alone(*environment);
             if (!line) {
-                plan.problems.emplace_back("No terminal found: set $TERMINAL");
+                plan.problems.emplace_back(i18n::tr("No terminal found: set $TERMINAL"));
                 return plan;
             }
             const std::string name = std::filesystem::path{line->front()}.filename().string();
@@ -224,7 +225,7 @@ void Opener::start(OpenPlan plan) {
         log::info("open: {}", problem);
     }
     if (plan.launches.empty()) {
-        report_(plan.problems.empty() ? std::string{"Nothing to open"} : plan.problems.front(),
+        report_(plan.problems.empty() ? std::string{i18n::tr("Nothing to open")} : plan.problems.front(),
                 true);
         return;
     }
@@ -263,12 +264,12 @@ void Opener::start_one(const OpenPlan::Launch& launch, const std::string& token)
                 return;
             }
             report_(exit.signal != 0
-                        ? std::format("{} was stopped by signal {}", name, exit.signal)
-                        : std::format("{} quit at once with status {}", name, exit.status),
+                        ? i18n::trf("{} was stopped by signal {}", name, exit.signal)
+                        : i18n::trf("{} quit at once with status {}", name, exit.status),
                     true);
         });
     if (error) {
-        report_(std::format("Could not start {}: {}", launch.app_name, error.message()), true);
+        report_(i18n::trf("Could not start {}: {}", launch.app_name, error.message()), true);
     }
 }
 
