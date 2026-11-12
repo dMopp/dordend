@@ -387,6 +387,7 @@ struct GlyphKey {
     std::uint32_t font;
     std::uint32_t glyph;
     std::uint32_t size_64;  // pixel size in 1/64 px
+    std::uint32_t subpixel;  // horizontal position in 1/kSubpixelSteps px
 
     bool operator==(const GlyphKey&) const = default;
 };
@@ -394,7 +395,9 @@ struct GlyphKey {
 struct GlyphKeyHash {
     std::size_t operator()(const GlyphKey& key) const noexcept {
         const auto a = (static_cast<std::uint64_t>(key.font) << 32U) | key.glyph;
-        return std::hash<std::uint64_t>{}((a * 0x9E3779B97F4A7C15ULL) ^ key.size_64);
+        return std::hash<std::uint64_t>{}((a * 0x9E3779B97F4A7C15ULL) ^
+                                          (static_cast<std::uint64_t>(key.size_64) << 2U) ^
+                                          key.subpixel);
     }
 };
 
@@ -601,7 +604,10 @@ float Renderer::draw_text_runs(std::string_view utf8, float x, float y, float si
 
 void Renderer::draw_layout(const TextLayout& layout, float x, float y, Color color,
                            std::span<const ColorRun> runs) {
-    // Glyph origins snap to whole pixels: bitmaps then map 1:1 onto the screen.
+    // The line starts on a whole pixel; each glyph keeps its fractional position in quarter
+    // pixels (subpixel positioning, as Pango and Qt), rasterized at that offset, so spacing stays
+    // as the font and its tracking say. Bitmaps still map 1:1 onto the screen.
+    constexpr float kSubpixelSteps = 4.0F;
     const float origin_x = snap(x, scale_);
     const float baseline = snap(y, scale_) + std::round(layout.ascent);
     const Color premultiplied = color.premultiplied();
@@ -616,16 +622,26 @@ void Renderer::draw_layout(const TextLayout& layout, float x, float y, Color col
     };
 
     for (const ShapedGlyph& glyph : layout.glyphs) {
-        const GlyphKey key{glyph.font, glyph.glyph, size_64};
+        const float pen_x = origin_x + glyph.x;
+        float whole = std::floor(pen_x);
+        auto step = static_cast<std::uint32_t>(std::lround((pen_x - whole) * kSubpixelSteps));
+        if (step >= static_cast<std::uint32_t>(kSubpixelSteps)) {
+            step = 0;
+            whole += 1.0F;
+        }
+        const GlyphKey key{glyph.font, glyph.glyph, size_64, step};
         auto it = gl_->entries.find(key);
         if (it == gl_->entries.end()) {
-            it = gl_->entries.emplace(key, rasterize(glyph, layout.pixel_size)).first;
+            it = gl_->entries
+                     .emplace(key, rasterize(glyph, layout.pixel_size,
+                                             static_cast<float>(step) / kSubpixelSteps))
+                     .first;
         }
         const GlyphEntry& entry = it->second;
         if (entry.width == 0) {
             continue;  // blank glyph (space) or failed raster
         }
-        const float gx = std::round(origin_x + glyph.x) + static_cast<float>(entry.left);
+        const float gx = whole + static_cast<float>(entry.left);
         const float gy = std::round(baseline + glyph.y) - static_cast<float>(entry.top);
         const Color shade = runs.empty() ? premultiplied : colour_of(glyph.cluster);
         push_glyph({
@@ -639,8 +655,9 @@ void Renderer::draw_layout(const TextLayout& layout, float x, float y, Color col
 
 // Rasterizes a glyph into its atlas. When an atlas is full, pending glyphs are drawn and the
 // whole cache starts over: simple, and rare with 2048x2048 atlases.
-Renderer::GlyphEntry Renderer::rasterize(const ShapedGlyph& glyph, float pixel_size) {
-    const GlyphBitmap bitmap = fonts_.rasterize(glyph.font, glyph.glyph, pixel_size);
+Renderer::GlyphEntry Renderer::rasterize(const ShapedGlyph& glyph, float pixel_size,
+                                         float x_offset) {
+    const GlyphBitmap bitmap = fonts_.rasterize(glyph.font, glyph.glyph, pixel_size, x_offset);
     GlyphEntry entry{.left = bitmap.left, .top = bitmap.top, .color = bitmap.color};
     if (bitmap.width == 0 || bitmap.height == 0) {
         return entry;
