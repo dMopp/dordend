@@ -319,6 +319,13 @@ README's [What's next](../README.md#whats-next).
   an external disk unmounts every partition on it and powers it off, taking the view home first if
   it shows that disk; "in use" says to close what is open there. The right click mounts, unmounts
   and ejects. The list follows disks coming and going; nothing waits on udisks2.
+- **Network folders:** `smb://` and `sftp://` bookmarks (the ones Nautilus and other GTK file
+  managers keep in the same file) are listed too, quieter until mounted. A click mounts one through
+  gvfs on the session bus, with no GLib in Nordend, and opens it through gvfs's FUSE folder. A
+  server that wants a name and a password gets them on a card: user, domain, a password drawn as
+  dots, "Anonymous" when the server allows it, and "Remember the password" (gvfs keeps it in the
+  keyring). A mounted share has an eject icon that unmounts it; the right click mounts, unmounts and
+  removes the bookmark. Without gvfs a message says so.
 - **Favourites:** Ctrl+D adds the folder shown, "Add to Sidebar" the folders selected (or the
   folder, from its empty part), and folders dragged onto the "BOOKMARKS" title or below the last
   place are added at the end, a line showing where; dropping onto a place still moves into it.
