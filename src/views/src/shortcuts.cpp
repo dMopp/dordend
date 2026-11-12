@@ -78,6 +78,13 @@ constexpr std::array kShortcuts{
              .keysyms = {XKB_KEY_d, XKB_KEY_D},
              .command = Command::add_bookmark},
     Shortcut{.group = "General",
+             .keys = "Ctrl+L",
+             .action = "Go to a folder or a server",
+             .scope = scope::kViews | scope::kSidebar | scope::kQuickLook,
+             .modifiers = kCtrl,
+             .keysyms = {XKB_KEY_l, XKB_KEY_L},
+             .command = Command::go_to},
+    Shortcut{.group = "General",
              .keys = "F6",
              .action = "Into the sidebar and out",
              .scope = scope::kViews | scope::kSidebar,
@@ -523,6 +530,8 @@ std::optional<std::size_t> binding_index(std::string_view name) {
         command = Command::filter_names;
     if (name == "find_files")
         command = Command::find_files;
+    if (name == "go_to")
+        command = Command::go_to;
     for (std::size_t i = 0; i < kShortcuts.size(); ++i) {
         const auto& entry = kShortcuts[i];
         if (command != Command::none && entry.command == command)

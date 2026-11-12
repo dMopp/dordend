@@ -10,6 +10,7 @@
 #include <doctest/doctest.h>
 
 #include "nordend/core/event_loop.hpp"
+#include "nordend/core/file.hpp"
 #include "nordend/core/worker_pool.hpp"
 #include "nordend/fs/directory_watcher.hpp"
 #include "nordend/fs/mime.hpp"
@@ -18,6 +19,7 @@
 #include "nordend/ui/seat.hpp"
 #include "nordend/ui/text_field.hpp"
 #include "nordend/views/browser.hpp"
+#include "nordend/views/location_dialog.hpp"
 #include "nordend/views/password_dialog.hpp"
 #include "temp_dir.hpp"
 
@@ -63,6 +65,12 @@ nordend::ui::KeyEvent key(xkb_keysym_t keysym, std::string text = {}, bool shift
 }
 
 void type(nordend::views::PasswordDialog& dialog, std::string_view text) {
+    for (const char c : text) {
+        dialog.key(key(static_cast<xkb_keysym_t>(c), std::string(1, c)));
+    }
+}
+
+void type_into(nordend::views::LocationDialog& dialog, std::string_view text) {
     for (const char c : text) {
         dialog.key(key(static_cast<xkb_keysym_t>(c), std::string(1, c)));
     }
@@ -502,4 +510,104 @@ TEST_CASE("gvfs: the real session bus answers without starting gvfsd (reads only
         CHECK_FALSE(mount.spec.type.empty());
         MESSAGE(mount.name << " (" << mount.spec.type << ") at " << mount.fuse.string());
     }
+}
+
+TEST_CASE("location: paths, home, file URIs, servers and Windows shares") {
+    using nordend::fs::Location;
+    using nordend::fs::parse_location;
+    const fs::path home{"/home/me"};
+    CHECK(parse_location("  /data/fotos ", home) == Location{.folder = "/data/fotos", .uri = {}});
+    CHECK(parse_location("~", home) == Location{.folder = "/home/me", .uri = {}});
+    CHECK(parse_location("~/Bilder", home) == Location{.folder = "/home/me/Bilder", .uri = {}});
+    CHECK(parse_location("file:///tmp/with%20space", home) ==
+          Location{.folder = "/tmp/with space", .uri = {}});
+    CHECK(parse_location("smb://fileshare.example/Public", home) ==
+          Location{.folder = {}, .uri = "smb://fileshare.example/Public"});
+    CHECK(parse_location("sftp://me@host/srv", home) ==
+          Location{.folder = {}, .uri = "sftp://me@host/srv"});
+    CHECK(parse_location("\\\\fileshare\\Dokumente\\Steuer", home) ==
+          Location{.folder = {}, .uri = "smb://fileshare/Dokumente/Steuer"});
+    CHECK_FALSE(parse_location("", home));
+    CHECK_FALSE(parse_location("fileshare/Public", home));  // no way to tell what it is
+    CHECK_FALSE(parse_location("ftp://host/pub", home));
+    CHECK_FALSE(parse_location("file://host/path", home));
+    CHECK_FALSE(parse_location("\\\\", home));
+}
+
+TEST_CASE("remote: a server added to the bookmarks once, the rest kept") {
+    const std::string text = "file:///tmp/a A";  // no newline at the end
+    CHECK(nordend::fs::add_remote_bookmark(text, "smb://nas/Public") ==
+          std::optional<std::string>{"file:///tmp/a A\nsmb://nas/Public\n"});
+    CHECK_FALSE(nordend::fs::add_remote_bookmark("smb://nas/Public Daten\n", "smb://nas/Public"));
+    CHECK_FALSE(nordend::fs::add_remote_bookmark(text, "/tmp/b"));  // only servers
+}
+
+TEST_CASE("location dialog: Enter goes, a wrong address stays with what is wrong") {
+    nordend::views::LocationDialog dialog{[] {}};
+    std::vector<std::pair<std::string, bool>> asked;
+    dialog.open("/home/me", [&](const std::string& text, bool add) {
+        asked.emplace_back(text, add);
+        return text.starts_with("smb://") ? std::string{} : std::string{"wrong"};
+    });
+    REQUIRE(dialog.is_open());
+    CHECK(dialog.add());
+    type_into(dialog, "nas/x");  // replaces the folder, all selected
+    CHECK(dialog.text() == "nas/x");
+    dialog.key(key(XKB_KEY_Return));
+    CHECK(dialog.is_open());
+    CHECK(dialog.error() == "wrong");
+    // Tab to "Add to the sidebar", Space unticks it, Tab back.
+    dialog.key(key(XKB_KEY_Tab));
+    dialog.key(key(XKB_KEY_space));
+    CHECK_FALSE(dialog.add());
+    dialog.key(key(XKB_KEY_Tab));
+    dialog.key(key(XKB_KEY_Home));
+    type_into(dialog, "smb://");
+    CHECK(dialog.error().empty());  // typing again clears it
+    dialog.paste("\nnot this");
+    dialog.key(key(XKB_KEY_KP_Enter));
+    CHECK_FALSE(dialog.is_open());
+    REQUIRE(asked.size() == 2);
+    CHECK(asked[1] == std::pair<std::string, bool>{"smb://nas/x", false});
+
+    dialog.open("/", [](const std::string& /*text*/, bool /*add*/) { return std::string{}; });
+    dialog.key(key(XKB_KEY_Escape));
+    CHECK_FALSE(dialog.is_open());
+}
+
+TEST_CASE("remote: Ctrl+L goes to a folder, or adds a server to the sidebar and mounts it") {
+    Fixture f;
+    f.ask = false;
+    const fs::path bookmarks = f.dir.path / "bookmarks";
+    f.browser.set_bookmarks_file(bookmarks);
+    f.browser.open(f.dir.path);
+    REQUIRE(f.settle());
+    nordend::ui::KeyEvent ctrl_l = key(XKB_KEY_l, "l");
+    ctrl_l.modifiers.ctrl = true;
+    f.browser.key(ctrl_l, {});
+    REQUIRE(f.browser.location_dialog().is_open());
+    CHECK(f.browser.location_dialog().text() == f.dir.path.string());
+
+    CHECK(f.browser.go_to("relative/path", true) ==
+          "Not a folder or a server: start with /, ~, smb:// or sftp://");
+    CHECK(f.browser.go_to((f.dir.path / "nothing").string(), true).starts_with("There is no"));
+    CHECK(f.browser.go_to(f.share.string(), true).empty());
+    REQUIRE(f.settle());
+    CHECK(f.shown() == f.share);
+
+    f.browser.location_dialog().close();
+    CHECK(f.browser.go_to("smb://nas/public/Scans", true).empty());
+    REQUIRE(f.settle());
+    CHECK(f.calls == std::vector<std::string>{"mount smb://nas/public/Scans"});
+    CHECK(f.shown() == f.share / "Scans");
+    CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
+    // Again: mounted, not added twice.
+    CHECK(f.browser.go_to("smb://nas/public/Scans", true).empty());
+    REQUIRE(f.settle());
+    CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
+    // Without adding.
+    CHECK(f.browser.go_to("\\\\nas\\public\\Other", false).empty());
+    REQUIRE(f.settle());
+    CHECK(f.calls.back() == "mount smb://nas/public/Other");
+    CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
 }

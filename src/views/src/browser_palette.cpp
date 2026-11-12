@@ -158,6 +158,7 @@ std::vector<PaletteItem> Browser::palette_items() {
     if (editable) {
         command(Command::add_bookmark, "add_bookmark", "Add to Sidebar");
     }
+    command(Command::go_to, "go_to", "Go to Folder or Server…");
 
     // The same registry entries and captured targets as the context menu.
     for (auto& item : action_items(action_context(folder))) {

@@ -4,6 +4,22 @@ Work log, newest first. Each entry: what was done, decisions, measurements, open
 
 ---
 
+## 2026-11-12 — Go to a folder or a server (Ctrl+L)
+
+**Done:** `LocationDialog`, opened by Ctrl+L (`go_to`, configurable) or the command palette,
+takes a path or a server address. `fs::parse_location` reads `/path`, `~`, `file://`, `smb://`,
+`sftp://` and `\\server\share`; `fs::add_remote_bookmark` appends a server once. A server is
+added to the GTK bookmarks (a toggle, on by default) and mounted through the same path as a
+sidebar click. Texts translated.
+
+**Validation:** four new cases (parsing, adding a server once, the card's keys, the browser
+going to a folder and to a server with and without the sidebar). Shortcut and palette tests
+cover the new command. Full suite: 525 of 527 pass, the same two environment failures as before.
+End to end in an isolated headless Umbriel: Ctrl+L, a local Samba test server's address, Go,
+the bookmark appeared, gvfs asked for a login, anonymous mounted it and its files showed.
+
+---
+
 ## 2026-11-12 — Network bookmarks through gvfs
 
 **Done:** `smb://` and `sftp://` lines in the GTK bookmarks file are sidebar places now, without a

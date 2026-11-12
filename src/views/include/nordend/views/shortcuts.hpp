@@ -63,6 +63,7 @@ enum class Command : std::uint8_t {
     command_palette,
     find_files,
     filter_names,
+    go_to,
 };
 
 // One line of the shortcuts overlay, and the key chords it stands for.
