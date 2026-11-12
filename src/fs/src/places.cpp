@@ -17,9 +17,9 @@
 #include <utility>
 
 #include "nordend/core/file.hpp"
+#include "nordend/core/i18n.hpp"
 #include "nordend/core/log.hpp"
 #include "nordend/fs/trash.hpp"
-#include "nordend/core/i18n.hpp"
 
 namespace nordend::fs {
 namespace {
@@ -41,9 +41,6 @@ constexpr std::array<UserDirKind, 6> kUserDirs{{
 }};
 
 constexpr std::array<std::string_view, 3> kMountRoots{"/run/media/", "/media/", "/mnt/"};
-
-// The remote bookmarks the sidebar lists: the schemes gvfs mounts that Nordend maps to a mount.
-constexpr std::array<std::string_view, 2> kRemoteSchemes{"smb", "sftp"};
 
 std::string_view trim(std::string_view text) {
     const std::size_t first = text.find_first_not_of(" \t\r");
@@ -185,7 +182,12 @@ std::optional<RemoteUri> parse_remote_uri(std::string_view uri) {
     for (const char c : uri.substr(0, separator)) {
         out.scheme += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
-    if (std::ranges::find(kRemoteSchemes, out.scheme) == kRemoteSchemes.end()) {
+    // RFC 3986: a letter, then letters, digits, "+", "-" and ".". "file" is a local place.
+    const auto scheme_char = [](char c) {
+        return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '+' || c == '-' || c == '.';
+    };
+    if (out.scheme.empty() || std::isalpha(static_cast<unsigned char>(out.scheme.front())) == 0 ||
+        !std::ranges::all_of(out.scheme, scheme_char) || out.scheme == "file") {
         return std::nullopt;
     }
     std::string_view rest = uri.substr(separator + 3);
@@ -253,7 +255,8 @@ std::vector<Place> parse_bookmarks(std::string_view text) {
             space == std::string_view::npos ? std::string_view{} : trim(line.substr(space + 1));
         if (!uri.starts_with("file://")) {
             if (const std::optional<RemoteUri> remote = parse_remote_uri(uri)) {
-                // Not mounted yet: gvfs mounts it when chosen, and gives it a path then.
+                // Not mounted yet: the plugin that handles its scheme mounts it when chosen,
+                // and gives it a path then.
                 places.push_back(
                     {.section = Place::Section::bookmarks,
                      .label = label.empty() ? remote_label(*remote) : std::string{label},

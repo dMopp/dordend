@@ -16,7 +16,7 @@
 // Remote bookmarks (smb://, sftp://) mounted through gvfs on the session bus, without GLib in
 // the process: gvfsd mounts them and its FUSE daemon shows them as local folders under
 // $XDG_RUNTIME_DIR/gvfs, which Nordend then opens like any other.
-namespace nordend::platform {
+namespace nordend::plugins::remotes {
 
 // What gvfs calls a mount: a type and its keys ("smb-share", server=..., share=...), as
 // GMountSpec has them.
@@ -146,4 +146,4 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace nordend::platform
+}  // namespace nordend::plugins::remotes

@@ -29,6 +29,7 @@
 #include "nordend/core/event_loop.hpp"
 #include "nordend/core/file_picker.hpp"
 #include "nordend/core/file_watcher.hpp"
+#include "nordend/core/i18n.hpp"
 #include "nordend/core/log.hpp"
 #include "nordend/core/memory.hpp"
 #include "nordend/core/worker_pool.hpp"
@@ -40,10 +41,10 @@
 #include "nordend/platform/about.hpp"
 #include "nordend/platform/desktop_entry.hpp"
 #include "nordend/platform/file_picker_portal.hpp"
-#include "nordend/platform/gvfs.hpp"
 #include "nordend/platform/opener.hpp"
 #include "nordend/platform/portal.hpp"
 #include "nordend/platform/udisks.hpp"
+#include "nordend/plugin/plugin.hpp"
 #include "nordend/theme/app_icon.hpp"
 #include "nordend/theme/theme.hpp"
 #include "nordend/thumbs/cache.hpp"
@@ -60,7 +61,6 @@
 #include "nordend/views/file_picker.hpp"
 #include "nordend/views/state.hpp"
 #include "nordend/views/title_bar.hpp"
-#include "nordend/core/i18n.hpp"
 #include "test_scene.hpp"
 
 namespace {
@@ -72,6 +72,7 @@ namespace fs = nordend::fs;
 namespace i18n = nordend::i18n;
 namespace log = nordend::log;
 namespace platform = nordend::platform;
+namespace plugin = nordend::plugin;
 namespace theme = nordend::theme;
 namespace thumbs = nordend::thumbs;
 namespace ui = nordend::ui;
@@ -253,6 +254,12 @@ int print_about() {
         found = directory.empty() ? "none found" : std::format("none in {}", directory.string());
     }
     lines.push_back({.label = "Engines", .value = found});
+    // The plugins compiled in; [plugins] disabled may keep some from starting.
+    std::string plugins;
+    for (const plugin::Builtin& built : plugin::builtin()) {
+        plugins += std::format("{}{}", plugins.empty() ? "" : ", ", built.id);
+    }
+    lines.push_back({.label = "Plugins", .value = plugins.empty() ? "none" : plugins});
     // The GPU as OpenGL names it, from a context without a window.
     try {
         const ui::Offscreen offscreen{1, 1};
@@ -285,47 +292,6 @@ int check_config(const std::filesystem::path& path, const core::ConfigResult& re
     }
     std::printf("%s: %s\n", path.c_str(), result.from_file ? "ok" : "not found, defaults in use");
     return 0;
-}
-
-// What gvfs asks before a mount, answered on the Browser's cards.
-platform::Gvfs::Prompts remote_prompts(views::Remotes::Prompts prompts) {
-    using platform::PasswordRequest;
-    return {
-        .password =
-            [login = std::move(prompts.login)](
-                const PasswordRequest& request,
-                std::function<void(const platform::PasswordAnswer&)> answer) {
-                if (!login) {
-                    answer({});
-                    return;
-                }
-                const auto asks = [&request](std::uint32_t flag) {
-                    return (request.flags & flag) != 0;
-                };
-                login({.message = request.message,
-                       .user = request.user,
-                       .domain = request.domain,
-                       .ask_user = asks(PasswordRequest::kNeedUsername),
-                       .ask_domain = asks(PasswordRequest::kNeedDomain),
-                       .ask_password = asks(PasswordRequest::kNeedPassword),
-                       .anonymous = asks(PasswordRequest::kAnonymousSupported),
-                       .saving = asks(PasswordRequest::kSavingSupported)},
-                      [answer = std::move(answer)](const std::optional<views::Login>& given) {
-                          platform::PasswordAnswer out;
-                          if (given) {
-                              out = {.aborted = false,
-                                     .anonymous = given->anonymous,
-                                     .user = given->user,
-                                     .domain = given->domain,
-                                     .password = given->password,
-                                     .remember = given->remember};
-                          }
-                          answer(out);
-                      });
-            },
-        .question = std::move(prompts.question),
-        .cancel = std::move(prompts.cancel),
-    };
 }
 
 }  // namespace
@@ -723,16 +689,15 @@ int main(int argc, char** argv) {
         // with the disks udisks2 knows, mounted or not (ROADMAP 7.3).
         std::unique_ptr<fs::PlacesWatcher> places;
         std::unique_ptr<platform::Udisks> udisks;
-        std::unique_ptr<platform::Gvfs> gvfs;
+        std::unique_ptr<plugin::Plugins> plugins;
         if (columns) {
             const auto show_places = [&] {
                 if (places) {
                     std::vector<fs::Place> shown =
                         udisks ? platform::with_volumes(places->places(), udisks->volumes())
                                : places->places();
-                    columns->set_places(
-                        gvfs ? platform::with_remote_mounts(std::move(shown), gvfs->mounts())
-                             : std::move(shown));
+                    columns->set_places(plugins ? plugins->places(std::move(shown))
+                                                : std::move(shown));
                 }
             };
             places = std::make_unique<fs::PlacesWatcher>(loop, fs::PlaceSources::from_environment(),
@@ -754,20 +719,12 @@ int main(int argc, char** argv) {
                         },
                 });
             }
-            // Remote bookmarks (smb://, sftp://), mounted through gvfs on the session bus.
-            gvfs = std::make_unique<platform::Gvfs>(loop, show_places);
-            if (gvfs->available()) {
-                columns->set_remotes({
-                    .mount =
-                        [&](const std::string& uri, views::Remotes::Prompts prompts,
-                            views::Remotes::Mounted done) {
-                            gvfs->mount(uri, remote_prompts(std::move(prompts)), std::move(done));
-                        },
-                    .unmount =
-                        [&](const std::string& uri, views::Remotes::Done done) {
-                            gvfs->unmount(uri, std::move(done));
-                        },
-                });
+            // Plugins (plugins/): remote bookmarks today. Made once; [plugins] disabled is read
+            // at start only.
+            plugins = std::make_unique<plugin::Plugins>(
+                plugin::Host{.loop = loop, .places_changed = show_places}, config.plugins.disabled);
+            if (std::optional<views::Remotes> remotes = plugins->remotes()) {
+                columns->set_remotes(std::move(*remotes));
             }
             show_places();
             columns->set_places_reload([&places] { places->reload(); });

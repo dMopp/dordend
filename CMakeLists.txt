@@ -94,6 +94,8 @@ add_subdirectory(src/preview)   # Quick Look providers: images, text, informatio
 add_subdirectory(src/isolate)   # preview helpers: the parsers in separate processes (2b)
 add_subdirectory(src/platform)  # default applications (freedesktop), launching processes
 add_subdirectory(src/views)     # column view and grid
+add_subdirectory(src/plugin)    # the plugin interface (plugin::Plugin, plugin::Plugins)
+add_subdirectory(plugins)       # the plugins, each in its own directory, and their list
 
 # Renderer test scene (ROADMAP 1.4), shared by the app and nordend-snapshot.
 add_library(nordend_test_scene STATIC src/app/test_scene.cpp)
@@ -120,7 +122,7 @@ target_compile_definitions(nordend PRIVATE NORDEND_VERSION="${PROJECT_VERSION}"
                                            NORDEND_COMMIT="${NORDEND_COMMIT}")
 target_link_libraries(nordend
     PRIVATE nordend::core nordend::ui nordend::theme nordend::views nordend::platform
-            nordend::isolate nordend_test_scene
+            nordend::isolate nordend::plugins nordend_test_scene
             nordend::warnings)
 
 add_executable(nordend-svg-render src/tools/svg_render.cpp)

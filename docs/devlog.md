@@ -4,6 +4,39 @@ Work log, newest first. Each entry: what was done, decisions, measurements, open
 
 ---
 
+## 2026-11-12 — Plugins; network bookmarks become the first one
+
+**Done:** a small plugin system so features outside the core do not grow it. `src/plugin` holds
+the interface (`plugin::Plugin`, hooks with do-nothing defaults) and `plugin::Plugins`, the set
+running; `plugins/<id>` holds each plugin, found by `plugins/CMakeLists.txt`, built when
+`NORDEND_PLUGIN_<ID>` is on, listed in a generated `builtin.cpp`, and switched off at run time
+with `[plugins] disabled` in `config.toml`. The gvfs code moved from `platform` to
+`plugins/remotes` (namespace `nordend::plugins::remotes`) together with the glue from `main.cpp`;
+`platform::BusLoop` became a public header so plugins can serve D-Bus on the loop.
+
+**Decisions:** compiled in, not `dlopen`ed: no C++ ABI to keep, no foreign code in the process
+(Nordend cages what it reads; a loaded library would undo that), and Nix or a distribution picks
+plugins with a flag. The core keeps what any network plugin needs: bookmarks with any `scheme://`
+URI (`fs::parse_remote_uri` no longer knows smb or sftp), `views::Remotes` as the seam, the
+password card and masked text field. `plugin::Plugins` hides remote bookmarks whose scheme no
+running plugin claims (as before for unknown schemes), shows those of a plugin that cannot mount
+now (gvfs missing) so a click says why, and sends each mount to the plugin of its scheme.
+
+**Tests:** `plugin_test.cpp` with fake plugins (which run, places by scheme, mount dispatch, the
+config key); the gvfs cases moved to `plugin_remotes_test.cpp`, built only with the plugin. Full
+suite 525 of 527 with the plugin, 520 of 522 without; the two failures are the known
+`column_view_test.cpp:334` and `transfer_test.cpp:249`. Checked by hand in an isolated instance:
+an `smb://` bookmark shows (mounted, with its eject icon) and disappears with
+`disabled = ["remotes"]`.
+
+Ctrl+L (merged meanwhile) asks `views::Remotes::handles` first: a scheme no running plugin
+claims is refused on the card and not bookmarked. `nix/package.nix` ships `plugins/` and takes
+`disabledPlugins`. How to write a plugin and what it must bring: `docs/plugins.md`.
+
+**Open:** translations of a plugin's messages still live in `core/src/i18n_de.cpp`.
+
+---
+
 ## 2026-11-12 — Go to a folder or a server (Ctrl+L)
 
 **Done:** `LocationDialog`, opened by Ctrl+L (`go_to`, configurable) or the command palette,

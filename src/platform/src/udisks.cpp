@@ -9,7 +9,7 @@
 #include <string_view>
 #include <utility>
 
-#include "bus_loop.hpp"
+#include "nordend/platform/bus_loop.hpp"
 #include "nordend/core/log.hpp"
 
 namespace nordend::platform {

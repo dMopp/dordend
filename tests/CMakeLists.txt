@@ -37,6 +37,7 @@ add_executable(nordend-tests
     palette_test.cpp
     paste_test.cpp
     places_test.cpp
+    plugin_test.cpp
     remote_test.cpp
     pointer_shapes_test.cpp
     tabs_test.cpp
@@ -65,7 +66,12 @@ add_executable(nordend-tests
     undo_test.cpp
     worker_pool_test.cpp
     xcursor_test.cpp)
-target_link_libraries(nordend-tests PRIVATE nordend::svg nordend::core nordend::theme nordend::fs nordend::views nordend::picture nordend::formats nordend::formats::image nordend::formats::text nordend::text nordend::thumbs nordend::preview nordend::engines nordend::isolate nordend::platform doctest::doctest nordend::warnings)
+target_link_libraries(nordend-tests PRIVATE nordend::svg nordend::core nordend::theme nordend::fs nordend::views nordend::picture nordend::formats nordend::formats::image nordend::formats::text nordend::text nordend::thumbs nordend::preview nordend::engines nordend::isolate nordend::platform nordend::plugin doctest::doctest nordend::warnings)
+# A plugin's own tests, when it is built.
+if(TARGET nordend_plugin_remotes)
+    target_sources(nordend-tests PRIVATE plugin_remotes_test.cpp)
+    target_link_libraries(nordend-tests PRIVATE nordend_plugin_remotes)
+endif()
 
 # The helper protocol's private header, for its tests; the image family's private readers (TIFF,
 # DNG, lossless JPEG), for theirs.

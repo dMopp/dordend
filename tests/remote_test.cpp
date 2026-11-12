@@ -15,7 +15,6 @@
 #include "nordend/fs/directory_watcher.hpp"
 #include "nordend/fs/mime.hpp"
 #include "nordend/fs/places.hpp"
-#include "nordend/platform/gvfs.hpp"
 #include "nordend/ui/seat.hpp"
 #include "nordend/ui/text_field.hpp"
 #include "nordend/views/browser.hpp"
@@ -27,10 +26,6 @@ using nordend::core::EventLoop;
 using nordend::fs::parse_remote_uri;
 using nordend::fs::Place;
 using nordend::fs::RemoteUri;
-using nordend::platform::gvfs_location;
-using nordend::platform::GvfsLocation;
-using nordend::platform::GvfsMount;
-using nordend::platform::GvfsMountSpec;
 using nordend::test::TempDir;
 using nordend::views::Browser;
 using nordend::views::Login;
@@ -76,25 +71,6 @@ void type_into(nordend::views::LocationDialog& dialog, std::string_view text) {
     }
 }
 
-// gvfs_location of a URI that parses.
-GvfsLocation location_of(std::string_view uri) {
-    const std::optional<RemoteUri> remote = parse_remote_uri(uri);
-    REQUIRE(remote);
-    const std::optional<GvfsLocation> location = gvfs_location(remote.value_or(RemoteUri{}));
-    REQUIRE(location);
-    return location.value_or(GvfsLocation{});
-}
-
-GvfsMount share_mount(std::string server, std::string share, fs::path fuse) {
-    return {.dbus_id = ":1.42",
-            .object_path = "/org/gtk/vfs/mount/1",
-            .name = share + " on " + server,
-            .fuse = std::move(fuse),
-            .spec = {.type = "smb-share",
-                     .items = {{"server", std::move(server)}, {"share", std::move(share)}},
-                     .prefix = "/"}};
-}
-
 }  // namespace
 
 TEST_CASE("remote: URIs a bookmark names, decoded, with user, port and IPv6 hosts") {
@@ -112,8 +88,11 @@ TEST_CASE("remote: URIs a bookmark names, decoded, with user, port and IPv6 host
           RemoteUri{.scheme = "sftp", .user = "me", .host = "fd00::1", .port = 2222, .path = "/"});
     CHECK(parse_remote_uri("smb://nas/share?query#fragment")->path == "/share");
     CHECK_FALSE(parse_remote_uri("file:///home/me"));
-    CHECK_FALSE(parse_remote_uri("ftp://host/pub"));  // not one Nordend maps to a mount
-    CHECK_FALSE(parse_remote_uri("smb:///share"));    // no host
+    // Any scheme with a host: which ones mount is up to the plugins.
+    CHECK(parse_remote_uri("ftp://host/pub")->scheme == "ftp");
+    CHECK_FALSE(parse_remote_uri("trash:///"));         // no host
+    CHECK_FALSE(parse_remote_uri("1smb://nas/share"));  // not a scheme
+    CHECK_FALSE(parse_remote_uri("smb:///share"));      // no host
     CHECK_FALSE(parse_remote_uri("smb://nas:99999/share"));
     CHECK_FALSE(parse_remote_uri("smb://nas:port/share"));
     CHECK_FALSE(parse_remote_uri("smb://[fd00::1/share"));
@@ -136,7 +115,7 @@ TEST_CASE("remote: bookmarks listed without a path, removed by their URI, the re
         "ftp://host/pub\n"
         "sftp://me@host/srv\n";
     const std::vector<Place> places = nordend::fs::parse_bookmarks(text);
-    REQUIRE(places.size() == 4);
+    REQUIRE(places.size() == 5);  // the ftp one too: plugin::Plugins hides what none mounts
     CHECK(places[0].label == "Dokumente on fileshare.example");
     CHECK(places[0].uri == "smb://fileshare.example/Dokumente");
     CHECK(places[0].icon == "server");
@@ -144,7 +123,8 @@ TEST_CASE("remote: bookmarks listed without a path, removed by their URI, the re
     CHECK_FALSE(places[0].disk.mounted);
     CHECK(places[1].path == "/tmp/a");
     CHECK(places[2].label == "Scanner");
-    CHECK(places[3].label == "srv on host");
+    CHECK(places[3].uri == "ftp://host/pub");
+    CHECK(places[4].label == "srv on host");
 
     CHECK(nordend::fs::remove_remote_bookmark(text, "smb://fileshare.example/DMS-Input") ==
           std::optional<std::string>{"smb://fileshare.example/Dokumente\n"
@@ -157,84 +137,6 @@ TEST_CASE("remote: bookmarks listed without a path, removed by their URI, the re
     CHECK(nordend::fs::remove_bookmark(text, "/tmp/a")
               .value_or("")
               .starts_with("smb://fileshare.example/Dokumente\nsmb://"));
-}
-
-TEST_CASE("gvfs: the mount of an smb URI, as gvfs's own mapper makes it") {
-    // A share: server and share case-folded, the rest the path inside.
-    CHECK(location_of("smb://FileShare.Example/Public/Scans/2026/") ==
-          GvfsLocation{.spec = {.type = "smb-share",
-                                .items = {{"server", "fileshare.example"}, {"share", "public"}},
-                                .prefix = "/"},
-                       .path = "/Scans/2026/"});
-    CHECK(location_of("smb://nas/Public").path == "/");
-    // "DOMAIN;user" split; the default port left out, another kept.
-    CHECK(location_of("smb://WORK;me@nas:445/share").spec.items ==
-          std::map<std::string, std::string>{
-              {"server", "nas"}, {"share", "share"}, {"domain", "WORK"}, {"user", "me"}});
-    CHECK(location_of("smb://;me@nas:4450/share").spec.items ==
-          std::map<std::string, std::string>{
-              {"server", "nas"}, {"share", "share"}, {"user", "me"}, {"port", "4450"}});
-    // The server alone lists its shares.
-    CHECK(location_of("smb://nas/").spec ==
-          GvfsMountSpec{.type = "smb-server", .items = {{"server", "nas"}}, .prefix = "/"});
-}
-
-TEST_CASE("gvfs: the mount of an sftp URI") {
-    CHECK(location_of("sftp://me@host:2222/srv/www") ==
-          GvfsLocation{.spec = {.type = "sftp",
-                                .items = {{"host", "host"}, {"user", "me"}, {"port", "2222"}},
-                                .prefix = "/"},
-                       .path = "/srv/www"});
-    CHECK(location_of("sftp://host").spec.items ==
-          std::map<std::string, std::string>{{"host", "host"}});
-}
-
-TEST_CASE("gvfs: a mount matches when it has every key wanted, and gives the local folder") {
-    const GvfsLocation wanted = location_of("smb://fileshare.example/Public/Scans");
-    GvfsMount mount = share_mount("fileshare.example", "public",
-                                  "/run/user/1000/gvfs/smb-share:server=fileshare.example,"
-                                  "share=public");
-    mount.spec.items.emplace("user", "me");  // who logged in: more keys still match
-    CHECK(nordend::platform::spec_matches(wanted.spec, mount.spec));
-    CHECK_FALSE(nordend::platform::spec_matches(mount.spec, wanted.spec));
-    CHECK_FALSE(nordend::platform::spec_matches(
-        location_of("smb://fileshare.example/Dokumente").spec, mount.spec));
-    CHECK_FALSE(
-        nordend::platform::spec_matches(location_of("sftp://fileshare.example").spec, mount.spec));
-
-    const std::vector<GvfsMount> mounts{share_mount("other", "public", "/x"), mount};
-    const GvfsMount* const holding = nordend::platform::mount_holding(mounts, wanted);
-    REQUIRE(holding != nullptr);
-    CHECK(nordend::platform::local_path(*holding, wanted) ==
-          "/run/user/1000/gvfs/smb-share:server=fileshare.example,share=public/Scans");
-    CHECK(nordend::platform::local_path(*holding, location_of("smb://fileshare.example/public/")) ==
-          "/run/user/1000/gvfs/smb-share:server=fileshare.example,share=public");
-    // Without gvfsd-fuse there is no local folder.
-    mount.fuse.clear();
-    CHECK(nordend::platform::local_path(mount, wanted).empty());
-    CHECK(nordend::platform::mount_holding({}, wanted) == nullptr);
-}
-
-TEST_CASE("gvfs: remote bookmarks get their folder while mounted, and an eject icon") {
-    std::vector<Place> places = nordend::fs::parse_bookmarks(
-        "file:///tmp/a\n"
-        "smb://fileshare.example/Public\n"
-        "smb://fileshare.example/Dokumente/Steuer Steuer\n");
-    const std::vector<GvfsMount> mounts{share_mount("fileshare.example", "dokumente", "/fuse/d")};
-    places = nordend::platform::with_remote_mounts(std::move(places), mounts);
-    REQUIRE(places.size() == 3);
-    CHECK(places[0].path == "/tmp/a");
-    CHECK(places[0].disk.mounted);  // a local one stays as it is
-    CHECK(places[1].path.empty());
-    CHECK_FALSE(places[1].disk.mounted);
-    CHECK_FALSE(places[1].disk.ejectable);
-    CHECK(places[2].path == "/fuse/d/Steuer");
-    CHECK(places[2].disk.mounted);
-    CHECK(places[2].disk.ejectable);
-    // Unmounted elsewhere: back without a path.
-    places = nordend::platform::with_remote_mounts(std::move(places), {});
-    CHECK(places[2].path.empty());
-    CHECK_FALSE(places[2].disk.mounted);
 }
 
 TEST_CASE("text field: a masked one draws dots and does not move by words") {
@@ -383,6 +285,8 @@ struct Fixture {
                     calls.push_back("unmount " + uri);
                     loop.post([this, done = std::move(done)] { done(answer); });
                 },
+            // Like plugin::Plugins: only the schemes a running plugin claims.
+            .handles = [](const std::string& uri) { return uri.starts_with("smb://"); },
         });
     }
 
@@ -491,25 +395,8 @@ TEST_CASE("remote: without gvfs a remote bookmark says so") {
                         .disk = {.volume = {}, .mounted = false, .ejectable = false},
                         .uri = "smb://nas/Public"});
     CHECK(browser.status_bar().message() ==
-          "“Public on nas” could not be mounted: gvfs is not available");
+          "“Public on nas” could not be mounted: network folders are not available");
     CHECK(browser.columns().focused_folder()->path() == dir.path);
-}
-
-TEST_CASE("gvfs: the real session bus answers without starting gvfsd (reads only)") {
-    EventLoop loop;
-    nordend::platform::Gvfs gvfs{loop, [] {}};
-    if (!gvfs.available()) {
-        MESSAGE("no session bus: skipped");
-        return;
-    }
-    // The first answers come back through the loop; most of the time nothing is mounted.
-    const auto stop = loop.add_timer(300ms, 0ms, [&loop] { loop.quit(0); });
-    loop.run();
-    loop.remove(stop);
-    for (const GvfsMount& mount : gvfs.mounts()) {
-        CHECK_FALSE(mount.spec.type.empty());
-        MESSAGE(mount.name << " (" << mount.spec.type << ") at " << mount.fuse.string());
-    }
 }
 
 TEST_CASE("location: paths, home, file URIs, servers and Windows shares") {
@@ -529,7 +416,9 @@ TEST_CASE("location: paths, home, file URIs, servers and Windows shares") {
           Location{.folder = {}, .uri = "smb://fileshare/Dokumente/Steuer"});
     CHECK_FALSE(parse_location("", home));
     CHECK_FALSE(parse_location("fileshare/Public", home));  // no way to tell what it is
-    CHECK_FALSE(parse_location("ftp://host/pub", home));
+    // Any scheme with a host parses; whether a plugin connects to it is the Browser's question.
+    CHECK(parse_location("ftp://host/pub", home) ==
+          Location{.folder = {}, .uri = "ftp://host/pub"});
     CHECK_FALSE(parse_location("file://host/path", home));
     CHECK_FALSE(parse_location("\\\\", home));
 }
@@ -608,6 +497,10 @@ TEST_CASE("remote: Ctrl+L goes to a folder, or adds a server to the sidebar and 
     // Without adding.
     CHECK(f.browser.go_to("\\\\nas\\public\\Other", false).empty());
     REQUIRE(f.settle());
+    CHECK(f.calls.back() == "mount smb://nas/public/Other");
+    CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
+    // A scheme no plugin connects to: said on the card, not mounted, not bookmarked.
+    CHECK(f.browser.go_to("ftp://nas/pub", true) == "No plugin connects to ftp:// servers");
     CHECK(f.calls.back() == "mount smb://nas/public/Other");
     CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
 }

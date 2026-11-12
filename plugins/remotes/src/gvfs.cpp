@@ -1,4 +1,4 @@
-#include "nordend/platform/gvfs.hpp"
+#include "nordend/plugins/remotes/gvfs.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -12,10 +12,10 @@
 #include <string_view>
 #include <utility>
 
-#include "bus_loop.hpp"
 #include "nordend/core/log.hpp"
+#include "nordend/platform/bus_loop.hpp"
 
-namespace nordend::platform {
+namespace nordend::plugins::remotes {
 namespace {
 
 constexpr std::string_view kService = "org.gtk.vfs.Daemon";
@@ -242,7 +242,7 @@ struct Gvfs::Impl {
     std::map<std::uint64_t, std::unique_ptr<Operation>> operations;
     std::uint64_t next_operation{1};
     std::shared_ptr<bool> alive{std::make_shared<bool>(true)};
-    std::unique_ptr<BusLoop> bus;
+    std::unique_ptr<platform::BusLoop> bus;
 
     Impl(core::EventLoop& event_loop, std::function<void()> on_change)
         : loop{event_loop}, changed{std::move(on_change)} {}
@@ -389,7 +389,7 @@ Gvfs::Gvfs(core::EventLoop& loop, std::function<void()> changed)
     : impl_{std::make_unique<Impl>(loop, std::move(changed))} {
     try {
         impl_->connection = sdbus::createSessionBusConnection();
-        impl_->bus = std::make_unique<BusLoop>(loop, *impl_->connection, "gvfs");
+        impl_->bus = std::make_unique<platform::BusLoop>(loop, *impl_->connection, "gvfs");
         impl_->tracker =
             sdbus::createProxy(*impl_->connection, sdbus::ServiceName{std::string{kService}},
                                sdbus::ObjectPath{std::string{kTrackerPath}});
@@ -542,4 +542,4 @@ void Gvfs::unmount(const std::string& uri, Done done) {
     impl_->pump();
 }
 
-}  // namespace nordend::platform
+}  // namespace nordend::plugins::remotes

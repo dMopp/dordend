@@ -13,7 +13,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "bus_loop.hpp"
+#include "nordend/platform/bus_loop.hpp"
 #include "nordend/core/file.hpp"
 #include "nordend/core/file_picker.hpp"
 #include "nordend/core/log.hpp"

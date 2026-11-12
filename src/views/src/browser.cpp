@@ -3213,8 +3213,9 @@ void Browser::mount_remote(const fs::Place& place, bool open) {
         return;
     }
     if (!remotes_.mount) {
-        show_message(i18n::trf("“{}” could not be mounted: gvfs is not available", place.label),
-                     true);
+        show_message(
+            i18n::trf("“{}” could not be mounted: network folders are not available", place.label),
+            true);
         return;
     }
     show_message(i18n::trf("Connecting to “{}”…", place.label), false);
@@ -3302,9 +3303,14 @@ std::string Browser::go_to(std::string_view text, bool add) {
         return {};
     }
     if (!remotes_.mount) {
-        return std::string{i18n::tr("Servers are mounted through gvfs, which is not available")};
+        return std::string{
+            i18n::tr("Servers cannot be connected: network folders are not available")};
     }
     const std::optional<fs::RemoteUri> remote = fs::parse_remote_uri(location->uri);
+    if (remotes_.handles && !remotes_.handles(location->uri)) {
+        return i18n::trf("No plugin connects to {}:// servers",
+                         remote ? remote->scheme : location->uri);
+    }
     std::string label = remote ? fs::remote_label(*remote) : location->uri;
     if (add) {
         bookmark_changes_.push_back(

@@ -141,6 +141,8 @@ struct Remotes {
     // An error of "cancelled": the person gave up, nothing to report.
     std::function<void(const std::string& uri, Prompts prompts, Mounted done)> mount;
     std::function<void(const std::string& uri, Done done)> unmount;
+    // Whether a running plugin connects to uri's scheme; unset: every one is tried.
+    std::function<bool(const std::string& uri)> handles;
 };
 
 // Loop thread only. Must not outlive the loop, pool or watcher.

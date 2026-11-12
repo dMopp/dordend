@@ -34,12 +34,18 @@ struct Config {
         float background_opacity{1.0F};  // background only; foreground content stays solid
     };
 
+    struct Plugins {
+        // Plugins compiled in but not started (their ids: "remotes"); read at start.
+        std::vector<std::string> disabled;
+    };
+
     std::map<std::string, std::string> keybindings;
 
     Appearance appearance;
     Font font;
     Pointer pointer;
     Icon icon;
+    Plugins plugins;
 };
 
 struct ConfigResult {

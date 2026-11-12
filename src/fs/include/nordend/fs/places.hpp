@@ -74,10 +74,11 @@ struct UserDir {
 // without that file (as the sidebar's user dirs); empty when there is none.
 [[nodiscard]] std::filesystem::path templates_dir(const PlaceSources& sources);
 
-// A remote location as a bookmark names it: smb:// or sftp://, the URIs gvfs mounts. Every part
-// percent-decoded; userinfo kept whole ("DOMAIN;user" for smb).
+// A remote location as a bookmark names it: scheme://[user@]host[:port]/path ("smb://server/share",
+// "sftp://me@host:22/srv"). Which schemes can be mounted is up to the plugins (plugin::Plugins).
+// Every part percent-decoded; userinfo kept whole ("DOMAIN;user" for smb).
 struct RemoteUri {
-    std::string scheme;  // "smb", "sftp"
+    std::string scheme;  // lower case: "smb", "sftp"
     std::string user;
     std::string host;  // without the brackets of an IPv6 literal
     int port{-1};      // -1: none given
@@ -86,7 +87,8 @@ struct RemoteUri {
     bool operator==(const RemoteUri&) const = default;
 };
 
-// uri as a RemoteUri; nullopt for another scheme, no host, or a port that is not one.
+// uri as a RemoteUri; nullopt for file://, a scheme that is not one, no host, or a port that is not
+// one.
 [[nodiscard]] std::optional<RemoteUri> parse_remote_uri(std::string_view uri);
 
 // What the sidebar calls a remote bookmark without a label: "Public on fileshare" for a folder
@@ -94,8 +96,8 @@ struct RemoteUri {
 [[nodiscard]] std::string remote_label(const RemoteUri& uri);
 
 // The places in a GTK bookmarks file: the local folders ("file:///path%20with%20spaces Label")
-// and the remote ones gvfs can mount (smb://, sftp://), without a path until mounted; other URIs
-// are left out. Without a label, the folder's name (remote_label for a remote one).
+// and the remote ones (any scheme with a host: smb://, sftp://...), without a path until mounted;
+// other URIs are left out. The plugins decide which remote ones the sidebar shows. Without a label, the folder's name (remote_label for a remote one).
 [[nodiscard]] std::vector<Place> parse_bookmarks(std::string_view text);
 
 // The GTK bookmarks file: gtk-3.0/bookmarks in config_home (GTK 4 reads the same one).
