@@ -4,6 +4,54 @@ Work log, newest first. Each entry: what was done, decisions, measurements, open
 
 ---
 
+## 2026-11-12 — Go to a folder or a server (Ctrl+L)
+
+**Done:** `LocationDialog`, opened by Ctrl+L (`go_to`, configurable) or the command palette,
+takes a path or a server address. `fs::parse_location` reads `/path`, `~`, `file://`, `smb://`,
+`sftp://` and `\\server\share`; `fs::add_remote_bookmark` appends a server once. A server is
+added to the GTK bookmarks (a toggle, on by default) and mounted through the same path as a
+sidebar click. Texts translated.
+
+**Validation:** four new cases (parsing, adding a server once, the card's keys, the browser
+going to a folder and to a server with and without the sidebar). Shortcut and palette tests
+cover the new command. Full suite: 525 of 527 pass, the same two environment failures as before.
+End to end in an isolated headless Umbriel: Ctrl+L, a local Samba test server's address, Go,
+the bookmark appeared, gvfs asked for a login, anonymous mounted it and its files showed.
+
+---
+
+## 2026-11-12 — Network bookmarks through gvfs
+
+**Done:** `smb://` and `sftp://` lines in the GTK bookmarks file are sidebar places now, without a
+path until mounted. `platform::Gvfs` talks to gvfsd on the session bus through sdbus-c++
+(`MountTracker.MountLocation`, `ListMounts`, `Mount.Unmount`) and exports an
+`org.gtk.vfs.MountOperation` object per mount, so `AskPassword` and `AskQuestion` arrive on the
+loop thread and are answered from Nordend's own cards (`PasswordDialog`, `ConfirmDialog`). A mounted
+share opens through gvfsd-fuse's folder (`$XDG_RUNTIME_DIR/gvfs/smb-share:server=…,share=…`) and
+gets the eject icon. `TextField` gained a masked mode for the password.
+
+**Decisions:** gvfs's D-Bus protocol rather than `gio mount` in a child process: no GLib or gio
+binary needed, structured errors, and the password dialog stays Nordend's. URIs map to mount specs
+as gvfs's own mappers do (smb: server and share case-folded, `DOMAIN;user` split, port 445
+dropped; sftp: host, user, port); a mount matches when it has every key asked for, since gvfs adds
+the user who logged in. gvfsd is only asked for its mounts when it already runs, so Nordend does
+not start it for people without network bookmarks. Without a session bus or gvfs a message says
+so; nothing else changes.
+
+**Validation:** 14 new cases (URI parsing, labels, removal by URI, smb/sftp mount specs, matching,
+local paths, places with mounts, the password card, the browser flow with a fake gvfs, the masked
+field, and a read-only check of the real session bus). End to end in a headless Umbriel with its
+own runtime dir and session bus: a guest share on a local Samba server mounted from the sidebar and
+showed its files, unmounted from the eject icon; a real server's share asked for a password and
+cancelling it said so; on a bus without gvfs the message appeared. Full suite: 521 of 523 cases
+pass; the two failures (`column_view_test.cpp:334`, `transfer_test.cpp:249`) fail the same way
+before the change in this environment.
+
+**Open:** AskQuestion (sftp host keys) uses the two-button confirm card with the first choice; a
+card for more choices could come later. The breadcrumb shows the FUSE path of a mounted share.
+
+---
+
 ## 2026-11-11 — SVG icons prepared against fork main
 
 **Integration:** rebased the icon-theme prerequisite and six SVG commits onto the fork's

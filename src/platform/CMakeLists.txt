@@ -7,6 +7,7 @@ add_library(nordend_platform
     src/desktop_entry.cpp
     src/exec.cpp
     src/file_picker_portal.cpp
+    src/gvfs.cpp
     src/launcher.cpp
     src/notifications.cpp
     src/opener.cpp

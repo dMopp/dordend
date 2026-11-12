@@ -135,6 +135,7 @@ struct Fixture {
         browser.command_palette().close();
         browser.confirm_dialog().close();
         browser.properties_dialog().close();
+        browser.location_dialog().close();
         browser.sidebar().set_focused(false);
         make_files();
         browser.open(root);

@@ -52,6 +52,7 @@ follow_accent = true
 # focus_sidebar = "F6"          # Move focus into/out of the sidebar
 # toggle_hidden = "Ctrl+h"      # Show/hide hidden files
 # add_bookmark = "Ctrl+d"       # Add the folder to the sidebar
+# go_to = "Ctrl+l"              # Go to a folder or a server (smb://, sftp://)
 
 # Commands and help
 # command_palette = "Ctrl+k"   # Open the command palette
