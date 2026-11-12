@@ -85,7 +85,8 @@ every shortcut.
   from templates, undo and redo, freedesktop trash with restore, delete permanently
 - **Drag and drop** within Nordend and with other apps; rubber-band selection; the system
   clipboard
-- **Sidebar:** places, GTK bookmarks, disks through udisks2 (mount, unmount, eject)
+- **Sidebar:** places, GTK bookmarks (also `smb://` and `sftp://`, mounted through gvfs), disks
+  through udisks2 (mount, unmount, eject)
 - **Opening:** default applications and "Open With", resolved exactly as GLib does; a terminal
   in any folder (<kbd>F4</kbd>)
 - **Always current:** folders follow changes on disk (inotify); history with

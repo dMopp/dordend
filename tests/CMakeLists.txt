@@ -37,6 +37,7 @@ add_executable(nordend-tests
     palette_test.cpp
     paste_test.cpp
     places_test.cpp
+    remote_test.cpp
     pointer_shapes_test.cpp
     tabs_test.cpp
     text_test.cpp
