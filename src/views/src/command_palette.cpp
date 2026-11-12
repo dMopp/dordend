@@ -5,6 +5,7 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "nordend/views/fuzzy.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -428,7 +429,7 @@ void CommandPalette::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     if (shown_.empty()) {
         // Finding files: nothing yet while the folder is being listed.
         if (!external() || !field_.text().empty()) {
-            renderer.draw_text("No matches", list_.x + kTextInset,
+            renderer.draw_text(i18n::tr("No matches"), list_.x + kTextInset,
                                list_.y + ((kRowHeight - kTextSize) / 2.0F) - 2.0F, kTextSize,
                                palette.outline);
         }
@@ -450,8 +451,9 @@ void CommandPalette::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         const float text_y = rect.y + ((kRowHeight - kTextSize) / 2.0F) - 2.0F;
         float right = rect.right() - kTextInset;
         if (!item.keys.empty()) {
-            const float keys_width = text_width(renderer, item.keys, kTextSize);
-            renderer.draw_text(item.keys, right - keys_width, text_y, kTextSize, dim);
+            const std::string keys = i18n::keys(item.keys);
+            const float keys_width = text_width(renderer, keys, kTextSize);
+            renderer.draw_text(keys, right - keys_width, text_y, kTextSize, dim);
             right -= keys_width + kKeysGap;
         }
         const float label_x = rect.x + kTextInset;

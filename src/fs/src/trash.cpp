@@ -22,6 +22,7 @@
 #include "nordend/core/file.hpp"
 #include "nordend/fs/operations.hpp"
 #include "nordend/fs/places.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::fs {
 namespace {
@@ -247,14 +248,14 @@ std::optional<TrashDir> Trasher::find_trash() {
     if (!home.empty() && request_.trash_top.empty()) {
         if (const std::error_code made = make_directories(home)) {
             result_.refused =
-                std::format("Cannot make the trash {}: {}", home.string(), made.message());
+                i18n::trf("Cannot make the trash {}: {}", home.string(), made.message());
             return std::nullopt;
         }
         struct stat there{};
         if (stat(home.c_str(), &there) == 0 && there.st_dev == folder.st_dev) {
             if (const std::error_code made = make_directory(home / "files");
                 made || make_directory(home / "info")) {
-                result_.refused = std::format("Cannot make the trash {}: {}", home.string(),
+                result_.refused = i18n::trf("Cannot make the trash {}: {}", home.string(),
                                               (made ? made : last_error()).message());
                 return std::nullopt;
             }
@@ -266,7 +267,7 @@ std::optional<TrashDir> Trasher::find_trash() {
     std::error_code why;
     std::optional<TrashDir> trash = top_trash(top, geteuid(), why);
     if (!trash) {
-        result_.refused = std::format("No trash on the disk of {}: {} cannot hold one ({})",
+        result_.refused = i18n::trf("No trash on the disk of {}: {} cannot hold one ({})",
                                       source_.filename().string(), top.string(), why.message());
     }
     return trash;
@@ -327,7 +328,7 @@ std::optional<std::filesystem::path> Trasher::trash_item(const std::string& name
             unlink(info_file.c_str());
             if (moved == std::errc::cross_device_link) {
                 result_.errors.push_back(
-                    std::format("{}: on another disk than its trash (a mount point?)", name));
+                    i18n::trf("{}: on another disk than its trash (a mount point?)", name));
             } else {
                 error(name, moved);
             }
@@ -366,7 +367,7 @@ TransferResult Trasher::run() {
         return end == outer.end();
     };
     if (within(source_, trash_path)) {
-        result_.refused = "These are in the trash already";
+        result_.refused = i18n::tr("These are in the trash already");
         return result_;
     }
 
@@ -393,7 +394,7 @@ TransferResult Trasher::run() {
             continue;
         }
         if (within(trash_path, source_ / name)) {
-            result_.errors.push_back(std::format("{}: it holds the trash", name));
+            result_.errors.push_back(i18n::trf("{}: it holds the trash", name));
             continue;
         }
         groups.push_back({.name = name,
@@ -623,7 +624,7 @@ bool Restorer::put_back(const Found& item, const std::filesystem::path& director
     }
     if (moved == std::errc::cross_device_link) {
         result_.errors.push_back(
-            std::format("{}: its folder is on another disk now: not copied back", where));
+            i18n::trf("{}: its folder is on another disk now: not copied back", where));
         return false;
     }
     if (moved) {
@@ -650,7 +651,7 @@ TransferResult Restorer::run() {
         const auto it = std::ranges::find(trash, item, &Found::item);
         if (it == trash.end()) {
             result_.errors.push_back(
-                std::format("{}: not in the trash any more", item.filename().string()));
+                i18n::trf("{}: not in the trash any more", item.filename().string()));
             continue;
         }
         groups.push_back({.item = *it, .sidecars = trashed_sidecars(trash, *it)});
@@ -712,7 +713,7 @@ TransferResult Restorer::run() {
                 name = free_name(directory, original, group.item.directory, sidecar_names);
             } else if (group.item.directory || target_directory) {
                 result_.errors.push_back(
-                    std::format("{}: a folder is not replaced; keep both or skip", original));
+                    i18n::trf("{}: a folder is not replaced; keep both or skip", original));
                 continue;
             } else {
                 replace = true;

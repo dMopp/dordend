@@ -1,4 +1,5 @@
 #include "nordend/views/context_menu.hpp"
+#include "nordend/core/i18n.hpp"
 
 #include <algorithm>
 #include <unordered_set>
@@ -257,7 +258,7 @@ ui::Rect ContextMenu::measure(ui::Renderer& renderer, const std::vector<MenuItem
     for (const MenuItem& item : items) {
         float line = text_width(renderer, item.label);
         if (!item.keys.empty()) {
-            line += kKeysGap + text_width(renderer, item.keys);
+            line += kKeysGap + text_width(renderer, i18n::keys(item.keys));
         }
         if (item.submenu) {
             line += kKeysGap + kArrowWidth;
@@ -311,8 +312,9 @@ void ContextMenu::draw_panel(ui::Renderer& renderer, const ui::Rect& panel,
         }
         float keys_width = 0.0F;
         if (!item.keys.empty()) {
-            keys_width = text_width(renderer, item.keys);
-            renderer.draw_text(item.keys, right - keys_width, text_y, kTextSize, dim);
+            const std::string keys = i18n::keys(item.keys);
+            keys_width = text_width(renderer, keys);
+            renderer.draw_text(keys, right - keys_width, text_y, kTextSize, dim);
         }
         if (item.radio && item.checked) {
             renderer.draw_box({panel.x + kTextInset + ((kMarkWidth - kDot) / 2.0F) - 3.0F,

@@ -7,6 +7,7 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "nordend/views/shortcuts.hpp"
+#include "nordend/core/i18n.hpp"
 
 namespace nordend::views {
 namespace {
@@ -224,12 +225,12 @@ void ShortcutsOverlay::draw(ui::Renderer& renderer, const ui::Rect& bounds,
                              .border_width = 1.0F,
                              .border = palette.outline_variant});
     renderer.push_clip(card);
-    renderer.draw_text("Keyboard shortcuts", card.x + kPadding, card.y + kPadding, kTitleSize,
+    renderer.draw_text(i18n::tr("Keyboard shortcuts"), card.x + kPadding, card.y + kPadding, kTitleSize,
                        palette.on_surface,
                        std::max(1.0F, close_button_.x - card.x - kPadding - 8.0F));
     renderer.draw_text("×", close_button_.x + 9.0F, close_button_.y + 4.0F, 20.0F,
                        palette.on_surface);
-    renderer.draw_text("Click a group to expand · Tab to select · Enter to toggle",
+    renderer.draw_text(i18n::tr("Click a group to expand · Tab to select · Enter to toggle"),
                        card.x + kPadding, card.y + kPadding + 28.0F, 11.0F,
                        palette.on_surface_variant, std::max(1.0F, viewport_.width));
     renderer.push_clip(viewport_);
@@ -247,7 +248,7 @@ void ShortcutsOverlay::draw(ui::Renderer& renderer, const ui::Rect& bounds,
                            palette.outline_variant);
         renderer.draw_text(group.expanded ? "▾" : "▸", header.x + 4.0F, header.y + 9.0F, kGroupSize,
                            palette.primary);
-        renderer.draw_text(group.name, header.x + 24.0F, header.y + 9.0F, kGroupSize,
+        renderer.draw_text(i18n::tr(group.name), header.x + 24.0F, header.y + 9.0F, kGroupSize,
                            palette.on_surface);
         if (!group.expanded) {
             continue;
@@ -257,9 +258,9 @@ void ShortcutsOverlay::draw(ui::Renderer& renderer, const ui::Rect& bounds,
             if (shortcut.group != group.name || shortcut.keys.empty()) {
                 continue;
             }
-            renderer.draw_text(shortcut.keys, header.x + 24.0F, y + 5.0F, kTextSize,
+            renderer.draw_text(i18n::keys(shortcut.keys), header.x + 24.0F, y + 5.0F, kTextSize,
                                palette.primary, std::max(1.0F, keys_width - 36.0F));
-            renderer.draw_text(shortcut.action, header.x + keys_width, y + 5.0F, kTextSize,
+            renderer.draw_text(i18n::tr(shortcut.action), header.x + keys_width, y + 5.0F, kTextSize,
                                palette.on_surface, std::max(1.0F, viewport_.width - keys_width));
             y += kRowHeight;
         }

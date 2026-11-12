@@ -3,6 +3,7 @@
 #include <array>
 #include <charconv>
 #include <chrono>
+#include <clocale>
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
@@ -59,6 +60,7 @@
 #include "nordend/views/file_picker.hpp"
 #include "nordend/views/state.hpp"
 #include "nordend/views/title_bar.hpp"
+#include "nordend/core/i18n.hpp"
 #include "test_scene.hpp"
 
 namespace {
@@ -67,6 +69,7 @@ namespace core = nordend::core;
 namespace engines = nordend::engines;
 namespace isolate = nordend::isolate;
 namespace fs = nordend::fs;
+namespace i18n = nordend::i18n;
 namespace log = nordend::log;
 namespace platform = nordend::platform;
 namespace theme = nordend::theme;
@@ -288,6 +291,9 @@ int check_config(const std::filesystem::path& path, const core::ConfigResult& re
 
 int main(int argc, char** argv) {
     core::give_back_large_blocks();  // before any thread: decoded photos go back to the system
+    // System error texts (strerror, std::error_code) in the user's language, as the interface;
+    // only messages: numbers and sorting stay as they are.
+    std::setlocale(LC_MESSAGES, "");
     const StartupTrace startup;
     startup.mark("main");
     std::filesystem::path config_path;
@@ -471,8 +477,9 @@ int main(int argc, char** argv) {
             display,
             egl,
             fonts,
-            {.title = picker_request ? (picker_request->title.empty() ? "Select a file — Nordend"
-                                                                      : picker_request->title)
+            {.title = picker_request ? (picker_request->title.empty()
+                                            ? std::string{i18n::tr("Select a file — Nordend")}
+                                            : picker_request->title)
                                      : "Nordend",
              .app_id = "nordend",
              .width = remembered.state.window_width,

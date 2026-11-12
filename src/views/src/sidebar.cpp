@@ -1,4 +1,5 @@
 #include "nordend/views/sidebar.hpp"
+#include "nordend/core/i18n.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -24,11 +25,11 @@ constexpr float kEjectSize = 16.0F;
 std::string_view title_of(fs::Place::Section section) {
     switch (section) {
         case fs::Place::Section::places:
-            return "PLACES";
+            return i18n::tr("PLACES");
         case fs::Place::Section::bookmarks:
-            return "BOOKMARKS";
+            return i18n::tr("BOOKMARKS");
         case fs::Place::Section::devices:
-            return "DEVICES";
+            return i18n::tr("DEVICES");
     }
     return {};
 }
