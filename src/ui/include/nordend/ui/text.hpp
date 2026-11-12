@@ -96,8 +96,10 @@ public:
     [[nodiscard]] TextLayout glyph_layout(std::uint32_t font, std::uint32_t glyph, float size,
                                           float scale);
 
-    // Renders one glyph at pixel_size (physical pixels).
-    [[nodiscard]] GlyphBitmap rasterize(std::uint32_t font, std::uint32_t glyph, float pixel_size);
+    // Renders one glyph at pixel_size (physical pixels), moved right by x_offset (0-1 px) for
+    // subpixel positioning. Hinting and antialiasing follow fontconfig, as Pango and Qt do.
+    [[nodiscard]] GlyphBitmap rasterize(std::uint32_t font, std::uint32_t glyph, float pixel_size,
+                                        float x_offset = 0.0F);
 
 private:
     struct Impl;

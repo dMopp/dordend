@@ -25,6 +25,59 @@ constexpr char32_t kReplacement = 0xFFFD;
 constexpr std::string_view kEllipsis = "…";
 constexpr std::size_t kMaxCachedLayouts = 8192;
 constexpr float kFixedPoint = 64.0F;  // FreeType and harfbuzz 26.6 units
+// Points per logical pixel, as Pango and Qt count them (96 dpi): harfbuzz picks size-dependent
+// tracking (the AAT trak table) by point size.
+constexpr float kPointsPerPixel = 0.75F;
+
+// How glyphs are rasterized, from fontconfig's settings for the family (hinting, hintstyle,
+// antialias, autohint), the way Pango/cairo and Qt read them.
+struct RenderSettings {
+    FT_Int32 load_flags{FT_LOAD_TARGET_LIGHT};
+    FT_Render_Mode render_mode{FT_RENDER_MODE_LIGHT};
+};
+
+RenderSettings render_settings(const std::string& family) {
+    RenderSettings settings;
+    FcPattern* pattern = FcNameParse(reinterpret_cast<const FcChar8*>(family.c_str()));  // NOLINT
+    if (pattern == nullptr) {
+        return settings;
+    }
+    FcConfigSubstitute(nullptr, pattern, FcMatchPattern);
+    FcDefaultSubstitute(pattern);
+    FcResult result = FcResultNoMatch;
+    FcPattern* match = FcFontMatch(nullptr, pattern, &result);
+    FcPatternDestroy(pattern);
+    if (match == nullptr) {
+        return settings;
+    }
+    FcBool antialias = FcTrue;
+    FcBool hinting = FcTrue;
+    FcBool autohint = FcFalse;
+    int hintstyle = FC_HINT_SLIGHT;
+    FcPatternGetBool(match, FC_ANTIALIAS, 0, &antialias);
+    FcPatternGetBool(match, FC_HINTING, 0, &hinting);
+    FcPatternGetBool(match, FC_AUTOHINT, 0, &autohint);
+    FcPatternGetInteger(match, FC_HINT_STYLE, 0, &hintstyle);
+    FcPatternDestroy(match);
+
+    if (antialias == FcFalse) {
+        settings.load_flags = FT_LOAD_TARGET_MONO;
+        settings.render_mode = FT_RENDER_MODE_MONO;
+    } else if (hinting == FcFalse || hintstyle == FC_HINT_NONE) {
+        settings.load_flags = FT_LOAD_NO_HINTING;
+        settings.render_mode = FT_RENDER_MODE_NORMAL;
+    } else if (hintstyle == FC_HINT_SLIGHT) {
+        settings.load_flags = FT_LOAD_TARGET_LIGHT;
+        settings.render_mode = FT_RENDER_MODE_LIGHT;
+    } else {
+        settings.load_flags = FT_LOAD_TARGET_NORMAL;
+        settings.render_mode = FT_RENDER_MODE_NORMAL;
+    }
+    if (autohint == FcTrue && hinting == FcTrue) {
+        settings.load_flags |= FT_LOAD_FORCE_AUTOHINT;
+    }
+    return settings;
+}
 
 struct Codepoint {
     char32_t value;
@@ -166,6 +219,8 @@ struct FontSystem::Impl {
     bool monospace_found{false};
     hb_buffer_t* buffer{hb_buffer_create()};
     std::unordered_map<std::string, TextLayout> cache;
+    RenderSettings render;
+    float ptem{0.0F};  // point size of the text being shaped; 0: harfbuzz's default
 
     Impl(const std::string& family, std::string monospace)
         : monospace_family{std::move(monospace)} {
@@ -178,6 +233,7 @@ struct FontSystem::Impl {
             throw std::runtime_error{std::format("no usable font for '{}'", family)};
         }
         log::info("font: {} ({} fallbacks)", fonts[primary.front()].path, primary.size() - 1);
+        render = render_settings(family);
     }
 
     // The chain of a typeface; the monospace one is looked up the first time, and is the
@@ -324,6 +380,7 @@ struct FontSystem::Impl {
         hb_font_t* const primary = fonts[fallbacks.front()].hb;
 
         hb_font_set_scale(primary, scale, scale);
+        hb_font_set_ptem(primary, ptem);
         hb_font_extents_t extents{};
         hb_font_get_h_extents(primary, &extents);
         layout.ascent = static_cast<float>(extents.ascender) / kFixedPoint;
@@ -362,6 +419,7 @@ struct FontSystem::Impl {
                     std::uint32_t font_id, int scale, float pen, std::vector<ShapedGlyph>& out) {
         hb_font_t* font = fonts[font_id].hb;
         hb_font_set_scale(font, scale, scale);
+        hb_font_set_ptem(font, ptem);
         hb_buffer_reset(buffer);
         // The whole text gives the shaper context; clusters are byte offsets into it.
         hb_buffer_add_utf8(buffer, text.data(), static_cast<int>(text.size()),
@@ -446,8 +504,8 @@ const TextLayout& FontSystem::layout(std::string_view utf8, float size, float sc
     const float pixel_size = size * scale;
     const float max_px = max_width * scale;
     std::string key{utf8};
-    key += std::format("\x1f{}\x1f{}\x1f{}\x1f{}", pixel_size, max_px, static_cast<int>(ellipsis),
-                       static_cast<int>(typeface));
+    key += std::format("\x1f{}\x1f{}\x1f{}\x1f{}\x1f{}", pixel_size, size, max_px,
+                       static_cast<int>(ellipsis), static_cast<int>(typeface));
 
     auto& cache = impl_->cache;
     if (auto it = cache.find(key); it != cache.end()) {
@@ -456,6 +514,7 @@ const TextLayout& FontSystem::layout(std::string_view utf8, float size, float sc
     if (cache.size() >= kMaxCachedLayouts) {
         cache.clear();
     }
+    impl_->ptem = size * kPointsPerPixel;
     TextLayout layout = impl_->shape(utf8, pixel_size, typeface);
     if (max_px > 0.0F && layout.width > max_px) {
         layout = impl_->truncate(utf8, layout, max_px, ellipsis, typeface);
@@ -522,7 +581,8 @@ TextLayout FontSystem::glyph_layout(std::uint32_t font, std::uint32_t glyph, flo
     return layout;
 }
 
-GlyphBitmap FontSystem::rasterize(std::uint32_t font_id, std::uint32_t glyph, float pixel_size) {
+GlyphBitmap FontSystem::rasterize(std::uint32_t font_id, std::uint32_t glyph, float pixel_size,
+                                  float x_offset) {
     GlyphBitmap bitmap;
     Impl::Font& font = impl_->fonts.at(font_id);
     if (!impl_->load(font_id)) {
@@ -552,12 +612,18 @@ GlyphBitmap FontSystem::rasterize(std::uint32_t font_id, std::uint32_t glyph, fl
         strike_scale = pixel_size / static_cast<float>(sizes[best].height);
     }
 
-    FT_Int32 flags = FT_LOAD_TARGET_LIGHT;
+    FT_Int32 flags = impl_->render.load_flags;
+    FT_Render_Mode mode = impl_->render.render_mode;
     if (font.color) {
-        flags |= FT_LOAD_COLOR;
+        flags = FT_LOAD_TARGET_LIGHT | FT_LOAD_COLOR;
+        mode = FT_RENDER_MODE_LIGHT;
     }
-    if (FT_Load_Glyph(face, glyph, flags) != 0 ||
-        FT_Render_Glyph(face->glyph, FT_RENDER_MODE_LIGHT) != 0) {
+    // Subpixel positioning: the outline moves by the fraction of a pixel the pen stands at.
+    FT_Vector delta{static_cast<FT_Pos>(std::lround(x_offset * kFixedPoint)), 0};
+    FT_Set_Transform(face, nullptr, FT_IS_SCALABLE(face) && !font.color ? &delta : nullptr);
+    const bool loaded = FT_Load_Glyph(face, glyph, flags) == 0;
+    FT_Set_Transform(face, nullptr, nullptr);
+    if (!loaded || FT_Render_Glyph(face->glyph, mode) != 0) {
         return bitmap;
     }
     const FT_Bitmap& ft = face->glyph->bitmap;

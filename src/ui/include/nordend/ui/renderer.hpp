@@ -102,7 +102,7 @@ private:
     struct GlyphInstance;
     struct GlyphEntry;
 
-    GlyphEntry rasterize(const ShapedGlyph& glyph, float pixel_size);
+    GlyphEntry rasterize(const ShapedGlyph& glyph, float pixel_size, float x_offset);
     void push_box(const BoxInstance& instance);
     void push_glyph(const GlyphInstance& instance);
     void flush();
