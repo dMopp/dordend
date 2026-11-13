@@ -1,5 +1,7 @@
 // PDF parsing lives only in rummage-pdf, after the same cage as rummage-preview: MuPDF draws the
-// first page. MuPDF carries its own fonts, so nothing has to be opened inside the cage.
+// first page. MuPDF carries its own fonts, so nothing has to be opened inside the cage. Only
+// MuPDF's PDF parser is used (no content sniffing into its other formats), its memory is
+// budgeted, reading is bounded in bytes and time, and JavaScript is never enabled.
 #include "backend.hpp"
 
 #include <algorithm>
@@ -9,6 +11,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -16,6 +20,7 @@
 
 extern "C" {
 #include <mupdf/fitz.h>
+#include <mupdf/pdf.h>
 }
 
 namespace rummage::isolate::backend {
@@ -25,9 +30,70 @@ constexpr std::uint32_t kMaxSide = 2048;
 constexpr std::uint64_t kReadBudget = std::uint64_t{512} * 1024 * 1024;
 constexpr std::size_t kStore = std::size_t{256} * 1024 * 1024;
 constexpr std::size_t kChunk = 64 * 1024;
+// All MuPDF may hold at once, the store included: a compressed bomb fails here, quickly,
+// long before the cage's 4 GiB address space.
+constexpr std::size_t kMemoryBudget = std::size_t{1024} * 1024 * 1024;
 using Clock = std::chrono::steady_clock;
 
 fz_context* context = nullptr;  // one for the helper's life: fonts and colour spaces stay loaded
+
+// MuPDF's allocator: malloc with the size in a header, counted against kMemoryBudget. One
+// thread, so plain counters.
+constexpr std::size_t kHeader = alignof(std::max_align_t);
+std::size_t allocated = 0;
+bool refused = false;  // an allocation went over the budget since the last request
+
+void* budget_malloc(void*, std::size_t size) {
+    if (size > kMemoryBudget - allocated || size > SIZE_MAX - kHeader) {
+        refused = true;
+        return nullptr;
+    }
+    auto* block = static_cast<unsigned char*>(std::malloc(size + kHeader));
+    if (block == nullptr) {
+        return nullptr;
+    }
+    std::memcpy(block, &size, sizeof(size));
+    allocated += size;
+    return block + kHeader;
+}
+
+std::size_t size_of(void* pointer) {
+    std::size_t size = 0;
+    std::memcpy(&size, static_cast<unsigned char*>(pointer) - kHeader, sizeof(size));
+    return size;
+}
+
+void budget_free(void*, void* pointer) {
+    if (pointer != nullptr) {
+        allocated -= size_of(pointer);
+        std::free(static_cast<unsigned char*>(pointer) - kHeader);
+    }
+}
+
+void* budget_realloc(void* user, void* pointer, std::size_t size) {
+    if (pointer == nullptr) {
+        return budget_malloc(user, size);
+    }
+    if (size == 0) {
+        budget_free(user, pointer);
+        return nullptr;
+    }
+    const std::size_t old = size_of(pointer);
+    if (size > old && (size - old > kMemoryBudget - allocated || size > SIZE_MAX - kHeader)) {
+        refused = true;
+        return nullptr;
+    }
+    auto* block = static_cast<unsigned char*>(
+        std::realloc(static_cast<unsigned char*>(pointer) - kHeader, size + kHeader));
+    if (block == nullptr) {
+        return nullptr;
+    }
+    std::memcpy(block, &size, sizeof(size));
+    allocated = allocated - old + size;
+    return block + kHeader;
+}
+
+fz_alloc_context budget{nullptr, budget_malloc, budget_realloc, budget_free};
 
 // A file read through its descriptor with pread, bounded in bytes and time.
 struct Source {
@@ -92,9 +158,10 @@ Drawn draw_first_page(fz_stream* stream, std::uint32_t width, std::uint32_t heig
     fz_var(page);
     fz_var(drawn);
     fz_try(ctx) {
-        document = fz_open_document_with_stream(ctx, "application/pdf", stream);
+        // The PDF parser itself, not fz_open_document: no sniffing into MuPDF's other formats.
+        document = &pdf_open_document_with_stream(ctx, stream)->super;
         if (fz_needs_password(ctx, document) != 0) {
-            drawn.failure = picture::Failure::unreadable;
+            drawn.failure = picture::Failure::locked;
             drawn.detail = "pdf is password protected";
         } else if (fz_count_pages(ctx, document) < 1) {
             drawn.failure = picture::Failure::damaged;
@@ -112,7 +179,7 @@ Drawn draw_first_page(fz_stream* stream, std::uint32_t width, std::uint32_t heig
                 float scale = std::min(static_cast<float>(width) / page_width,
                                        static_cast<float>(height) / page_height);
                 const double pixels =
-                    static_cast<double>(page_width * scale) * (page_height * scale);
+                    static_cast<double>(page_width * scale) * static_cast<double>(page_height * scale);
                 if (pixels > static_cast<double>(kMaxPixels)) {
                     scale *=
                         static_cast<float>(std::sqrt(static_cast<double>(kMaxPixels) / pixels));
@@ -130,11 +197,16 @@ Drawn draw_first_page(fz_stream* stream, std::uint32_t width, std::uint32_t heig
     }
     fz_catch(ctx) {
         drawn.pixmap = nullptr;
-        drawn.failure = fz_caught(ctx) == FZ_ERROR_LIMIT ? picture::Failure::unavailable
-                                                         : picture::Failure::damaged;
-        drawn.detail = drawn.failure == picture::Failure::unavailable
-                           ? "pdf reading budget exhausted"
-                           : "unreadable pdf";
+        if (refused) {
+            drawn.failure = picture::Failure::too_large;
+            drawn.detail = "pdf memory budget exhausted";
+        } else if (fz_caught(ctx) == FZ_ERROR_LIMIT) {
+            drawn.failure = picture::Failure::unavailable;
+            drawn.detail = "pdf reading budget exhausted";
+        } else {
+            drawn.failure = picture::Failure::damaged;
+            drawn.detail = "unreadable pdf";
+        }
     }
     return drawn;
 }
@@ -187,18 +259,12 @@ constexpr char kWarmUpPdf[] =
 }  // namespace
 
 void warm_up() {
-    context = fz_new_context(nullptr, nullptr, kStore);
+    context = fz_new_context(&budget, nullptr, kStore);
     if (context == nullptr) {
         return;
     }
     fz_set_warning_callback(context, quiet, nullptr);
     fz_set_error_callback(context, quiet, nullptr);
-    fz_try(context) { fz_register_document_handlers(context); }
-    fz_catch(context) {
-        fz_drop_context(context);
-        context = nullptr;
-        return;
-    }
     // Draw once before the cage closes: whatever MuPDF sets up on first use (the built-in font,
     // colour management) is set up now. The document is repaired, which is fine here.
     fz_stream* stream = nullptr;
@@ -223,6 +289,7 @@ picture::Loaded make_picture(int fd, std::uint32_t width, std::uint32_t height) 
     if (context == nullptr) {
         return failure(picture::Failure::unavailable, "mupdf could not start");
     }
+    refused = false;
     width = std::min(width, kMaxSide);
     height = std::min(height, kMaxSide);
     struct stat st{};

@@ -27,6 +27,7 @@ enum class Failure : std::uint8_t {
     damaged,              // the format is known but the data is broken or cut short
     unreadable,           // the file could not be read (permissions, I/O)
     unavailable,          // the isolated helper stopped, took too long, or could not start
+    locked,               // the file is password protected (an encrypted PDF)
 };
 
 // The sentence shown for a failure; empty for none.

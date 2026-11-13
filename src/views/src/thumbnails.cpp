@@ -20,7 +20,8 @@ Thumbnails::~Thumbnails() {
 }
 
 const ui::Texture* Thumbnails::get(const std::filesystem::path& file, std::int64_t modified_ns,
-                                   thumbs::Size size, std::string_view mime) {
+                                   thumbs::Size size, std::string_view mime,
+                                   picture::Failure* failure) {
     std::string key = file.string();
     key += '\n';
     key += thumbs::directory_name(size);
@@ -36,9 +37,9 @@ const ui::Texture* Thumbnails::get(const std::filesystem::path& file, std::int64
             core::Priority::visible,
             [cache = cache_, file, size, mime = std::string{mime}](const core::CancelToken& token) {
                 thumbs::Thumbnail thumbnail = cache->get(file, size, mime, &token);
-                return std::make_shared<picture::Image>(std::move(thumbnail.image));
+                return std::make_shared<thumbs::Thumbnail>(std::move(thumbnail));
             },
-            [this, alive = alive_, key](std::shared_ptr<picture::Image> pixels) {
+            [this, alive = alive_, key](std::shared_ptr<thumbs::Thumbnail> made) {
                 if (!*alive) {
                     return;
                 }
@@ -48,14 +49,19 @@ const ui::Texture* Thumbnails::get(const std::filesystem::path& file, std::int64
                 }
                 --in_flight_;
                 found->second.job.reset();
-                if (pixels->empty()) {
+                if (made->image.empty()) {
                     found->second.failed = true;
+                    found->second.failure = made->failure;
                 } else {
-                    found->second.pixels = std::move(pixels);
+                    found->second.pixels =
+                        std::make_shared<picture::Image>(std::move(made->image));
                 }
                 redraw_();
             });
         return nullptr;
+    }
+    if (failure != nullptr) {
+        *failure = slot.failed ? slot.failure : picture::Failure::none;
     }
     if (slot.pixels) {
         slot.texture = std::make_unique<ui::Texture>(slot.pixels->width, slot.pixels->height,

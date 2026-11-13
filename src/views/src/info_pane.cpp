@@ -281,11 +281,12 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
         // moves when the thumbnail arrives.
         const float box = std::min(preview_width, bounds.height * kMaxPreview);
         const ui::Texture* thumbnail = nullptr;
+        picture::Failure failure = picture::Failure::none;
         if (thumbnails_ != nullptr) {
             thumbnail = thumbnails_->get(
                 path, single->modified_ns,
                 thumbs::size_for(static_cast<std::uint32_t>(std::lround(box * renderer.scale()))),
-                mime.name(typed.mime));
+                mime.name(typed.mime), &failure);
         }
         if (thumbnail != nullptr) {
             const float fit =
@@ -302,6 +303,9 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
                             out.left() + ((out.width() - kIconSize) / 2.0F),
                             out.y() + ((box - kIconSize) / 2.0F), kIconSize,
                             palette.on_surface_variant, typed.folder_icon);
+            draw_failure_badge(renderer, icons, palette, failure,
+                               out.left() + ((out.width() - kIconSize) / 2.0F),
+                               out.y() + ((box - kIconSize) / 2.0F), kIconSize);
         }
         out.skip(box + 18.0F);
     } else if (summary != nullptr && summary->text && !summary->text->lines.empty()) {

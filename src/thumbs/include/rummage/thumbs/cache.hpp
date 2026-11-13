@@ -7,6 +7,7 @@
 
 #include "rummage/core/file.hpp"
 #include "rummage/picture/image.hpp"
+#include "rummage/picture/load.hpp"
 
 namespace rummage::core {
 class CancelToken;
@@ -45,6 +46,9 @@ struct Thumbnail {
     picture::Image image;  // upright, fits in pixels(size); empty when failed
     Source source{Source::failed};
     std::string error;  // why it failed
+    // What failed, when the file says so (damaged, password protected); remembered with the
+    // failure, so a view can mark the file's icon without trying again.
+    picture::Failure failure{picture::Failure::none};
 };
 
 // The freedesktop thumbnail cache (~/.cache/thumbnails), shared with the other apps: a

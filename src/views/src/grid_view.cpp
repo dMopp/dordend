@@ -346,12 +346,13 @@ void GridView::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
             fs::Entry typed = entry;
             typed.mime = folder_->mime_of(entry);
             const ui::Texture* thumbnail = nullptr;
+            picture::Failure failure = picture::Failure::none;
             const engines::Family* family =
                 entry.is_directory() ? nullptr : engines->find(*mime_, typed.mime);
             const bool video = mime_->name(typed.mime).starts_with("video/");
             if (thumbnails_ != nullptr && (video || (family != nullptr && family->thumbnails))) {
                 thumbnail = thumbnails_->get(folder_->path_of(entry), entry.modified_ns,
-                                             thumbnail_size, mime_->name(typed.mime));
+                                             thumbnail_size, mime_->name(typed.mime), &failure);
             }
             if (thumbnail != nullptr) {
                 // Film rails are UI decoration; the shared cache retains clean pixels.
@@ -386,6 +387,9 @@ void GridView::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
                 icons.draw_file(renderer, (*mime_).name(typed.mime), fs::icon_name(*mime_, typed),
                                 x + ((cell_width_ - icon) / 2.0F), y + kIconTop, icon, style.icon,
                                 typed.folder_icon);
+                draw_failure_badge(renderer, icons, palette, failure,
+                                   x + ((cell_width_ - icon) / 2.0F), y + kIconTop, icon,
+                                   cut ? kCutOpacity : 1.0F);
             }
             if (edit_ != nullptr && edit_->holds(*folder_, entry)) {
                 // One line across the cell, where the name starts.

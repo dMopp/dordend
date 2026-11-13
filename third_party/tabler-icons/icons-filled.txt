@@ -1,3 +1,5 @@
 # The filled Tabler icons Nordend draws, one glyph name per line, kept in
 # tabler-icons-filled.ttf. The code asks for them with a "-filled" suffix ("trash-filled").
 trash
+lock
+circle-x

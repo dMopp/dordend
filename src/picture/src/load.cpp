@@ -21,6 +21,8 @@ std::string_view failure_message(Failure failure) noexcept {
             return "This file can't be read";
         case Failure::unavailable:
             return "Preview unavailable";
+        case Failure::locked:
+            return "This file is password protected";
     }
     return {};
 }

@@ -250,7 +250,9 @@ list of absolute `share/rummage/engines` directories. Restart after changing the
 The `rummage-pdf` helper draws the first page of a PDF for thumbnails and Space Quick Look. It
 links MuPDF and uses MuPDF's built-in fonts, so it opens no file inside the same seccomp/Landlock
 cage as the other helpers; reading is bounded in bytes and time, and pages are drawn at most
-2048 px per side. Password-protected and damaged PDFs keep their icon. It is optional and off by
+2048 px per side. A password-protected PDF keeps its icon with a lock on it, a damaged one with a
+cross. Only MuPDF's PDF parser runs (no sniffing into its other formats), its memory is capped at
+1 GiB, and JavaScript is never enabled. It is optional and off by
 default: `-DRUMMAGE_PDF=ON` with MuPDF's development files; `cmake --install build --component pdf`
 installs only the helper and its manifest. MuPDF is AGPL-3.0, which applies to the `rummage-pdf`
 binary; the application itself does not link it.

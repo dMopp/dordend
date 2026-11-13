@@ -26,6 +26,15 @@ constexpr std::array kGerman = std::to_array<Entry>({
     {" (minified)", " (minifiziert)"},
     {" (default)", " (Standard)"},
 
+    // Why a preview failed (picture::failure_message)
+    {"rummage can't show this kind of file", "rummage kann diese Art von Datei nicht anzeigen"},
+    {"No preview rummage can show in this file", "Keine Vorschau, die rummage anzeigen kann"},
+    {"This image is too large to show", "Dieses Bild ist zu groß für die Anzeige"},
+    {"This image looks damaged", "Diese Datei scheint beschädigt zu sein"},
+    {"This file can't be read", "Diese Datei kann nicht gelesen werden"},
+    {"Preview unavailable", "Vorschau nicht verfügbar"},
+    {"This file is password protected", "Diese Datei ist passwortgeschützt"},
+
     // Status bar and views
     {"{} of {} selected", "{} von {} ausgewählt"},
     {"{} items, loading…", "{} Objekte, wird geladen…"},

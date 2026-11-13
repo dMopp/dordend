@@ -394,7 +394,7 @@ picture::Loaded Helpers::load(const picture::LoadRequest& request) {
         }
         std::memcpy(&response, reply.bytes.data(), sizeof(response));
         if (reply.length != sizeof(response) + response.detail_length ||
-            response.failure > static_cast<std::uint8_t>(picture::Failure::unavailable)) {
+            response.failure > static_cast<std::uint8_t>(picture::Failure::locked)) {
             why = "the preview helper said something else";
             return false;
         }

@@ -11,6 +11,7 @@
 
 #include "rummage/core/worker_pool.hpp"
 #include "rummage/picture/image.hpp"
+#include "rummage/picture/load.hpp"
 #include "rummage/thumbs/cache.hpp"
 #include "rummage/ui/texture.hpp"
 
@@ -36,10 +37,12 @@ public:
     Thumbnails& operator=(Thumbnails&&) = delete;
 
     // The thumbnail of file (absolute) as it was at modified_ns, at size; nullptr while it is
-    // being made (now asked for) or when it cannot be made.
+    // being made (now asked for) or when it cannot be made. When it cannot, failure (if given)
+    // says why, when the file says so (damaged, password protected); else none.
     [[nodiscard]] const ui::Texture* get(const std::filesystem::path& file,
                                          std::int64_t modified_ns, thumbs::Size size,
-                                         std::string_view mime = {});
+                                         std::string_view mime = {},
+                                         picture::Failure* failure = nullptr);
 
     // After each frame: cancels what this frame did not ask for, keeps to the budget.
     void end_frame();
@@ -65,6 +68,7 @@ private:
         std::shared_ptr<picture::Image> pixels;  // made, not uploaded yet
         std::unique_ptr<ui::Texture> texture;
         bool failed{false};
+        picture::Failure failure{picture::Failure::none};  // why, when failed
         std::uint64_t used{0};  // the frame that last asked for it
     };
 

@@ -487,8 +487,11 @@ void QuickLook::draw_image(ui::Renderer& renderer, const ui::Rect& area,
         const float y = area.y + ((area.height - kCardIcon) / 2.0F);
         icons.draw_file(renderer, (*mime_).name(typed.mime), fs::icon_name(*mime_, typed), x, y,
                         kCardIcon, palette.on_surface_variant.with_alpha(fade), typed.folder_icon);
+        if (loaded != nullptr) {
+            draw_failure_badge(renderer, icons, palette, loaded->failure, x, y, kCardIcon, fade);
+        }
         if (loaded != nullptr && !loaded->error().empty()) {
-            draw_centered(renderer, loaded->error(), area, y + kCardIcon + 16.0F, 13.0F,
+            draw_centered(renderer, i18n::tr(loaded->error()), area, y + kCardIcon + 16.0F, 13.0F,
                           palette.error.with_alpha(fade));
         }
     } else {
