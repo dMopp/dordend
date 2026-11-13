@@ -155,3 +155,17 @@ if(RUMMAGE_MEDIA)
     add_test(NAME media-tests COMMAND rummage-media-tests)
     set_tests_properties(media-tests PROPERTIES TIMEOUT 60)
 endif()
+
+if(RUMMAGE_PDF)
+    add_executable(rummage-pdf-tests pdf_test.cpp)
+    target_link_libraries(rummage-pdf-tests PRIVATE doctest::doctest rummage::isolate
+        rummage::thumbs rummage::preview rummage::warnings)
+    target_compile_definitions(rummage-pdf-tests PRIVATE
+        RUMMAGE_PDF_HELPER="$<TARGET_FILE:rummage-pdf>"
+        RUMMAGE_BASE_HELPER="$<TARGET_FILE:rummage-preview>"
+        RUMMAGE_PDF_DATA="${PROJECT_SOURCE_DIR}/tests/data/pdf"
+        RUMMAGE_ENGINE_DATA="${PROJECT_SOURCE_DIR}/data/engines")
+    add_dependencies(rummage-pdf-tests rummage-pdf rummage-preview)
+    add_test(NAME pdf-tests COMMAND rummage-pdf-tests)
+    set_tests_properties(pdf-tests PROPERTIES TIMEOUT 60)
+endif()

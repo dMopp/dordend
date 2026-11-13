@@ -6,6 +6,8 @@ own, all directly on `main`:
 - text rendered like Pango: fontconfig hinting, subpixel positioning, trak
 - `smb://` and `sftp://` bookmarks mounted through gvfs, Ctrl+L "Go to Folder or Server"
 - German translation, picked from the locale
+- optional PDF previews: `rummage-pdf`, MuPDF in the helper cage (`-DRUMMAGE_PDF=ON`,
+  `.#rummage-with-previews`)
 
 ## Updating from bordend
 

@@ -1,0 +1,12 @@
+# The PDF engine: the first page of a PDF, drawn by MuPDF in rummage-pdf's cage. Optional, like
+# the media engine: built with -DRUMMAGE_PDF=ON, installed as its own component.
+[engine]
+name = "pdf"
+program = "rummage-pdf"
+protocol = 4
+
+[[family]]
+name = "document"
+shows = "picture"
+thumbnails = true
+mime = ["application/pdf"]

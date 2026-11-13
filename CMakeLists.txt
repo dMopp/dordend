@@ -103,6 +103,13 @@ if(RUMMAGE_MEDIA)
 else()
     file(REMOVE "${PROJECT_BINARY_DIR}/engines/media.toml")
 endif()
+option(RUMMAGE_PDF "Build the optional MuPDF document preview helper" OFF)
+if(RUMMAGE_PDF)
+    pkg_check_modules(MUPDF REQUIRED IMPORTED_TARGET mupdf)
+    add_subdirectory(src/pdf)
+else()
+    file(REMOVE "${PROJECT_BINARY_DIR}/engines/pdf.toml")
+endif()
 add_subdirectory(src/platform)  # default applications (freedesktop), launching processes
 add_subdirectory(src/views)     # column view and grid
 

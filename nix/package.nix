@@ -16,6 +16,7 @@
   tomlplusplus,
   libwebp,
   ffmpeg,
+  mupdf,
   libjxl,
   zlib,
   sdbus-cpp_2,
@@ -31,12 +32,13 @@
   writeShellScriptBin,
   withTests ? false,
   withMedia ? false,
+  withPdf ? false,
 }:
 
 stdenv.mkDerivation {
   pname = "rummage";
   version = "0.5.0";
-  outputs = [ "out" ] ++ lib.optional withMedia "media";
+  outputs = [ "out" ] ++ lib.optional withMedia "media" ++ lib.optional withPdf "pdf";
 
   src = lib.fileset.toSource {
     root = ../.;
@@ -86,11 +88,13 @@ stdenv.mkDerivation {
     zlib
     sdbus-cpp_2
   ]
-  ++ lib.optional withMedia ffmpeg;
+  ++ lib.optional withMedia ffmpeg
+  ++ lib.optional withPdf mupdf;
 
   cmakeFlags = [
     "-DRUMMAGE_WERROR=OFF"
     "-DRUMMAGE_MEDIA=${if withMedia then "ON" else "OFF"}"
+    "-DRUMMAGE_PDF=${if withPdf then "ON" else "OFF"}"
     "-DRUMMAGE_BUILD_TESTS=${if withTests then "ON" else "OFF"}"
   ];
 
@@ -130,10 +134,16 @@ stdenv.mkDerivation {
       mv "$out/libexec/rummage/rummage-media" "$media/libexec/rummage/"
       mv "$out/share/rummage/engines/media.toml" "$media/share/rummage/engines/"
     ''
+    + lib.optionalString withPdf ''
+      mkdir -p "$pdf/libexec/rummage" "$pdf/share/rummage/engines"
+      mv "$out/libexec/rummage/rummage-pdf" "$pdf/libexec/rummage/"
+      mv "$out/share/rummage/engines/pdf.toml" "$pdf/share/rummage/engines/"
+    ''
     + ''
       install -Dm644 "$src/LICENSE" "$out/share/licenses/rummage/LICENSE"
       wrapProgram "$out/bin/rummage" \
         ${lib.optionalString withMedia "--suffix RUMMAGE_ENGINE_PATH : $media/share/rummage/engines"} \
+        ${lib.optionalString withPdf "--suffix RUMMAGE_ENGINE_PATH : $pdf/share/rummage/engines"} \
         --set-default XDG_DATA_DIRS /usr/local/share:/usr/share \
         --suffix XDG_DATA_DIRS : "${
           lib.makeSearchPath "share" [

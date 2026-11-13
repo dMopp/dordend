@@ -524,7 +524,7 @@ void use_engines(const engines::Registry& registry, HelperOptions options) {
         }
         HelperOptions own = options;
         own.program = engine.program;
-        if (engine.manifest.name == "media") {
+        if (engine.manifest.name == "media" || engine.manifest.name == "pdf") {
             own.timeout = std::chrono::seconds{8};
             own.max_helpers = std::min<std::size_t>(own.max_helpers, 2);
         }
