@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstddef>
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 namespace {
 
 constexpr Matrix kIdentity{1, 0, 0, 0, 1, 0, 0, 0, 1};
@@ -305,4 +305,4 @@ std::optional<Colour> colour_of(const tiff::Ifd& ifd0, std::string& error) {
     return out;
 }
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

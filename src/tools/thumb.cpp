@@ -1,10 +1,10 @@
 // Thumbnail check (ROADMAP 5.2). Not installed.
 //
-//   nordend-thumb [--size normal|large|x-large|xx-large] [--cache DIR] [--make] [--ppm OUT]
+//   rummage-thumb [--size normal|large|x-large|xx-large] [--cache DIR] [--make] [--ppm OUT]
 //                 FILE...
 //
 // Gets the thumbnail of each file through the freedesktop cache (default: ~/.cache/thumbnails,
-// as Nordend does): prints where it came from (cache, preview, decoded, failed), its size, the
+// as rummage does): prints where it came from (cache, preview, decoded, failed), its size, the
 // time and the thumbnail's path. --make ignores what is cached. --ppm writes the last one, over
 // a mid gray, to look at it.
 #include <chrono>
@@ -17,16 +17,16 @@
 #include <string_view>
 #include <vector>
 
-#include "nordend/formats/image/load.hpp"
-#include "nordend/picture/load.hpp"
-#include "nordend/thumbs/cache.hpp"
+#include "rummage/formats/image/load.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/thumbs/cache.hpp"
 
 namespace {
 
-namespace thumbs = nordend::thumbs;
+namespace thumbs = rummage::thumbs;
 using Clock = std::chrono::steady_clock;
 
-bool write_ppm(const std::filesystem::path& path, const nordend::picture::Image& picture) {
+bool write_ppm(const std::filesystem::path& path, const rummage::picture::Image& picture) {
     std::ofstream out{path, std::ios::binary};
     out << "P6\n" << picture.width << ' ' << picture.height << "\n255\n";
     for (std::size_t i = 0; i < picture.rgba.size(); i += 4) {
@@ -83,17 +83,17 @@ int main(int argc, char** argv) {
     }
     if (args.empty()) {
         std::fprintf(stderr,
-                     "usage: nordend-thumb [--size normal|large|x-large|xx-large] [--cache DIR] "
+                     "usage: rummage-thumb [--size normal|large|x-large|xx-large] [--cache DIR] "
                      "[--make] [--ppm OUT] FILE...\n");
         return 2;
     }
-    // A development tool: pictures made in this process (Nordend uses its isolated helpers).
-    nordend::picture::set_loader([](const nordend::picture::LoadRequest& request) {
-        return nordend::formats::image::load(request);
+    // A development tool: pictures made in this process (rummage uses its isolated helpers).
+    rummage::picture::set_loader([](const rummage::picture::LoadRequest& request) {
+        return rummage::formats::image::load(request);
     });
-    const thumbs::Cache cache{root, "nordend-dev"};
+    const thumbs::Cache cache{root, "rummage-dev"};
     int failures = 0;
-    nordend::picture::Image last;
+    rummage::picture::Image last;
     for (const char* arg : args) {
         const std::filesystem::path file = std::filesystem::absolute(arg).lexically_normal();
         const auto start = Clock::now();

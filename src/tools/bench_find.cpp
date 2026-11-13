@@ -1,6 +1,6 @@
 // Finding files benchmark (ROADMAP 8b). Not installed.
 //
-//   nordend-bench-find [--hidden] [--runs N] DIR QUERY...
+//   rummage-bench-find [--hidden] [--runs N] DIR QUERY...
 //
 // Per run and query, as Ctrl+F does it: FileFinder starts listing DIR on the worker pool and the
 // query is set at once (typed as the palette opens). Prints the time to the first results, to the
@@ -17,14 +17,14 @@
 #include <string_view>
 #include <vector>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/memory.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/views/file_finder.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/memory.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/views/file_finder.hpp"
 
 namespace {
 
-namespace core = nordend::core;
+namespace core = rummage::core;
 using Clock = std::chrono::steady_clock;
 using namespace std::chrono_literals;
 
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
             }
         }
         if (args.size() < 2) {
-            std::fputs("usage: nordend-bench-find [--hidden] [--runs N] DIR QUERY...\n", stderr);
+            std::fputs("usage: rummage-bench-find [--hidden] [--runs N] DIR QUERY...\n", stderr);
             return 2;
         }
         const std::filesystem::path root = args[0];
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
                 double done = -1.0;
                 bool listening = true;  // the first phase: the handler ends the loop
                 const Clock::time_point start = Clock::now();
-                nordend::views::FileFinder finder{
+                rummage::views::FileFinder finder{
                     pool, [&] {
                         if (first < 0.0 && !finder.results().empty()) {
                             first = ms_since(start);
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
         }
         return 0;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "nordend-bench-find: %s\n", e.what());
+        std::fprintf(stderr, "rummage-bench-find: %s\n", e.what());
         return 1;
     }
 }

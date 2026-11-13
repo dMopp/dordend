@@ -1,4 +1,4 @@
-#include "nordend/platform/about.hpp"
+#include "rummage/platform/about.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -9,11 +9,11 @@
 
 #include "temp_dir.hpp"
 
-using nordend::platform::distribution_name;
-using nordend::platform::running;
-using nordend::platform::version_from;
-using nordend::platform::version_of;
-using nordend::test::TempDir;
+using rummage::platform::distribution_name;
+using rummage::platform::running;
+using rummage::platform::version_from;
+using rummage::platform::version_of;
+using rummage::test::TempDir;
 using namespace std::chrono_literals;
 
 namespace {
@@ -46,7 +46,7 @@ TEST_CASE("about: the version in a --version line") {
 }
 
 TEST_CASE("about: a running program found by name, its own executable") {
-    const auto self = running("nordend-tests");
+    const auto self = running("rummage-tests");
     REQUIRE(self);
     CHECK(std::filesystem::equivalent(self.value_or(""), "/proc/self/exe"));
     CHECK_FALSE(running("no-such-program-x"));

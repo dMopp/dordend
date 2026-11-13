@@ -1,9 +1,9 @@
-#include "nordend/views/tab_bar.hpp"
+#include "rummage/views/tab_bar.hpp"
 
 #include <algorithm>
 #include <utility>
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kPadding = 8.0F;     // before the first tab
@@ -14,7 +14,6 @@ constexpr float kCloseSize = 22.0F;  // the ×'s hover box
 constexpr float kCloseIcon = 14.0F;
 constexpr float kAddSize = 26.0F;
 constexpr float kTextSize = 13.0F;
-constexpr float kRadius = 8.0F;
 
 bool inside(const ui::Rect& rect, float x, float y) {
     return !rect.empty() && x >= rect.x && x < rect.right() && y >= rect.y && y < rect.bottom();
@@ -51,23 +50,21 @@ void TabBar::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme::P
         const bool over = hovered_ && hovered_->index == i && hovered_->part != Part::add;
         if (shown) {
             renderer.draw_box(tab, {.fill = palette.surface,
-                                    .radius = {.top_left = kRadius, .top_right = kRadius},
+                                    .radius = {},
                                     .border_width = 1.0F,
                                     .border = palette.outline_variant});
             // The tab opens onto the view below: no line under it.
             renderer.fill_rect({tab.x + 1.0F, bounds.bottom() - 1.0F, tab.width - 2.0F, 1.0F},
                                palette.surface);
         } else if (over) {
-            renderer.draw_box(tab, {.fill = palette.surface_container,
-                                    .radius = {.top_left = kRadius, .top_right = kRadius}});
+            renderer.draw_box(tab, {.fill = palette.surface_container, .radius = {}});
         }
         const ui::Color text = shown || over ? palette.on_surface : palette.on_surface_variant;
         renderer.draw_text(titles[i], tab.x + kInset, top + ((height - kTextSize) / 2.0F) - 2.0F,
                            kTextSize, text, std::max(1.0F, close.x - (tab.x + kInset) - 4.0F));
         if (shown || over) {
             if (hovered_ == Hit{.part = Part::close, .index = i}) {
-                renderer.draw_box(close, {.fill = palette.surface_container_highest,
-                                          .radius = ui::Corners::all(kCloseSize / 2.0F)});
+                renderer.draw_box(close, {.fill = palette.surface_container_highest, .radius = {}});
             }
             icons.draw(renderer, "x", close.x + ((kCloseSize - kCloseIcon) / 2.0F),
                        close.y + ((kCloseSize - kCloseIcon) / 2.0F), kCloseIcon,
@@ -79,8 +76,7 @@ void TabBar::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme::P
     // The +: two bars, as the icon font has no plus.
     add_ = {x + kGap, top + ((height - kAddSize) / 2.0F), kAddSize, kAddSize};
     if (hovered_ && hovered_->part == Part::add) {
-        renderer.draw_box(
-            add_, {.fill = palette.surface_container, .radius = ui::Corners::all(kAddSize / 2.0F)});
+        renderer.draw_box(add_, {.fill = palette.surface_container, .radius = {}});
     }
     const float arm = 12.0F;
     const float thick = 1.5F;
@@ -157,4 +153,4 @@ void TabBar::pointer(const ui::PointerEvent& event) {
     }
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

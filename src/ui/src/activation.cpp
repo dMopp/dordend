@@ -1,10 +1,10 @@
-#include "nordend/ui/activation.hpp"
+#include "rummage/ui/activation.hpp"
 
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 
 Activation::Activation(Display& display, core::EventLoop& loop) : display_{display}, loop_{loop} {}
 
@@ -54,4 +54,4 @@ void Activation::finish(Pending* pending, std::string token) {
     done(std::move(token));
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

@@ -1,11 +1,11 @@
-#include "nordend/theme/theme.hpp"
+#include "rummage/theme/theme.hpp"
 
 #include <string>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::theme {
+namespace rummage::theme {
 namespace {
 
 void log_problems(const PaletteResult& result) {
@@ -79,4 +79,4 @@ void Theme::reload() {
     changed();
 }
 
-}  // namespace nordend::theme
+}  // namespace rummage::theme

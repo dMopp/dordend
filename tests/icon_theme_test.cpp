@@ -1,12 +1,12 @@
-#include "nordend/ui/icon_theme.hpp"
+#include "rummage/ui/icon_theme.hpp"
 
 #include <doctest/doctest.h>
 
-#include "nordend/picture/png.hpp"
+#include "rummage/picture/png.hpp"
 #include "temp_dir.hpp"
 
-using nordend::test::TempDir;
-using nordend::ui::IconTheme;
+using rummage::test::TempDir;
+using rummage::ui::IconTheme;
 namespace fs = std::filesystem;
 
 namespace {
@@ -96,9 +96,9 @@ TEST_CASE("icon theme: SVG preserves proportions, colour and straight alpha") {
 
 TEST_CASE("icon theme: PNG icons retain their pixels") {
     TempDir dir;
-    const nordend::picture::Image original{
+    const rummage::picture::Image original{
         .width = 2, .height = 1, .rgba = {0, 255, 0, 255, 0, 0, 255, 128}};
-    const auto png = nordend::picture::encode_png(original);
+    const auto png = rummage::picture::encode_png(original);
     const auto file = dir.path / "icon.png";
     {
         std::ofstream output{file, std::ios::binary};

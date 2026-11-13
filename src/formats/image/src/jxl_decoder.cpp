@@ -3,7 +3,7 @@
 
 #include "decoders.hpp"
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 
 void decode_jxl(std::span<const std::uint8_t> data, const DecodeOptions& options, Decoded& result) {
     const JxlDecoderPtr decoder = JxlDecoderMake(nullptr);
@@ -73,4 +73,4 @@ void decode_jxl(std::span<const std::uint8_t> data, const DecodeOptions& options
     }
 }
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

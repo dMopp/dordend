@@ -1,19 +1,24 @@
-#include "nordend/fs/icon.hpp"
+#include "rummage/fs/icon.hpp"
 
+#include <array>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
 #include <doctest/doctest.h>
 
-#include "nordend/fs/entry.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/text.hpp"
+#include "rummage/fs/entry.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/picture/png.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/ui/text.hpp"
+#include "temp_dir.hpp"
 
-using nordend::fs::Entry;
-using nordend::fs::EntryKind;
-using nordend::fs::icon_name;
-using nordend::fs::MimeDatabase;
+using rummage::fs::Entry;
+using rummage::fs::EntryKind;
+using rummage::fs::icon_name;
+using rummage::fs::MimeDatabase;
 
 namespace {
 
@@ -27,10 +32,10 @@ std::string_view icon_of(const MimeDatabase& db, std::string name) {
 }  // namespace
 
 TEST_CASE("icons: every name exists in the icon font") {
-    nordend::ui::FontSystem fonts;
-    nordend::ui::IconSet icons{fonts};
+    rummage::ui::FontSystem fonts;
+    rummage::ui::IconSet icons{fonts};
     REQUIRE(icons.available());  // compiled into the program
-    for (const std::string_view name : nordend::fs::icon_names_in_use()) {
+    for (const std::string_view name : rummage::fs::icon_names_in_use()) {
         CHECK_MESSAGE(icons.has(name), name);
     }
     // The views' own: sidebar, breadcrumb, status bar, info pane, details header, title bar.
@@ -43,6 +48,53 @@ TEST_CASE("icons: every name exists in the icon font") {
     CHECK_FALSE(icons.has("no-such-icon"));
     CHECK_FALSE(icons.has("folder-filled"));  // only the filled icons listed are kept
     CHECK_FALSE(icons.has("-filled"));
+}
+
+TEST_CASE("place icons: custom images, builtin overrides, fallback and live replacement") {
+    namespace ui = rummage::ui;
+    rummage::test::TempDir dir;
+    const auto red = dir.write(
+        "red.svg",
+        "<svg width='32' height='32'><rect width='32' height='32' fill='#ff0000'/></svg>");
+    const rummage::picture::Image green_image{.width = 1, .height = 1, .rgba = {0, 255, 0, 255}};
+    const auto png = rummage::picture::encode_png(green_image);
+    const auto green = dir.write(
+        "green.png", std::string_view{reinterpret_cast<const char*>(png.data()), png.size()});
+    ui::Offscreen gl{32, 32};
+    ui::FontSystem fonts;
+    ui::Renderer renderer{fonts};
+    ui::IconSet icons{fonts};
+    const auto render = [&](std::string_view key, std::string_view fallback = "home") {
+        renderer.begin_frame(32, 32, 1.0F, ui::Color::rgb(0));
+        icons.draw_place(renderer, key, fallback, 0, 0, 32, ui::Color::rgb(0xFFFFFF));
+        renderer.end_frame();
+        std::array<std::uint8_t, 32 * 32 * 4> pixels{};
+        glReadPixels(0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        return pixels;
+    };
+    const auto normal = render("home");
+    const auto photo = render("pictures", "photo");
+    REQUIRE(normal != photo);
+    icons.set_place_icons({{"home", red.string()}, {"trash", green.string()}});
+    const auto custom = render("home");
+    CHECK(custom != normal);
+    CHECK(custom[0] == 255);
+    CHECK(custom[1] == 0);
+    CHECK(render("pictures", "photo") == photo);
+    CHECK(render("trash_full")[1] == 255);  // inherits the trash override
+    icons.set_place_icons(
+        {{"home", green.string()}, {"trash", red.string()}, {"trash_full", green.string()}});
+    CHECK(render("home")[1] == 255);
+    CHECK(render("trash_full")[1] == 255);  // explicit full state wins
+    icons.set_place_icons({{"home", "builtin:photo"}});
+    CHECK(render("home") == photo);
+    for (const auto& missing :
+         {"builtin:does-not-exist", "no-such-theme-icon", "/no-such-directory/icon.svg"}) {
+        icons.set_place_icons({{"home", missing}});
+        CHECK(render("home") == normal);
+    }
+    icons.set_place_icons({});
+    CHECK(render("home") == normal);
 }
 
 TEST_CASE("icons: kinds") {

@@ -1,4 +1,4 @@
-#include "nordend/fs/places.hpp"
+#include "rummage/fs/places.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -11,25 +11,25 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/file.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/text.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/sidebar.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/text.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/sidebar.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::fs::Place;
-using nordend::fs::PlaceSources;
-using nordend::fs::UserDir;
-using nordend::test::TempDir;
-using nordend::views::Browser;
-using nordend::views::place_holding;
+using rummage::core::EventLoop;
+using rummage::fs::Place;
+using rummage::fs::PlaceSources;
+using rummage::fs::UserDir;
+using rummage::test::TempDir;
+using rummage::views::Browser;
+using rummage::views::place_holding;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -59,8 +59,8 @@ std::vector<std::string> labels(const std::vector<Place>& places) {
     return out;
 }
 
-nordend::ui::KeyEvent key(xkb_keysym_t keysym, bool ctrl = false) {
-    nordend::ui::KeyEvent event;
+rummage::ui::KeyEvent key(xkb_keysym_t keysym, bool ctrl = false) {
+    rummage::ui::KeyEvent event;
     event.keysym = keysym;
     event.modifiers.ctrl = ctrl;
     return event;
@@ -85,7 +85,7 @@ struct Home {
 
 TEST_CASE("places: user-dirs.dirs") {
     const fs::path home{"/home/me"};
-    const std::vector<UserDir> dirs = nordend::fs::parse_user_dirs(
+    const std::vector<UserDir> dirs = rummage::fs::parse_user_dirs(
         "# written by xdg-user-dirs-update\n"
         "XDG_DESKTOP_DIR=\"$HOME/Scrivania\"\n"
         "XDG_DOWNLOAD_DIR=\"$HOME/Scaricati\"\n"
@@ -102,7 +102,7 @@ TEST_CASE("places: user-dirs.dirs") {
 }
 
 TEST_CASE("places: GTK bookmarks") {
-    const std::vector<Place> places = nordend::fs::parse_bookmarks(
+    const std::vector<Place> places = rummage::fs::parse_bookmarks(
         "file:///run/media/me/DATA/fotografia Photos\n"
         "file:///tmp/with%20space\n"
         "sftp://host/home/me Remote\n"
@@ -129,37 +129,37 @@ TEST_CASE("bookmarks: added at the end as GLib writes them, removed, the rest ke
         "file:///run/media/me/DATA/fotografia Photos\n"
         "file:///tmp/with%20space";  // no newline at the end
     const std::optional<std::string> added =
-        nordend::fs::add_bookmark(text, "/home/me/Viaggi/naïve 2026/");
+        rummage::fs::add_bookmark(text, "/home/me/Viaggi/naïve 2026/");
     REQUIRE(added);
     CHECK(added.value_or("") == text + "\nfile:///home/me/Viaggi/na%C3%AFve%202026\n");
     // Already there, with or without the slash, as written or decoded.
-    CHECK_FALSE(nordend::fs::add_bookmark(text, "/tmp/with space"));
-    CHECK_FALSE(nordend::fs::add_bookmark(text, "/run/media/me/DATA/fotografia/"));
-    CHECK(nordend::fs::parse_bookmarks(added.value_or("")).back().path ==
+    CHECK_FALSE(rummage::fs::add_bookmark(text, "/tmp/with space"));
+    CHECK_FALSE(rummage::fs::add_bookmark(text, "/run/media/me/DATA/fotografia/"));
+    CHECK(rummage::fs::parse_bookmarks(added.value_or("")).back().path ==
           "/home/me/Viaggi/naïve 2026");
 
     const std::optional<std::string> removed =
-        nordend::fs::remove_bookmark(added.value_or(""), "/run/media/me/DATA/fotografia");
+        rummage::fs::remove_bookmark(added.value_or(""), "/run/media/me/DATA/fotografia");
     CHECK(removed.value_or("") ==
           "sftp://host/home/me Remote\n"
           "file:///tmp/with%20space\n"
           "file:///home/me/Viaggi/na%C3%AFve%202026\n");
-    CHECK_FALSE(nordend::fs::remove_bookmark(text, "/elsewhere"));
-    CHECK(nordend::fs::add_bookmark("", "/a") == std::optional<std::string>{"file:///a\n"});
+    CHECK_FALSE(rummage::fs::remove_bookmark(text, "/elsewhere"));
+    CHECK(rummage::fs::add_bookmark("", "/a") == std::optional<std::string>{"file:///a\n"});
 }
 
 TEST_CASE("bookmarks: written all at once, the folder made, the permissions kept") {
     const TempDir dir;
     const std::filesystem::path file = dir.path / "config" / "gtk-3.0" / "bookmarks";
-    CHECK_FALSE(nordend::core::write_file_atomically(file, "file:///a\n"));
-    CHECK(nordend::core::read_text_file(file).text == "file:///a\n");
+    CHECK_FALSE(rummage::core::write_file_atomically(file, "file:///a\n"));
+    CHECK(rummage::core::read_text_file(file).text == "file:///a\n");
     CHECK((std::filesystem::status(file).permissions() & std::filesystem::perms::all) ==
           (std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
            std::filesystem::perms::group_read | std::filesystem::perms::others_read));
     std::filesystem::permissions(
         file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
-    CHECK_FALSE(nordend::core::write_file_atomically(file, "file:///b\n"));
-    CHECK(nordend::core::read_text_file(file).text == "file:///b\n");
+    CHECK_FALSE(rummage::core::write_file_atomically(file, "file:///b\n"));
+    CHECK(rummage::core::read_text_file(file).text == "file:///b\n");
     CHECK((std::filesystem::status(file).permissions() & std::filesystem::perms::all) ==
           (std::filesystem::perms::owner_read | std::filesystem::perms::owner_write));
     // Nothing left beside it.
@@ -170,11 +170,11 @@ TEST_CASE("bookmarks: written all at once, the folder made, the permissions kept
     }
     CHECK(files == 1);
     // A folder where the file should be: an error, nothing else.
-    CHECK(nordend::core::write_file_atomically(dir.path / "config", "x"));
+    CHECK(rummage::core::write_file_atomically(dir.path / "config", "x"));
 }
 
 TEST_CASE("places: mounts") {
-    const std::vector<Place> places = nordend::fs::parse_mounts(
+    const std::vector<Place> places = rummage::fs::parse_mounts(
         "22 1 0:21 / / rw,relatime - btrfs /dev/nvme0n1p2 rw\n"
         "38 27 8:0 / /run/media/me/DATA rw,noatime - ext4 /dev/sda rw\n"
         "39 27 8:17 / /run/media/me/MY\\040STICK rw - vfat /dev/sdb1 rw\n"
@@ -194,13 +194,13 @@ TEST_CASE("places: load, without user-dirs.dirs") {
     std::ofstream{home.sources.config_home / "gtk-3.0" / "bookmarks"} << "file:///srv Served\n";
     std::ofstream{home.sources.mountinfo}
         << "38 27 8:0 / /run/media/me/DATA rw - ext4 /dev/sda rw\n";
-    const std::vector<Place> places = nordend::fs::load_places(home.sources);
+    const std::vector<Place> places = rummage::fs::load_places(home.sources);
     // The usual names that exist, in the sidebar's order.
     CHECK(labels(places) == std::vector<std::string>{"Home", "Downloads", "Pictures", "File system",
                                                      "Trash", "Served", "DATA"});
     CHECK(places[0].path == home.sources.home);
     CHECK(places[3].path == "/");
-    CHECK(places[4].path == nordend::fs::trash_path());
+    CHECK(places[4].path == rummage::fs::trash_path());
 }
 
 TEST_CASE("places: load, with user-dirs.dirs") {
@@ -209,7 +209,7 @@ TEST_CASE("places: load, with user-dirs.dirs") {
     std::ofstream{home.sources.config_home / "user-dirs.dirs"}
         << "XDG_PICTURES_DIR=\"$HOME/Immagini\"\nXDG_MUSIC_DIR=\"$HOME/Musica\"\n";
     // Downloads exists but the file does not name it; Musica is named but missing.
-    CHECK(labels(nordend::fs::load_places(home.sources)) ==
+    CHECK(labels(rummage::fs::load_places(home.sources)) ==
           std::vector<std::string>{"Home", "Immagini", "File system", "Trash"});
 }
 
@@ -218,7 +218,7 @@ TEST_CASE("places: the watcher follows the bookmarks") {
     fs::create_directories(home.sources.config_home / "gtk-3.0");
     EventLoop loop;
     int changes = 0;
-    nordend::fs::PlacesWatcher watcher{loop, home.sources, [&] { ++changes; }};
+    rummage::fs::PlacesWatcher watcher{loop, home.sources, [&] { ++changes; }};
     CHECK(watcher.places().size() == 5);
     std::ofstream{home.sources.config_home / "gtk-3.0" / "bookmarks"} << "file:///srv\n";
     CHECK(run_until(loop, [&] { return changes > 0; }));
@@ -226,8 +226,8 @@ TEST_CASE("places: the watcher follows the bookmarks") {
 }
 
 TEST_CASE("places: icons exist in the icon font") {
-    nordend::ui::FontSystem fonts;
-    nordend::ui::IconSet icons{fonts};
+    rummage::ui::FontSystem fonts;
+    rummage::ui::IconSet icons{fonts};
     REQUIRE(icons.available());
     Home home;
     std::ofstream{home.sources.mountinfo} << "38 27 8:0 / /mnt/x rw - ext4 /dev/sda rw\n";
@@ -240,8 +240,16 @@ TEST_CASE("places: icons exist in the icon font") {
     }
     fs::create_directories(home.sources.config_home / "gtk-3.0");
     std::ofstream{home.sources.config_home / "gtk-3.0" / "bookmarks"} << "file:///srv\n";
-    const std::vector<Place> places = nordend::fs::load_places(home.sources);
+    const std::vector<Place> places = rummage::fs::load_places(home.sources);
     CHECK(places.size() == 11);
+    // User directories above have arbitrary names; customization follows their XDG purpose.
+    std::vector<std::string_view> keys;
+    for (const auto& place : places) {
+        keys.push_back(place.icon_key);
+    }
+    CHECK(keys == std::vector<std::string_view>{"home", "desktop", "documents", "downloads",
+                                                "music", "pictures", "videos", "filesystem",
+                                                "trash", "", ""});
     for (const Place& place : places) {
         CHECK_MESSAGE(icons.has(place.icon), place.icon);
     }
@@ -268,11 +276,11 @@ TEST_CASE("places: the sidebar opens a place from the keyboard") {
     fs::create_directories(dir.path / "a" / "inner");
     fs::create_directories(dir.path / "b");
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     browser.set_places({{.label = "a", .path = dir.path / "a", .icon = "folder"},
                         {.label = "b", .path = dir.path / "b", .icon = "folder"}});
     browser.open(dir.path / "a");
@@ -316,10 +324,10 @@ TEST_CASE("places: the sidebar opens a place from the keyboard") {
 }
 
 TEST_CASE("places: sidebar zoom handles fractional wheels, limits and reset without places") {
-    nordend::views::Sidebar sidebar{[] {}, [](nordend::ui::CursorShape) {}, [](const Place&) {}};
+    rummage::views::Sidebar sidebar{[] {}, [](rummage::ui::CursorShape) {}, [](const Place&) {}};
     const auto now = Browser::Clock::now();
-    nordend::ui::PointerEvent wheel;
-    wheel.kind = nordend::ui::PointerEvent::Kind::scroll;
+    rummage::ui::PointerEvent wheel;
+    wheel.kind = rummage::ui::PointerEvent::Kind::scroll;
     wheel.modifiers.ctrl = true;
     wheel.wheel_y = -0.5F;
     sidebar.pointer(wheel, now);

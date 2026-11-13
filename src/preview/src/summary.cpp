@@ -2,16 +2,16 @@
 #include <string_view>
 #include <utility>
 
-#include "nordend/picture/load.hpp"
-#include "nordend/preview/preview.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/preview/preview.hpp"
 
-namespace nordend::preview {
+namespace rummage::preview {
 
 Summary summarize(const std::filesystem::path& path, std::string_view mime, Kind kind,
                   const core::CancelToken& cancel) {
     Summary summary;
     summary.info = read_info(path, cancel);
-    if (kind == Kind::image) {
+    if (kind == Kind::image && !mime.starts_with("video/")) {
         summary.photo = picture::load_photo_info(path);
     } else if (kind == Kind::text) {
         // A few kilobytes are enough for the lines the pane has room for.
@@ -27,4 +27,4 @@ Summary summarize(const std::filesystem::path& path, std::string_view mime, Kind
     return summary;
 }
 
-}  // namespace nordend::preview
+}  // namespace rummage::preview

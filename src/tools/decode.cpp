@@ -1,17 +1,17 @@
 // Image decoding check and benchmark (ROADMAP 5.1). Not installed.
 //
-//   nordend-decode [--runs N] [--stored] [--ppm OUT.ppm] [--raw OUT.pnm] FILE...
+//   rummage-decode [--runs N] [--stored] [--ppm OUT.ppm] [--raw OUT.pnm] FILE...
 //
 // For each file prints the format, the size (after the EXIF orientation), the orientation, the
 // time to read the file and the median time to decode it over N runs (default 5; the first run
 // is not counted when N > 1). --stored leaves the pixels as stored (no EXIF turn). --ppm writes the
 // last image decoded, over a mid gray where it is transparent, to look at it (magick OUT.ppm
-// OUT.png). A camera raw shows what Nordend shows of it (image::load, unscaled: its largest
+// OUT.png). A camera raw shows what rummage shows of it (image::load, unscaled: its largest
 // preview), not the first image of its TIFF structure. --raw also reads a DNG's sensor data
 // (ROADMAP 2d), prints its time and the development's (half size and in a 2560x1440 box, with
 // and without the file's opcodes), and writes the last one read as a 16-bit
 // PGM (CFA) or PPM (linear raw) of the stored values.
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -30,14 +30,14 @@
 #include "dng/develop.hpp"
 #include "dng/raw.hpp"
 #include "fd_file.hpp"
-#include "nordend/formats/image/load.hpp"
+#include "rummage/formats/image/load.hpp"
 #include "tiff/container.hpp"
 #include "tiff/decode.hpp"
 
 namespace {
 
-namespace image = nordend::formats::image;
-namespace picture = nordend::picture;
+namespace image = rummage::formats::image;
+namespace picture = rummage::picture;
 using Clock = std::chrono::steady_clock;
 
 double ms_since(Clock::time_point start) {
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
     }
     if (args.empty()) {
         std::fprintf(stderr,
-                     "usage: nordend-decode [--runs N] [--stored] [--ppm OUT.ppm] [--raw OUT.pnm] "
+                     "usage: rummage-decode [--runs N] [--stored] [--ppm OUT.ppm] [--raw OUT.pnm] "
                      "FILE...\n");
         return 2;
     }

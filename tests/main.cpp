@@ -11,25 +11,25 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/i18n.hpp"
-#include "nordend/engines/engines.hpp"
-#include "nordend/formats/image/load.hpp"
-#include "nordend/formats/image/photo.hpp"
-#include "nordend/formats/text/read.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/picture/load.hpp"
-#include "nordend/text/text.hpp"
+#include "rummage/core/i18n.hpp"
+#include "rummage/engines/engines.hpp"
+#include "rummage/formats/image/load.hpp"
+#include "rummage/formats/image/photo.hpp"
+#include "rummage/formats/text/read.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/text/text.hpp"
 
 int main(int argc, char** argv) {
     // The tests read the English interface, whatever language the machine speaks.
-    nordend::i18n::set_language(nordend::i18n::Language::english);
+    rummage::i18n::set_language(rummage::i18n::Language::english);
     // No test reads or makes the user's trash: the trash folder lists one of its own, and no
     // disk's.
-    std::string root = (std::filesystem::temp_directory_path() / "nordend-tests-XXXXXX").string();
+    std::string root = (std::filesystem::temp_directory_path() / "rummage-tests-XXXXXX").string();
     if (mkdtemp(root.data()) == nullptr) {
         return 1;
     }
-    nordend::fs::set_trash_sources({.home = std::filesystem::path{root} / "Trash",
+    rummage::fs::set_trash_sources({.home = std::filesystem::path{root} / "Trash",
                                     .tops = std::vector<std::filesystem::path>{},
                                     .uid = geteuid()});
     // Nor the user's configuration, data, cache or state: a key that writes there (Ctrl+D adds a
@@ -40,22 +40,23 @@ int main(int argc, char** argv) {
         // NOLINTNEXTLINE(concurrency-mt-unsafe): no other thread yet
         setenv(name, (std::filesystem::path{root} / folder).c_str(), 1);
     }
-    // The engines Nordend ships, from their manifests in the source tree (their programs are not
+    // The engines rummage ships, from their manifests in the source tree (their programs are not
     // started here).
-    nordend::engines::set_installed(std::make_shared<const nordend::engines::Registry>(
-        nordend::engines::Registry::load(NORDEND_ENGINES, [](std::string_view program) {
-            return std::filesystem::path{program};
+    rummage::engines::set_installed(std::make_shared<const rummage::engines::Registry>(
+        rummage::engines::Registry::load(RUMMAGE_ENGINES, [](std::string_view program) {
+            return program == "rummage-preview" ? std::filesystem::path{program}
+                                                : std::filesystem::path{};
         })));
-    // Pictures made in this process, by the image family itself (Nordend sends them to its
+    // Pictures made in this process, by the image family itself (rummage sends them to its
     // isolated helpers instead; tests/helpers_test.cpp covers that path).
-    nordend::picture::set_loader([](const nordend::picture::LoadRequest& request) {
-        return nordend::formats::image::load(request);
+    rummage::picture::set_loader([](const rummage::picture::LoadRequest& request) {
+        return rummage::formats::image::load(request);
     });
-    nordend::picture::set_info_loader([](const std::filesystem::path& path) {
-        return nordend::formats::image::read_photo_info(path);
+    rummage::picture::set_info_loader([](const std::filesystem::path& path) {
+        return rummage::formats::image::read_photo_info(path);
     });
-    nordend::text::set_loader([](const nordend::text::LoadRequest& request) {
-        return nordend::formats::text::load(request);
+    rummage::text::set_loader([](const rummage::text::LoadRequest& request) {
+        return rummage::formats::text::load(request);
     });
     doctest::Context context;
     context.applyCommandLine(argc, argv);

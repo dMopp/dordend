@@ -7,19 +7,19 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/picture/png.hpp"
-#include "nordend/picture/wuffs.hpp"
-#include "nordend/svg/svg.hpp"
+#include "rummage/picture/png.hpp"
+#include "rummage/picture/wuffs.hpp"
+#include "rummage/svg/svg.hpp"
 #include "svg_compare.hpp"
 
 namespace {
 auto svg(std::string_view body) {
     const auto source = "<svg width='64' height='64'>" + std::string(body) + "</svg>";
-    return nordend::svg::render(
+    return rummage::svg::render(
         {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, 64);
 }
 
-std::array<unsigned, 4> pixel(const nordend::picture::Image& im, unsigned x, unsigned y) {
+std::array<unsigned, 4> pixel(const rummage::picture::Image& im, unsigned x, unsigned y) {
     REQUIRE(x < im.width);
     REQUIRE(y < im.height);
     const auto at = (static_cast<std::size_t>(y) * im.width + x) * 4;
@@ -27,7 +27,7 @@ std::array<unsigned, 4> pixel(const nordend::picture::Image& im, unsigned x, uns
 }
 
 std::vector<std::uint8_t> bytes(std::string_view name) {
-    std::ifstream f{std::string(NORDEND_TEST_DATA) + "/svg/" + std::string(name), std::ios::binary};
+    std::ifstream f{std::string(RUMMAGE_TEST_DATA) + "/svg/" + std::string(name), std::ios::binary};
     REQUIRE(f.good());
     return {std::istreambuf_iterator<char>{f}, std::istreambuf_iterator<char>{}};
 }
@@ -53,9 +53,9 @@ std::string base64(std::span<const std::uint8_t> b) {
 TEST_CASE("svg stage3: committed effect references") {
     for (const std::string name : {"adwaita-mask", "blur", "filter-chain", "pattern"}) {
         CAPTURE(name);
-        const auto actual = nordend::svg::render(bytes(name + ".svg"), 64);
-        const auto expected = nordend::picture::decode_wuffs(bytes(name + ".png"), 4096);
-        const auto diff = nordend::test::svg_difference(actual, expected.image);
+        const auto actual = rummage::svg::render(bytes(name + ".svg"), 64);
+        const auto expected = rummage::picture::decode_wuffs(bytes(name + ".png"), 4096);
+        const auto diff = rummage::test::svg_difference(actual, expected.image);
         CAPTURE(diff.maximum);
         CAPTURE(diff.fraction);
         CHECK(diff.passes());
@@ -130,10 +130,10 @@ TEST_CASE("svg stage3: patterns inherit tiles and map object bounding boxes") {
 TEST_CASE(
     "svg stage3: embedded PNGs preserve straight alpha and ignore "
     "external images") {
-    nordend::picture::Image source;
+    rummage::picture::Image source;
     source.width = source.height = 1;
     source.rgba = {255, 0, 0, 128};
-    const auto data = base64(nordend::picture::encode_png(source));
+    const auto data = base64(rummage::picture::encode_png(source));
     const auto im =
         svg("<image width='64' height='64' href='data:image/png;base64," + data + "'/>");
     CHECK(pixel(im, 32, 32) == std::array<unsigned, 4>{255, 0, 0, 128});
@@ -161,7 +161,7 @@ TEST_CASE("svg stage3: unsupported filter warnings occur once per document") {
         "id='g'><feBlend/></filter></defs><rect width='8' height='8' filter='url(#f)'/><rect "
         "width='8' height='8' filter='url(#g)'/></svg>";
     unsigned warnings = 0;
-    const auto image = nordend::svg::render(
+    const auto image = rummage::svg::render(
         {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, 8,
         {[](void* context, std::string_view message) {
              CHECK_FALSE(message.empty());
@@ -173,11 +173,11 @@ TEST_CASE("svg stage3: unsupported filter warnings occur once per document") {
 }
 
 TEST_CASE("svg stage3: embedded JPEG uses the existing decoder") {
-    std::ifstream file{std::string(NORDEND_TEST_DATA) + "/image/blocks.jpg", std::ios::binary};
+    std::ifstream file{std::string(RUMMAGE_TEST_DATA) + "/image/blocks.jpg", std::ios::binary};
     REQUIRE(file.good());
     const std::vector<std::uint8_t> data{std::istreambuf_iterator<char>{file},
                                          std::istreambuf_iterator<char>{}};
-    const auto decoded = nordend::picture::decode_wuffs(data, 1024U * 1024U);
+    const auto decoded = rummage::picture::decode_wuffs(data, 1024U * 1024U);
     REQUIRE_FALSE(decoded.image.empty());
     const auto& expected = decoded.image;
     const auto source = "<svg width='" + std::to_string(expected.width) + "' height='" +
@@ -185,16 +185,16 @@ TEST_CASE("svg stage3: embedded JPEG uses the existing decoder") {
                         "'><image width='100%' height='100%' href='data:image/jpeg;base64," +
                         base64(data) + "'/></svg>";
     const auto image =
-        nordend::svg::render({reinterpret_cast<const std::uint8_t*>(source.data()), source.size()},
+        rummage::svg::render({reinterpret_cast<const std::uint8_t*>(source.data()), source.size()},
                              static_cast<int>(std::max(expected.width, expected.height)));
     CHECK(image.rgba == expected.rgba);
 }
 
 TEST_CASE("svg stage3: decoded image pixels and pattern tiles are bounded") {
-    nordend::picture::Image source;
+    rummage::picture::Image source;
     source.width = source.height = 1025;
     source.rgba.resize(1025U * 1025U * 4, 255);
-    const auto data = base64(nordend::picture::encode_png(source));
+    const auto data = base64(rummage::picture::encode_png(source));
     CHECK(svg("<image width='64' height='64' href='data:image/png;base64," + data + "'/>").empty());
     CHECK(svg("<image width='64' height='64' href='data:image/png;base64,!!!!'/>").empty());
     CHECK(
@@ -219,7 +219,7 @@ TEST_CASE("svg stage3: empty contours still consume the raster work budget") {
     for (int i = 0; i < 65; ++i)
         source += "<path d='M0 0L1024 1024'/>";
     source += "</svg>";
-    CHECK(nordend::svg::render(
+    CHECK(rummage::svg::render(
               {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, 1024)
               .empty());
 }
@@ -242,7 +242,7 @@ TEST_CASE("svg hardening: padded filter layers obey the aggregate memory cap") {
     // Four later blurs reserve 384 px of padding. Each layer is 12.25 MiB;
     // the fourth matrix's clip layer exceeds 64 MiB with only six live
     // layers, before blur work can exhaust the separate canvas work limit.
-    CHECK(nordend::svg::render(
+    CHECK(rummage::svg::render(
               {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, 1024)
               .empty());
 }

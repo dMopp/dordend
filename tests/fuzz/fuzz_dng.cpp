@@ -1,4 +1,4 @@
-// Fuzzes Nordend's own DNG reader (ROADMAP 2d) from memory: the raw image's IFD, its levels and
+// Fuzzes rummage's own DNG reader (ROADMAP 2d) from memory: the raw image's IFD, its levels and
 // colour tags, the sensor data (uncompressed, packed, lossless JPEG; strips and tiles) and the
 // development, to a small box so that each run stays fast.
 #include <cstddef>
@@ -10,9 +10,9 @@
 #include "dng/develop.hpp"
 #include "dng/raw.hpp"
 
-namespace image = nordend::formats::image;
-namespace dng = nordend::formats::image::dng;
-namespace tiff = nordend::formats::image::tiff;
+namespace image = rummage::formats::image;
+namespace dng = rummage::formats::image::dng;
+namespace tiff = rummage::formats::image::tiff;
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     const tiff::Source source{std::span<const std::uint8_t>{data, size}};

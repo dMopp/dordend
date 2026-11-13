@@ -1,18 +1,27 @@
-Source: nordend
+Source: rummage
 Section: utils
 Priority: optional
-Maintainer: Nordend fork maintainers <barrulus@users.noreply.github.com>
+Maintainer: rummage fork maintainers <barrulus@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), cmake, ninja-build, g++, pkg-config,
  libwayland-dev, wayland-protocols, libegl-dev, libgles-dev, libxkbcommon-dev,
  libharfbuzz-dev, libfreetype-dev, libfontconfig-dev, libtomlplusplus-dev,
+ libavformat-dev, libavcodec-dev, libavutil-dev, libswscale-dev,
  libwebp-dev, libjxl-dev, zlib1g-dev, libsdbus-c++-dev (>= 2)
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
-Homepage: https://github.com/barrulus/bordend-fm
+Homepage: https://github.com/barrulus/rummage
 
-Package: nordend
+Package: rummage
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, shared-mime-info, hicolor-icon-theme
+Suggests: rummage-media
 Description: Native Wayland file manager
  A file manager with column and grid views, isolated previews, configurable
  custom actions and an optional desktop file chooser portal.
+
+Package: rummage-media
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, rummage (= ${binary:Version})
+Description: Optional video thumbnails and still previews for rummage
+ Isolated video decoding using system FFmpeg shared libraries. No FFmpeg
+ command-line tools are required. This package does not provide playback.

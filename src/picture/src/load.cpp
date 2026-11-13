@@ -1,18 +1,18 @@
-#include "nordend/picture/load.hpp"
+#include "rummage/picture/load.hpp"
 
 #include <mutex>
 #include <utility>
 
-namespace nordend::picture {
+namespace rummage::picture {
 
 std::string_view failure_message(Failure failure) noexcept {
     switch (failure) {
         case Failure::none:
             return {};
         case Failure::unknown_format:
-            return "Nordend can't show this kind of file";
+            return "rummage can't show this kind of file";
         case Failure::no_readable_preview:
-            return "No preview Nordend can show in this file";
+            return "No preview rummage can show in this file";
         case Failure::too_large:
             return "This image is too large to show";
         case Failure::damaged:
@@ -69,4 +69,4 @@ PhotoInfo load_photo_info(const std::filesystem::path& path) {
     return loader ? loader(path) : PhotoInfo{};
 }
 
-}  // namespace nordend::picture
+}  // namespace rummage::picture

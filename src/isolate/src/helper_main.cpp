@@ -1,8 +1,8 @@
-// nordend-preview: Nordend's preview helper (ROADMAP 2b). Started by Nordend with a socket on
+// rummage-preview: rummage's preview helper (ROADMAP 2b). Started by rummage with a socket on
 // descriptor 3, never by hand: the base engine (data/engines/base.toml). It reads files only
-// through the descriptors Nordend sends, turns them into pictures (the image family) or texts
+// through the descriptors rummage sends, turns them into pictures (the image family) or texts
 // (the text family), and answers with the pixels or the lines in a sealed memfd. It leaves after
-// --idle-ms without work (a goodbye first), or when Nordend closes the socket.
+// --idle-ms without work (a goodbye first), or when rummage closes the socket.
 
 #include <algorithm>
 #include <array>
@@ -25,17 +25,14 @@
 #include <unistd.h>
 #include <vector>
 
-#include "nordend/formats/formats.hpp"
-#include "nordend/formats/text/read.hpp"
-#include "nordend/formats/text/syntax.hpp"
-#include "nordend/picture/load.hpp"
+#include "backend.hpp"
+#include "rummage/picture/load.hpp"
 #include "protocol.hpp"
 #include "sandbox.hpp"
-#include "warm_up.hpp"
 
-namespace isolate = nordend::isolate;
-namespace protocol = nordend::isolate::protocol;
-namespace picture = nordend::picture;
+namespace isolate = rummage::isolate;
+namespace protocol = rummage::isolate::protocol;
+namespace picture = rummage::picture;
 
 namespace {
 
@@ -70,7 +67,7 @@ int sealed_memfd(const char* name, std::span<const std::byte> bytes) {
 
 void answer_picture(int socket, int file, const protocol::Request& request) {
     const picture::Loaded loaded =
-        nordend::formats::make_picture(file, request.max_width, request.max_height);
+        isolate::backend::make_picture(file, request.max_width, request.max_height);
     protocol::Response response;
     response.failure = static_cast<std::uint8_t>(loaded.failure);
     response.from_preview = loaded.from_preview ? 1 : 0;
@@ -78,7 +75,7 @@ void answer_picture(int socket, int file, const protocol::Request& request) {
     response.full_height = loaded.full_height;
     int pixels = -1;
     if (loaded.failure == picture::Failure::none) {
-        pixels = sealed_memfd("nordend-picture", std::as_bytes(std::span{loaded.image.rgba}));
+        pixels = sealed_memfd("rummage-picture", std::as_bytes(std::span{loaded.image.rgba}));
         if (pixels < 0) {
             response.failure = static_cast<std::uint8_t>(picture::Failure::unavailable);
         } else {
@@ -101,9 +98,9 @@ void answer_picture(int socket, int file, const protocol::Request& request) {
 }
 
 void answer_text(int socket, int file, const protocol::TextAsk& ask) {
-    nordend::text::Loaded loaded = nordend::formats::text::read(file, ask.limits);
-    if (loaded.failure == nordend::text::Failure::none) {
-        nordend::formats::text::colour(loaded.text, ask.name, ask.mime);
+    rummage::text::Loaded loaded = isolate::backend::read_text(file, ask.limits);
+    if (loaded.failure == rummage::text::Failure::none) {
+        isolate::backend::colour(loaded.text, ask.name, ask.mime);
     }
     protocol::TextResponse response;
     response.failure = static_cast<std::uint8_t>(loaded.failure);
@@ -113,15 +110,15 @@ void answer_text(int socket, int file, const protocol::TextAsk& ask) {
     response.tail = loaded.text.tail ? 1 : 0;
     std::string_view language;
     int payload = -1;
-    if (loaded.failure == nordend::text::Failure::none) {
+    if (loaded.failure == rummage::text::Failure::none) {
         language = std::string_view{loaded.text.language}.substr(0, protocol::kMaxField);
         std::uint32_t text_bytes = 0;
         std::uint32_t spans = 0;
         const std::vector<std::byte> all =
             protocol::encode_text_payload(loaded.text, text_bytes, spans);
-        payload = all.empty() ? -1 : sealed_memfd("nordend-text", all);
+        payload = all.empty() ? -1 : sealed_memfd("rummage-text", all);
         if (!all.empty() && payload < 0) {
-            response.failure = static_cast<std::uint8_t>(nordend::text::Failure::unreadable);
+            response.failure = static_cast<std::uint8_t>(rummage::text::Failure::unreadable);
             language = {};
         } else {
             response.lines = static_cast<std::uint32_t>(loaded.text.lines.size());
@@ -148,47 +145,12 @@ void answer_text(int socket, int file, const protocol::TextAsk& ask) {
 }
 
 void answer_photo_info(int socket, int file) {
-    const std::vector<std::byte> bytes = protocol::encode_info(nordend::formats::photo_info(file));
+    const std::vector<std::byte> bytes = protocol::encode_info(isolate::backend::photo_info(file));
     static_cast<void>(protocol::send_packet(socket, bytes));
 }
 
-// A memfd holding bytes, for the warm-up; -1 on an error.
-int memfd_of(const isolate::WarmUpPicture& file) {
-    const int fd = ::memfd_create(file.name, MFD_CLOEXEC);
-    if (fd >= 0 && ::write(fd, file.data, file.size) != static_cast<ssize_t>(file.size)) {
-        ::close(fd);
-        return -1;
-    }
-    return fd;
-}
-
-// Each kind of picture once, from a memfd, before the cage closes: whatever the libraries load
-// on first use (libjxl's tables...) is loaded now. And one photo's information.
-void warm_up() {
-    const isolate::WarmUpPicture* photo = nullptr;
-    for (std::size_t i = 0; i < isolate::kWarmUpCount; ++i) {
-        const isolate::WarmUpPicture& file = isolate::kWarmUp[i];  // NOLINT: generated array
-        if (std::string_view{file.name} == "shot.jpg") {
-            photo = &file;
-        }
-        const int fd = memfd_of(file);
-        if (fd >= 0) {
-            static_cast<void>(nordend::formats::make_picture(fd, 64, 64));
-            ::close(fd);
-        }
-    }
-    if (photo != nullptr) {
-        const int fd = memfd_of(*photo);
-        if (fd >= 0) {
-            static_cast<void>(nordend::formats::photo_info(fd));
-            ::close(fd);
-        }
-    }
-    ::malloc_trim(0);
-}
-
 bool debug_log() {
-    const char* level = std::getenv("NORDEND_LOG");  // NOLINT(concurrency-mt-unsafe): one thread
+    const char* level = std::getenv("RUMMAGE_LOG");  // NOLINT(concurrency-mt-unsafe): one thread
     return level != nullptr &&
            (std::string_view{level} == "debug" || std::string_view{level} == "trace");
 }
@@ -206,24 +168,24 @@ int main(int argc, char** argv) {
             std::from_chars(value.data(), value.data() + value.size(), idle_ms);
         }
     }
-    // When Nordend goes away its end of the socket closes, and the helper leaves at its next
+    // When rummage goes away its end of the socket closes, and the helper leaves at its next
     // read. (Not PR_SET_PDEATHSIG: that follows the thread that started the helper, and
-    // Nordend's threads come and go.)
+    // rummage's threads come and go.)
     std::signal(SIGPIPE, SIG_IGN);  // NOLINT(cert-err33-c): nothing to check
 
     const pid_t pid = ::getpid();  // asked now: getpid is not allowed in the cage
-    warm_up();
-    const char* report = std::getenv("NORDEND_SANDBOX_REPORT");  // NOLINT(concurrency-mt-unsafe)
+    isolate::backend::warm_up();
+    const char* report = std::getenv("RUMMAGE_SANDBOX_REPORT");  // NOLINT(concurrency-mt-unsafe)
     const bool reporting = report != nullptr && std::string_view{report} == "1";
     const isolate::SandboxStatus sandbox =
         isolate::enter_sandbox(reporting ? isolate::Unexpected::report : isolate::Unexpected::kill);
     if (!sandbox.seccomp) {
-        std::fprintf(stderr, "nordend-preview: sandbox could not be set up: %s\n",
+        std::fprintf(stderr, "rummage-preview: sandbox could not be set up: %s\n",
                      sandbox.error.c_str());
         return protocol::kSandboxFailedExit;
     }
     if (debug_log()) {
-        std::fprintf(stderr, "nordend-preview %d: seccomp on, landlock %s, limits %s\n",
+        std::fprintf(stderr, "rummage-preview %d: seccomp on, landlock %s, limits %s\n",
                      static_cast<int>(pid),
                      sandbox.landlock_abi > 0
                          ? ("ABI " + std::to_string(sandbox.landlock_abi)).c_str()
@@ -256,7 +218,7 @@ int main(int argc, char** argv) {
         }
         std::optional<protocol::Packet> packet = protocol::receive_packet(socket);
         if (!packet) {
-            return 0;  // Nordend closed the socket
+            return 0;  // rummage closed the socket
         }
         // Its magic and kind first, then the whole request for that kind.
         std::uint32_t magic = 0;
@@ -264,7 +226,7 @@ int main(int argc, char** argv) {
         const int file = packet->fds[0];
         if (packet->length < sizeof(magic) + sizeof(kind) || file < 0) {
             packet->close_fds();
-            return 1;  // not Nordend talking
+            return 1;  // not rummage talking
         }
         std::memcpy(&magic, packet->bytes.data(), sizeof(magic));
         std::memcpy(&kind, packet->bytes.data() + sizeof(magic), sizeof(kind));

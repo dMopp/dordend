@@ -1,4 +1,4 @@
-#include "nordend/views/column_view.hpp"
+#include "rummage/views/column_view.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -11,10 +11,10 @@
 
 #include "draw_helpers.hpp"
 #include "item_style.hpp"
-#include "nordend/fs/icon.hpp"
-#include "nordend/views/format.hpp"
+#include "rummage/fs/icon.hpp"
+#include "rummage/views/format.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kDividerGrab = 4.0F;  // either side of a column edge
@@ -50,8 +50,10 @@ std::unique_ptr<Column> ColumnView::make_column(const std::filesystem::path& dir
 
 void ColumnView::set_entry_filter(fs::Listing::Predicate filter) {
     entry_filter_ = std::move(filter);
-    for (const auto& slot : columns_) {
-        slot.column->folder().set_entry_filter(entry_filter_);
+    // Filtering can remove the selection and synchronously truncate later columns through
+    // on_cursor_changed(). Recheck the size instead of retaining invalidated iterators.
+    for (std::size_t i = 0; i < columns_.size(); ++i) {
+        columns_[i].column->folder().set_entry_filter(entry_filter_);
     }
     redraw_();
 }
@@ -335,7 +337,7 @@ void ColumnView::layout() {
 }
 
 bool ColumnView::shows_info() const {
-    if (columns_.empty()) {
+    if (!info_visible_ || columns_.empty()) {
         return false;
     }
     const Folder& last = columns_.back().column->folder();
@@ -503,8 +505,7 @@ void ColumnView::draw(ui::Renderer& renderer, const ui::Rect& bounds, const them
         const float thumb_x = area_.x + ((area_.width - thumb) * offset / scroller_.max_offset());
         renderer.draw_box(
             {thumb_x, area_.bottom() - kScrollbarHeight - 2.0F, thumb, kScrollbarHeight},
-            {.fill = palette.on_surface_variant.with_alpha(0.45F),
-             .radius = ui::Corners::all(kScrollbarHeight / 2.0F)});
+            {.fill = palette.on_surface_variant.with_alpha(0.45F), .radius = {}});
     }
     renderer.pop_clip();
 
@@ -794,4 +795,4 @@ std::optional<std::pair<float, float>> ColumnView::cursor_anchor() const {
     return columns_[focus_].column->cursor_anchor();
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

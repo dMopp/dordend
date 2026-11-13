@@ -1,9 +1,9 @@
 #include <utility>
 
 #include "decoders.hpp"
-#include "nordend/picture/wuffs.hpp"
+#include "rummage/picture/wuffs.hpp"
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 
 // PNG, JPEG and GIF through picture's wuffs; the EXIF orientation read from the block it found.
 void decode_wuffs(std::span<const std::uint8_t> data, const DecodeOptions& options,
@@ -19,4 +19,4 @@ void decode_wuffs(std::span<const std::uint8_t> data, const DecodeOptions& optio
     }
 }
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

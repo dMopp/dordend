@@ -1,4 +1,4 @@
-#include "nordend/ui/icon_theme.hpp"
+#include "rummage/ui/icon_theme.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -8,11 +8,11 @@
 #include <limits>
 #include <map>
 
-#include "nordend/picture/scale.hpp"
-#include "nordend/picture/wuffs.hpp"
-#include "nordend/svg/svg.hpp"
+#include "rummage/picture/scale.hpp"
+#include "rummage/picture/wuffs.hpp"
+#include "rummage/svg/svg.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 using Section = std::map<std::string, std::string>;
@@ -312,4 +312,4 @@ std::vector<std::string> IconTheme::folder_icons() const {
     return names;
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

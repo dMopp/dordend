@@ -1,4 +1,4 @@
-#include "nordend/core/file_picker.hpp"
+#include "rummage/core/file_picker.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace nordend::core {
+namespace rummage::core {
 namespace {
 constexpr std::size_t kLimit = 4 * 1024 * 1024;
 constexpr std::uint32_t kItems = 16384;
@@ -251,4 +251,4 @@ PickerResult read_picker_result(int fd) {
     r.finish();
     return out;
 }
-}  // namespace nordend::core
+}  // namespace rummage::core

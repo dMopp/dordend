@@ -1,4 +1,4 @@
-#include "nordend/ui/seat.hpp"
+#include "rummage/ui/seat.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,10 +17,10 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/core/log.hpp"
-#include "nordend/ui/xcursor.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/ui/xcursor.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 // xkbcommon numbers keys as evdev codes + 8.
@@ -100,9 +100,9 @@ const char* compose_locale() {
     return "C";
 }
 
-// NORDEND_FORCE_XCURSOR set and not "0": the xcursor fallback even with cursor-shape-v1.
+// RUMMAGE_FORCE_XCURSOR set and not "0": the xcursor fallback even with cursor-shape-v1.
 bool xcursor_forced() {
-    const char* value = std::getenv("NORDEND_FORCE_XCURSOR");  // NOLINT(concurrency-mt-unsafe)
+    const char* value = std::getenv("RUMMAGE_FORCE_XCURSOR");  // NOLINT(concurrency-mt-unsafe)
     return value != nullptr && *value != '\0' && std::string_view{value} != "0";
 }
 
@@ -207,7 +207,7 @@ void Seat::on_capabilities(void* data, wl_seat* seat, std::uint32_t capabilities
         } else if (self.display_.shm() != nullptr) {
             if (!self.xcursor_) {
                 log::info("cursor: {}, drawn from the xcursor theme",
-                          manager != nullptr ? "NORDEND_FORCE_XCURSOR" : "no cursor-shape-v1");
+                          manager != nullptr ? "RUMMAGE_FORCE_XCURSOR" : "no cursor-shape-v1");
                 self.xcursor_ = std::make_unique<XcursorFallback>(
                     self.display_.compositor(), self.display_.shm(), self.display_.viewporter());
             }
@@ -528,4 +528,4 @@ Modifiers Seat::current_modifiers() const {
             .super = active(XKB_MOD_NAME_LOGO)};
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

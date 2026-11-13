@@ -1,10 +1,10 @@
 # The base engine (ROADMAP 2, 3): photos, pictures, camera raw files and text files, read by
-# nordend-preview in its cage. Installed in share/nordend/engines/; Nordend reads every manifest
-# there at start-up (src/engines/include/nordend/engines/engines.hpp says what each key means).
+# rummage-preview in its cage. Installed in share/rummage/engines/; rummage reads every manifest
+# there at start-up (src/engines/include/rummage/engines/engines.hpp says what each key means).
 
 [engine]
 name = "base"
-program = "nordend-preview"
+program = "rummage-preview"
 protocol = 4
 
 [[family]]

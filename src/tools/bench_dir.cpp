@@ -1,7 +1,7 @@
 // Directory loading benchmark (ROADMAP 3.1). Not installed.
 //
-//   nordend-bench-dir --make N DIR   create DIR with N files named like a camera folder
-//   nordend-bench-dir [--runs N] [--list] DIR
+//   rummage-bench-dir --make N DIR   create DIR with N files named like a camera folder
+//   rummage-bench-dir [--runs N] [--list] DIR
 //
 // Per run: first the async path the views use (worker pool -> chunks -> sorted Listing on the
 // loop thread): time to the first chunk merged and to the complete list; then readdir alone,
@@ -27,16 +27,16 @@
 #include <thread>
 #include <vector>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/sort.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/sort.hpp"
 
 namespace {
 
-namespace core = nordend::core;
-namespace fs = nordend::fs;
+namespace core = rummage::core;
+namespace fs = rummage::fs;
 using Clock = std::chrono::steady_clock;
 
 double ms_since(Clock::time_point start) {
@@ -178,8 +178,8 @@ int main(int argc, char** argv) {
         }
         if (dir.empty()) {
             std::fprintf(stderr,
-                         "usage: nordend-bench-dir --make N DIR\n"
-                         "       nordend-bench-dir [--runs N] [--list] DIR\n");
+                         "usage: rummage-bench-dir --make N DIR\n"
+                         "       rummage-bench-dir [--runs N] [--list] DIR\n");
             return 2;
         }
 
@@ -237,7 +237,7 @@ int main(int argc, char** argv) {
         }
         return 0;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "nordend-bench-dir: %s\n", e.what());
+        std::fprintf(stderr, "rummage-bench-dir: %s\n", e.what());
         return 1;
     }
 }

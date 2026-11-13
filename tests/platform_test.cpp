@@ -13,31 +13,31 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/entry.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/platform/applications.hpp"
-#include "nordend/platform/desktop_entry.hpp"
-#include "nordend/platform/exec.hpp"
-#include "nordend/platform/launcher.hpp"
-#include "nordend/platform/opener.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/entry.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/platform/applications.hpp"
+#include "rummage/platform/desktop_entry.hpp"
+#include "rummage/platform/exec.hpp"
+#include "rummage/platform/launcher.hpp"
+#include "rummage/platform/opener.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::core::WorkerPool;
-using nordend::fs::MimeDatabase;
-using nordend::platform::Applications;
-using nordend::platform::DesktopEntry;
-using nordend::platform::Environment;
-using nordend::platform::Launcher;
-using nordend::platform::Opener;
-using nordend::platform::OpenFile;
-using nordend::platform::OpenPlan;
-using nordend::test::TempDir;
+using rummage::core::EventLoop;
+using rummage::core::WorkerPool;
+using rummage::fs::MimeDatabase;
+using rummage::platform::Applications;
+using rummage::platform::DesktopEntry;
+using rummage::platform::Environment;
+using rummage::platform::Launcher;
+using rummage::platform::Opener;
+using rummage::platform::OpenFile;
+using rummage::platform::OpenPlan;
+using rummage::test::TempDir;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
-namespace platform = nordend::platform;
+namespace platform = rummage::platform;
 
 namespace {
 
@@ -348,11 +348,11 @@ TEST_CASE("launcher: exit status, errors, a clean environment and signal mask") 
     EventLoop loop;
     Launcher launcher{loop};
     std::optional<Launcher::Exit> exit;
-    const std::vector<std::string> env{"NORDEND_TEST_VAR=hello"};
-    // The child sees the added variable, runs in the folder given, and blocks no signal (Nordend
+    const std::vector<std::string> env{"RUMMAGE_TEST_VAR=hello"};
+    // The child sees the added variable, runs in the folder given, and blocks no signal (rummage
     // blocks SIGINT and SIGTERM for its signalfd).
     REQUIRE_FALSE(launcher.spawn({"sh", "-c",
-                                  "echo \"$NORDEND_TEST_VAR $(pwd)\" > out; "
+                                  "echo \"$RUMMAGE_TEST_VAR $(pwd)\" > out; "
                                   "grep SigBlk /proc/self/status >> out; exit 3"},
                                  dir.path, env, [&](Launcher::Exit e) { exit = e; }));
     CHECK(launcher.running() == 1);
@@ -370,7 +370,7 @@ TEST_CASE("launcher: exit status, errors, a clean environment and signal mask") 
     CHECK(exit.value_or(Launcher::Exit{}).signal == SIGTERM);
 
     const std::error_code error =
-        launcher.spawn({"nordend-no-such-program"}, {}, {}, [](Launcher::Exit /*e*/) {});
+        launcher.spawn({"rummage-no-such-program"}, {}, {}, [](Launcher::Exit /*e*/) {});
     CHECK(error == std::errc::no_such_file_or_directory);
     CHECK(launcher.running() == 0);
 }
@@ -396,7 +396,7 @@ TEST_CASE("opener: the files reach their application, and what happened is repor
     Opener opener{
         loop, pool, sys.mime, sys.environment,
         [&](const std::string& message, bool error) { reports.emplace_back(message, error); }};
-    using Kind = nordend::fs::EntryKind;
+    using Kind = rummage::fs::EntryKind;
     opener.open(sys.dir.path / "photos", {{.name = "a.jpg", .kind = Kind::file, .size = 1},
                                           {.name = "b.jpg", .kind = Kind::file, .size = 1},
                                           {.name = "sub", .kind = Kind::directory}});
@@ -479,7 +479,7 @@ TEST_CASE("opener: a terminal in a folder, and a folder with a chosen applicatio
 
     // Open With on a folder: the application gets it (without one, folders are left out).
     reports.clear();
-    using Kind = nordend::fs::EntryKind;
+    using Kind = rummage::fs::EntryKind;
     opener.open(sys.dir.path / "photos", {{.name = "sub", .kind = Kind::directory}},
                 "editor.desktop");
     REQUIRE(run_until(loop, [&] {

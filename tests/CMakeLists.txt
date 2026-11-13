@@ -1,4 +1,4 @@
-add_executable(nordend-tests
+add_executable(rummage-tests
     actions_test.cpp
     archives_test.cpp
     main.cpp
@@ -43,6 +43,7 @@ add_executable(nordend-tests
     remote_test.cpp
     pointer_shapes_test.cpp
     tabs_test.cpp
+    panes_test.cpp
     text_test.cpp
     text_selection_test.cpp
     platform_test.cpp
@@ -68,73 +69,89 @@ add_executable(nordend-tests
     undo_test.cpp
     worker_pool_test.cpp
     xcursor_test.cpp)
-target_link_libraries(nordend-tests PRIVATE nordend::svg nordend::core nordend::theme nordend::fs nordend::views nordend::picture nordend::formats nordend::formats::image nordend::formats::text nordend::text nordend::thumbs nordend::preview nordend::engines nordend::isolate nordend::platform doctest::doctest nordend::warnings)
+target_link_libraries(rummage-tests PRIVATE rummage::svg rummage::core rummage::theme rummage::fs rummage::views rummage::picture rummage::formats rummage::formats::image rummage::formats::text rummage::text rummage::thumbs rummage::preview rummage::engines rummage::isolate rummage::platform doctest::doctest rummage::warnings)
 
 # The helper protocol's private header, for its tests; the image family's private readers (TIFF,
 # DNG, lossless JPEG), for theirs.
-target_include_directories(nordend-tests PRIVATE ${PROJECT_SOURCE_DIR}/src/isolate/src
+target_include_directories(rummage-tests PRIVATE ${PROJECT_SOURCE_DIR}/src/isolate/src
                                                  ${PROJECT_SOURCE_DIR}/src/formats/image/src)
 
 # LibRaw, when installed, as the reference for the DNG reader's values (tests only: never linked
-# into Nordend or its helper).
+# into rummage or its helper).
 pkg_check_modules(LIBRAW QUIET IMPORTED_TARGET libraw_r)
 if(LIBRAW_FOUND)
-    target_sources(nordend-tests PRIVATE dng_libraw_test.cpp)
-    target_link_libraries(nordend-tests PRIVATE PkgConfig::LIBRAW)
+    target_sources(rummage-tests PRIVATE dng_libraw_test.cpp)
+    target_link_libraries(rummage-tests PRIVATE PkgConfig::LIBRAW)
 endif()
 
 # exiv2, when installed, as the reference for the metadata readers that replace it (ROADMAP 2e;
-# tests only: never linked into Nordend or its helper).
+# tests only: never linked into rummage or its helper).
 pkg_check_modules(EXIV2_REFERENCE QUIET IMPORTED_TARGET exiv2)
 if(EXIV2_REFERENCE_FOUND)
-    target_sources(nordend-tests PRIVATE exiv2_reference.cpp exiv2_reference_test.cpp)
-    target_link_libraries(nordend-tests PRIVATE PkgConfig::EXIV2_REFERENCE)
-    # Nordend's reader against exiv2's, timed (tools, not tests).
-    add_executable(nordend-bench-previews bench_previews.cpp exiv2_reference.cpp)
-    target_include_directories(nordend-bench-previews PRIVATE ${PROJECT_SOURCE_DIR}/src/formats/image/src)
-    target_link_libraries(nordend-bench-previews
-        PRIVATE nordend::formats::image PkgConfig::EXIV2_REFERENCE nordend::warnings)
+    target_sources(rummage-tests PRIVATE exiv2_reference.cpp exiv2_reference_test.cpp)
+    target_link_libraries(rummage-tests PRIVATE PkgConfig::EXIV2_REFERENCE)
+    # rummage's reader against exiv2's, timed (tools, not tests).
+    add_executable(rummage-bench-previews bench_previews.cpp exiv2_reference.cpp)
+    target_include_directories(rummage-bench-previews PRIVATE ${PROJECT_SOURCE_DIR}/src/formats/image/src)
+    target_link_libraries(rummage-bench-previews
+        PRIVATE rummage::formats::image PkgConfig::EXIV2_REFERENCE rummage::warnings)
 endif()
 
 # A preview helper that misbehaves on purpose (crash, hang, nonsense), and the real one, for
 # tests/helpers_test.cpp.
-add_executable(nordend-fake-preview fake_preview_helper.cpp
+add_executable(rummage-fake-preview fake_preview_helper.cpp
                                     ${PROJECT_SOURCE_DIR}/src/isolate/src/protocol.cpp)
-target_include_directories(nordend-fake-preview PRIVATE ${PROJECT_SOURCE_DIR}/src/isolate/src)
-target_link_libraries(nordend-fake-preview PRIVATE nordend::picture nordend::text nordend::warnings)
+target_include_directories(rummage-fake-preview PRIVATE ${PROJECT_SOURCE_DIR}/src/isolate/src)
+target_link_libraries(rummage-fake-preview PRIVATE rummage::picture rummage::text rummage::warnings)
 
 # The sandbox probe: the preview helper's cage, then one forbidden (or allowed) thing.
-add_executable(nordend-sandbox-probe sandbox_probe.cpp
+add_executable(rummage-sandbox-probe sandbox_probe.cpp
                                      ${PROJECT_SOURCE_DIR}/src/isolate/src/sandbox.cpp)
-target_include_directories(nordend-sandbox-probe PRIVATE ${PROJECT_SOURCE_DIR}/src/isolate/src)
-target_link_libraries(nordend-sandbox-probe PRIVATE nordend::warnings)
-add_dependencies(nordend-tests nordend-preview nordend-fake-preview nordend-sandbox-probe)
+target_include_directories(rummage-sandbox-probe PRIVATE ${PROJECT_SOURCE_DIR}/src/isolate/src)
+target_link_libraries(rummage-sandbox-probe PRIVATE rummage::warnings)
+add_dependencies(rummage-tests rummage-preview rummage-fake-preview rummage-sandbox-probe)
 # The shipped example config must parse clean and match the built-in defaults.
-target_compile_definitions(nordend-tests
-    PRIVATE NORDEND_EXAMPLE_CONFIG="${PROJECT_SOURCE_DIR}/docs/config.example.toml"
-            NORDEND_TEST_DATA="${PROJECT_SOURCE_DIR}/tests/data"
-            NORDEND_APP_ICON="${PROJECT_SOURCE_DIR}/data/nordend.svg"
-            NORDEND_ENGINES="${PROJECT_SOURCE_DIR}/data/engines"
-            NORDEND_PREVIEW_HELPER="$<TARGET_FILE:nordend-preview>"
-            NORDEND_FAKE_HELPER="$<TARGET_FILE:nordend-fake-preview>"
-            NORDEND_SANDBOX_PROBE="$<TARGET_FILE:nordend-sandbox-probe>")
-if(NORDEND_SANITIZER)
-    target_sources(nordend-tests PRIVATE ${PROJECT_SOURCE_DIR}/src/core/src/lsan_suppressions.cpp)
+target_compile_definitions(rummage-tests
+    PRIVATE RUMMAGE_EXAMPLE_CONFIG="${PROJECT_SOURCE_DIR}/docs/config.example.toml"
+            RUMMAGE_TEST_DATA="${PROJECT_SOURCE_DIR}/tests/data"
+            RUMMAGE_APP_ICON="${PROJECT_SOURCE_DIR}/data/rummage.svg"
+            RUMMAGE_ENGINES="${PROJECT_SOURCE_DIR}/data/engines"
+            RUMMAGE_PREVIEW_HELPER="$<TARGET_FILE:rummage-preview>"
+            RUMMAGE_FAKE_HELPER="$<TARGET_FILE:rummage-fake-preview>"
+            RUMMAGE_SANDBOX_PROBE="$<TARGET_FILE:rummage-sandbox-probe>")
+if(RUMMAGE_SANITIZER)
+    target_sources(rummage-tests PRIVATE ${PROJECT_SOURCE_DIR}/src/core/src/lsan_suppressions.cpp)
 endif()
 
 # Allocator thresholds depend on earlier allocations: give memory accounting its own process.
-add_test(NAME nordend-tests COMMAND nordend-tests "--source-file-exclude=*memory_test.cpp")
-add_test(NAME memory-tests COMMAND nordend-tests "--source-file=*memory_test.cpp")
+add_test(NAME rummage-tests COMMAND rummage-tests "--source-file-exclude=*memory_test.cpp")
+add_test(NAME memory-tests COMMAND rummage-tests "--source-file=*memory_test.cpp")
 
-add_executable(nordend-portal-tests file_picker_portal_test.cpp)
-target_link_libraries(nordend-portal-tests PRIVATE nordend::platform PkgConfig::SDBUSCPP nordend::warnings)
-add_executable(nordend-notification-tests notifications_test.cpp)
-target_include_directories(nordend-notification-tests PRIVATE ${PROJECT_SOURCE_DIR}/src/platform/src)
-target_link_libraries(nordend-notification-tests PRIVATE nordend::platform PkgConfig::SDBUSCPP nordend::warnings)
+add_executable(rummage-portal-tests file_picker_portal_test.cpp)
+target_link_libraries(rummage-portal-tests PRIVATE rummage::platform PkgConfig::SDBUSCPP rummage::warnings)
+add_executable(rummage-notification-tests notifications_test.cpp)
+target_include_directories(rummage-notification-tests PRIVATE ${PROJECT_SOURCE_DIR}/src/platform/src)
+target_link_libraries(rummage-notification-tests PRIVATE rummage::platform PkgConfig::SDBUSCPP rummage::warnings)
 find_program(DBUS_RUN_SESSION dbus-run-session)
 if(DBUS_RUN_SESSION)
-    add_test(NAME file-picker-portal COMMAND "${DBUS_RUN_SESSION}" -- $<TARGET_FILE:nordend-portal-tests>)
+    add_test(NAME file-picker-portal COMMAND "${DBUS_RUN_SESSION}" -- $<TARGET_FILE:rummage-portal-tests>)
     set_tests_properties(file-picker-portal PROPERTIES TIMEOUT 30)
-    add_test(NAME action-notifications COMMAND "${DBUS_RUN_SESSION}" -- $<TARGET_FILE:nordend-notification-tests>)
+    add_test(NAME action-notifications COMMAND "${DBUS_RUN_SESSION}" -- $<TARGET_FILE:rummage-notification-tests>)
     set_tests_properties(action-notifications PROPERTIES TIMEOUT 15)
+endif()
+
+if(RUMMAGE_MEDIA)
+    add_executable(rummage-media-tests media_test.cpp)
+    target_link_libraries(rummage-media-tests PRIVATE doctest::doctest rummage::isolate
+        rummage::thumbs rummage::preview rummage::warnings)
+    target_compile_definitions(rummage-media-tests PRIVATE
+        RUMMAGE_MEDIA_HELPER="$<TARGET_FILE:rummage-media>"
+        RUMMAGE_BASE_HELPER="$<TARGET_FILE:rummage-preview>"
+        RUMMAGE_FAKE_HELPER="$<TARGET_FILE:rummage-fake-preview>"
+        RUMMAGE_MEDIA_DATA="${PROJECT_SOURCE_DIR}/tests/data/media"
+        RUMMAGE_IMAGE_DATA="${PROJECT_SOURCE_DIR}/tests/data/image"
+        RUMMAGE_ENGINE_DATA="${PROJECT_SOURCE_DIR}/data/engines")
+    add_dependencies(rummage-media-tests rummage-media rummage-preview rummage-fake-preview)
+    add_test(NAME media-tests COMMAND rummage-media-tests)
+    set_tests_properties(media-tests PROPERTIES TIMEOUT 60)
 endif()

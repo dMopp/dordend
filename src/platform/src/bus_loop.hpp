@@ -2,9 +2,9 @@
 
 #include <sdbus-c++/sdbus-c++.h>
 
-#include "nordend/core/event_loop.hpp"
+#include "rummage/core/event_loop.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 
 // A D-Bus connection served by the loop instead of a thread of its own: its socket for what it
 // asks, its event fd, its timeout. Calls and signals are then handled on the loop thread.
@@ -38,4 +38,4 @@ private:
     bool pumping_{false};
 };
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

@@ -2,9 +2,9 @@
 #include <cstddef>
 #include <cstring>
 
-#include "nordend/picture/image.hpp"
+#include "rummage/picture/image.hpp"
 
-namespace nordend::picture {
+namespace rummage::picture {
 namespace {
 
 constexpr std::ptrdiff_t kTile = 32;  // apply_orientation works in kTile x kTile blocks
@@ -80,4 +80,4 @@ Image apply_orientation(Image image, std::uint8_t orientation) {
     return out;
 }
 
-}  // namespace nordend::picture
+}  // namespace rummage::picture

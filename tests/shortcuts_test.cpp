@@ -1,4 +1,4 @@
-#include "nordend/views/shortcuts.hpp"
+#include "rummage/views/shortcuts.hpp"
 
 #include <array>
 #include <chrono>
@@ -15,25 +15,25 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/shortcuts_overlay.hpp"
-#include "nordend/views/status_bar.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/shortcuts_overlay.hpp"
+#include "rummage/views/status_bar.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::views::Browser;
-using nordend::views::Command;
-using nordend::views::Folder;
-using nordend::views::Shortcut;
-using nordend::views::shortcuts;
-namespace scope = nordend::views::scope;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::views::Browser;
+using rummage::views::Command;
+using rummage::views::Folder;
+using rummage::views::Shortcut;
+using rummage::views::shortcuts;
+namespace scope = rummage::views::scope;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -55,7 +55,7 @@ bool run_until(EventLoop& loop, const std::function<bool()>& done) {
 }
 
 bool cursor_name_is(const Folder& folder, std::string_view name) {
-    const nordend::fs::Entry* entry = folder.cursor_entry();
+    const rummage::fs::Entry* entry = folder.cursor_entry();
     return entry != nullptr && entry->name == name;
 }
 
@@ -81,11 +81,11 @@ struct Fixture {
     TempDir dir;
     fs::path root = dir.path / "root";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
 
     Fixture() {
         make_files();
@@ -176,12 +176,16 @@ std::vector<KeyEvent> chords_of(const Shortcut& shortcut) {
 }  // namespace
 
 TEST_CASE("shortcuts: the groups are the overlay's") {
-    const std::vector<std::string_view> groups = nordend::views::overlay_groups();
+    const std::vector<std::string_view> groups = rummage::views::overlay_groups();
     const std::set<std::string_view> expected{groups.begin(), groups.end()};
     for (const Shortcut& shortcut : shortcuts()) {
         CHECK_MESSAGE(expected.contains(shortcut.group), shortcut.group);
         CHECK(shortcut.scope != 0);
-        CHECK(!chords_of(shortcut).empty());
+        // Commands may intentionally have no default binding; they remain bindable.
+        if (chords_of(shortcut).empty()) {
+            CHECK(shortcut.keys.empty());
+            CHECK(shortcut.command != Command::none);
+        }
     }
 }
 
@@ -266,8 +270,8 @@ TEST_CASE("shortcuts: nothing else does anything") {
                 if (!f.browser.key(event, Browser::Clock::now())) {
                     continue;
                 }
-                CHECK_MESSAGE((nordend::views::listed(event, scope_of(mode)) ||
-                               nordend::views::command_for(event) != Command::none),
+                CHECK_MESSAGE((rummage::views::listed(event, scope_of(mode)) ||
+                               rummage::views::command_for(event) != Command::none),
                               describe(event) << " in mode " << static_cast<int>(mode));
                 f.reset(mode);
             }
@@ -302,15 +306,15 @@ TEST_CASE("status bar: the status and the free space") {
     Fixture f;
     f.reset(Browser::Mode::details);
     std::shared_ptr<Folder> folder = f.folder();
-    CHECK(nordend::views::status_of(*folder) == "3 items");
+    CHECK(rummage::views::status_of(*folder) == "3 items");
     folder->select_all();
-    CHECK(nordend::views::status_of(*folder) == "3 of 3 selected");
+    CHECK(rummage::views::status_of(*folder) == "3 of 3 selected");
 
-    nordend::views::StatusBar& bar = f.browser.status_bar();
+    rummage::views::StatusBar& bar = f.browser.status_bar();
     bar.update(*folder);
     REQUIRE(run_until(f.loop, [&] { return !bar.loading(); }));
     REQUIRE(bar.free_space().has_value());
-    CHECK(bar.free_space().value_or(nordend::views::FreeSpace{}).total > 0);
+    CHECK(bar.free_space().value_or(rummage::views::FreeSpace{}).total > 0);
     bar.update(*folder);
     CHECK_FALSE(bar.loading());  // known for this listing
 
@@ -324,20 +328,20 @@ TEST_CASE("status bar: the status and the free space") {
 
 namespace {
 struct ResetBindings {
-    ~ResetBindings() { (void)nordend::views::configure_shortcuts({}); }
+    ~ResetBindings() { (void)rummage::views::configure_shortcuts({}); }
 };
 }  // namespace
 
 TEST_CASE("shortcuts: overrides replace defaults and reject conflicts atomically") {
     ResetBindings reset;
-    using nordend::views::command_for;
-    using nordend::views::configure_shortcuts;
+    using rummage::views::command_for;
+    using rummage::views::configure_shortcuts;
     REQUIRE(configure_shortcuts({{"rename", "Ctrl+r"}, {"trash", ""}}).empty());
     CHECK(command_for(chord(XKB_KEY_r, {.ctrl = true})) == Command::rename);
     CHECK(command_for(chord(XKB_KEY_R, {.ctrl = true})) == Command::rename);
     CHECK(command_for(chord(XKB_KEY_F2, {})) == Command::none);
     CHECK(command_for(chord(XKB_KEY_Delete, {})) == Command::none);
-    CHECK(nordend::views::keys_for(Command::rename) == "Ctrl+r");
+    CHECK(rummage::views::keys_for(Command::rename) == "Ctrl+r");
     for (const auto& binding :
          std::vector<std::pair<std::string, std::string>>{{"rename", "Ctrl+c"},
                                                           {"rename", "Ctrl+q"},
@@ -356,7 +360,7 @@ TEST_CASE("shortcuts: overrides replace defaults and reject conflicts atomically
 
 TEST_CASE("shortcuts: custom selection and rename work in each view") {
     ResetBindings reset;
-    REQUIRE(nordend::views::configure_shortcuts(
+    REQUIRE(rummage::views::configure_shortcuts(
                 {{"select_all", "Ctrl+g"}, {"toggle_selection", "Ctrl+j"}, {"rename", "Ctrl+r"}})
                 .empty());
     Fixture f;
@@ -376,23 +380,23 @@ TEST_CASE("shortcuts: custom selection and rename work in each view") {
 
 TEST_CASE("shortcuts: tab aliases and combined help rows follow overrides") {
     ResetBindings reset;
-    using nordend::views::command_for;
-    using nordend::views::configure_shortcuts;
+    using rummage::views::command_for;
+    using rummage::views::configure_shortcuts;
     REQUIRE(configure_shortcuts({{"previous_tab", "Ctrl+Shift+Tab"}, {"back", "Alt+b"}}).empty());
     CHECK(command_for(chord(XKB_KEY_ISO_Left_Tab, {.ctrl = true, .shift = true})) ==
           Command::previous_tab);
-    CHECK(nordend::views::keys_for(Command::back) == "Alt+b");
-    CHECK(nordend::views::keys_for(Command::forward) == "Alt+Right");
-    CHECK(nordend::views::keys_for(Command::next_tab) == "Ctrl+Tab");
+    CHECK(rummage::views::keys_for(Command::back) == "Alt+b");
+    CHECK(rummage::views::keys_for(Command::forward) == "Alt+Right");
+    CHECK(rummage::views::keys_for(Command::next_tab) == "Ctrl+Tab");
 }
 
 TEST_CASE("shortcuts: overflow is reachable by wheel, keyboard and scrollbar") {
-    nordend::views::ShortcutsOverlay overlay{[] {}};
+    rummage::views::ShortcutsOverlay overlay{[] {}};
     overlay.open();
     overlay.layout({0, 0, 640, 480});
     overlay.key(chord(XKB_KEY_Right, {}));
     REQUIRE(overlay.max_scroll() > 0.0F);
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::scroll, .wheel_y = 1.0F});
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::scroll, .wheel_y = 1.0F});
     CHECK(overlay.scroll_offset() == 48.0F);
     overlay.key(chord(XKB_KEY_End, {}));
     CHECK(overlay.scroll_offset() == overlay.max_scroll());
@@ -401,18 +405,18 @@ TEST_CASE("shortcuts: overflow is reachable by wheel, keyboard and scrollbar") {
     overlay.key(chord(XKB_KEY_Home, {}));
     CHECK(overlay.scroll_offset() == 0.0F);
     // Content clicks leave the reference open, while the scrollbar can be dragged to the end.
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::press,
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::press,
                      .x = 100,
                      .y = 180,
-                     .button = nordend::ui::PointerButton::left});
+                     .button = rummage::ui::PointerButton::left});
     CHECK(overlay.is_open());
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::press,
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::press,
                      .x = 576,
                      .y = 128,
-                     .button = nordend::ui::PointerButton::left});
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::motion, .x = 576, .y = 440});
+                     .button = rummage::ui::PointerButton::left});
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::motion, .x = 576, .y = 440});
     CHECK(overlay.scroll_offset() == overlay.max_scroll());
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::release});
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::release});
     overlay.layout({0, 0, 1600, 4000});
     overlay.key(chord(XKB_KEY_Left, {}));
     CHECK(overlay.max_scroll() == 0.0F);
@@ -422,28 +426,28 @@ TEST_CASE("shortcuts: overflow is reachable by wheel, keyboard and scrollbar") {
     overlay.close();
     overlay.open();
     CHECK(overlay.scroll_offset() == 0.0F);
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::press,
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::press,
                      .x = 0,
                      .y = 0,
-                     .button = nordend::ui::PointerButton::left});
+                     .button = rummage::ui::PointerButton::left});
     CHECK_FALSE(overlay.is_open());
 }
 
 TEST_CASE("shortcuts: groups start collapsed and toggle by mouse and keyboard") {
-    nordend::views::ShortcutsOverlay overlay{[] {}};
+    rummage::views::ShortcutsOverlay overlay{[] {}};
     overlay.open();
     overlay.layout({0, 0, 1000, 800});
     CHECK(overlay.max_scroll() == 0.0F);
     // General is the first header; clicking either its title or row toggles it.
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::press,
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::press,
                      .x = 100,
                      .y = 140,
-                     .button = nordend::ui::PointerButton::left});
+                     .button = rummage::ui::PointerButton::left});
     REQUIRE(overlay.max_scroll() > 0.0F);
-    overlay.pointer({.kind = nordend::ui::PointerEvent::Kind::press,
+    overlay.pointer({.kind = rummage::ui::PointerEvent::Kind::press,
                      .x = 500,
                      .y = 140,
-                     .button = nordend::ui::PointerButton::left});
+                     .button = rummage::ui::PointerButton::left});
     CHECK(overlay.max_scroll() == 0.0F);
     overlay.key(chord(XKB_KEY_Tab, {}));
     overlay.key(chord(XKB_KEY_Return, {}));
@@ -463,16 +467,16 @@ TEST_CASE("shortcuts: groups start collapsed and toggle by mouse and keyboard") 
 
 TEST_CASE("actions: shortcuts validate registry IDs and preserve bindings after errors") {
     ResetBindings reset;
-    using nordend::views::action_for;
-    using nordend::views::configure_shortcuts;
-    const std::vector<nordend::core::Action> actions{
+    using rummage::views::action_for;
+    using rummage::views::configure_shortcuts;
+    const std::vector<rummage::core::Action> actions{
         {.id = "inspect", .label = "Inspect", .argv = {"inspector", "{file}"}, .mime = {}}};
     REQUIRE(configure_shortcuts(
                 {{"action:inspect", "Ctrl+Alt+i"}, {"copy_location", "Ctrl+Shift+c"}}, actions)
                 .empty());
     CHECK(action_for(chord(XKB_KEY_i, {.ctrl = true, .alt = true})) == "inspect");
     CHECK(action_for(chord(XKB_KEY_C, {.ctrl = true, .shift = true})) == "copy_location");
-    CHECK(nordend::views::keys_for_action("inspect") == "Ctrl+Alt+i");
+    CHECK(rummage::views::keys_for_action("inspect") == "Ctrl+Alt+i");
     for (const auto& binding :
          std::vector<std::pair<std::string, std::string>>{{"action:missing", "F3"},
                                                           {"action:inspect", "Ctrl+c"},
@@ -490,10 +494,10 @@ TEST_CASE("actions: shortcuts validate registry IDs and preserve bindings after 
 
 TEST_CASE("actions: external shortcuts use the same targets in all views and respect editors") {
     ResetBindings reset;
-    const std::vector<nordend::core::Action> actions{
+    const std::vector<rummage::core::Action> actions{
         {.id = "inspect", .label = "Inspect", .argv = {"inspector", "{file}"}, .mime = {}}};
     REQUIRE(
-        nordend::views::configure_shortcuts({{"action:inspect", "Ctrl+Alt+i"}}, actions).empty());
+        rummage::views::configure_shortcuts({{"action:inspect", "Ctrl+Alt+i"}}, actions).empty());
     Fixture f;
     f.browser.set_actions(actions);
     std::vector<std::string> calls;
@@ -516,4 +520,22 @@ TEST_CASE("actions: external shortcuts use the same targets in all views and res
         CHECK(calls.size() == count);
         f.browser.key(chord(XKB_KEY_Escape, {}), Browser::Clock::now());
     }
+}
+
+TEST_CASE("shortcuts: pane commands without defaults can be bound and disabled") {
+    ResetBindings reset;
+    using rummage::views::command_for;
+    using rummage::views::configure_shortcuts;
+    REQUIRE(configure_shortcuts({{"swap_panes", "Ctrl+Shift+s"},
+                                 {"orient_panes", "Ctrl+Shift+F3"},
+                                 {"open_other_pane", "Ctrl+Shift+o"},
+                                 {"same_other_pane", "Ctrl+Shift+d"}})
+                .empty());
+    CHECK(command_for(chord(XKB_KEY_s, {.ctrl = true, .shift = true})) == Command::swap_panes);
+    CHECK(command_for(chord(XKB_KEY_F3, {.ctrl = true, .shift = true})) == Command::orient_panes);
+    CHECK(command_for(chord(XKB_KEY_o, {.ctrl = true, .shift = true})) == Command::open_other_pane);
+    CHECK(command_for(chord(XKB_KEY_d, {.ctrl = true, .shift = true})) == Command::same_other_pane);
+    REQUIRE(configure_shortcuts({{"toggle_split", ""}, {"switch_pane", ""}}).empty());
+    CHECK(command_for(chord(XKB_KEY_F3, {})) == Command::none);
+    CHECK(command_for(chord(XKB_KEY_Tab, {})) == Command::none);
 }

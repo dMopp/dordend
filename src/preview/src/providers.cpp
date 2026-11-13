@@ -1,11 +1,11 @@
 #include <utility>
 
-#include "nordend/core/log.hpp"
-#include "nordend/engines/engines.hpp"
-#include "nordend/picture/load.hpp"
-#include "nordend/preview/preview.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/engines/engines.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/preview/preview.hpp"
 
-namespace nordend::preview {
+namespace rummage::preview {
 namespace {
 
 // What an engine shows as a picture (images, camera raw files from their embedded previews),
@@ -16,16 +16,23 @@ public:
 
     [[nodiscard]] bool can_handle(const fs::MimeDatabase& mime, fs::MimeId type) const override {
         const engines::Family* family = engines::installed()->find(mime, type);
-        return family != nullptr && family->shows == engines::Shows::picture;
+        return mime.name(type).starts_with("video/") ||
+               (family != nullptr && family->shows == engines::Shows::picture);
     }
 
     [[nodiscard]] Content load(const Request& request,
-                               const core::CancelToken& /*cancel*/) const override {
-        picture::Loaded loaded = picture::load_picture(
-            {.path = request.path, .max_width = request.width, .max_height = request.height});
+                               const core::CancelToken& cancel) const override {
+        picture::Loaded loaded = picture::load_picture({.path = request.path,
+                                                        .max_width = request.width,
+                                                        .max_height = request.height,
+                                                        .mime = request.mime,
+                                                        .cancel = &cancel});
         if (loaded.failure != picture::Failure::none) {
             log::debug("preview: {}: {} ({})", request.path.string(), loaded.error(),
                        loaded.detail);
+        }
+        if (request.mime.starts_with("video/") && loaded.failure != picture::Failure::none) {
+            return read_info(request.path, cancel);
         }
         return loaded;
     }
@@ -94,4 +101,4 @@ const Provider& provider_for(const fs::MimeDatabase& mime, fs::MimeId type) {
     return kInfo;
 }
 
-}  // namespace nordend::preview
+}  // namespace rummage::preview

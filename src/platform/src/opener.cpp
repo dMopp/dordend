@@ -1,15 +1,15 @@
-#include "nordend/platform/opener.hpp"
+#include "rummage/platform/opener.hpp"
 
 #include <algorithm>
 #include <format>
 #include <optional>
 #include <utility>
 
-#include "nordend/core/log.hpp"
-#include "nordend/platform/exec.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/platform/exec.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 // The files that go to one application.
@@ -70,7 +70,7 @@ OpenPlan plan_open(std::span<const OpenFile> files, const Applications& apps,
         std::vector<std::vector<std::string>> lines = expand_exec(app, group.files);
         if (lines.empty()) {
             add_problem(plan.problems,
-                        i18n::trf("{} has an Exec line Nordend cannot read", name));
+                        i18n::trf("{} has an Exec line rummage cannot read", name));
             continue;
         }
         const std::size_t per_line = lines.size() == 1 ? group.files.size() : 1;
@@ -273,4 +273,4 @@ void Opener::start_one(const OpenPlan::Launch& launch, const std::string& token)
     }
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

@@ -1,4 +1,4 @@
-#include "nordend/theme/app_icon.hpp"
+#include "rummage/theme/app_icon.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -10,24 +10,20 @@
 #include <string_view>
 #include <system_error>
 
-#include "nordend/core/file.hpp"
-#include "nordend/core/log.hpp"
+#include "app_icon_template.hpp"
 #include "oklch.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::theme {
+namespace rummage::theme {
 namespace {
 
 // The icon can carry this much chroma at most (GNOME's orange is about 0.18): above it the
-// front glows and the mountain loses its shape.
+// folder loses its tonal separation.
 constexpr double kMaxChroma = 0.16;
 
-// What a recoloured icon's comment says, and how Nordend recognises its own file.
-constexpr std::string_view kWrittenMark = "written by Nordend";
-
-constexpr std::string_view kIceComment =
-    "<!-- Nordend's application icon: a folder with the Nordend's summit, in one hue (\"ice\"):\n"
-    "     #6dbdf0 front, #3f8cc4 tab, #2a6a9e mountain, white snow. Drawn for Nordend, same "
-    "licence. -->\n";
+// What a recoloured icon's comment says, and how rummage recognises its own file.
+constexpr std::string_view kWrittenMark = "written by rummage";
 
 // Hue difference b - a, in (-pi, pi].
 double turn(double a, double b) {
@@ -39,28 +35,6 @@ double turn(double a, double b) {
         d += 2.0 * std::numbers::pi;
     }
     return d;
-}
-
-std::string svg(const AppIconTones& tones, std::string_view comment) {
-    return std::format(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-        "{}"
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"256\" height=\"256\" "
-        "viewBox=\"0 0 256 256\">\n"
-        "  <defs>\n"
-        "    <clipPath id=\"front\">\n"
-        "      <rect x=\"20\" y=\"70\" width=\"216\" height=\"150\" rx=\"22\"/>\n"
-        "    </clipPath>\n"
-        "  </defs>\n"
-        "  <path d=\"M20 96V54a16 16 0 0 1 16-16h56a16 16 0 0 1 12 5.5L122 64H20z\" "
-        "fill=\"{}\"/>\n"
-        "  <rect x=\"20\" y=\"70\" width=\"216\" height=\"150\" rx=\"22\" fill=\"{}\"/>\n"
-        "  <g clip-path=\"url(#front)\">\n"
-        "    <path d=\"M10 226V180L80 118L112 146L164 86L250 172V226Z\" fill=\"{}\"/>\n"
-        "    <path d=\"M164 86L139 115L152 109L163 119L175 107L190 114Z\" fill=\"#ffffff\"/>\n"
-        "  </g>\n"
-        "</svg>\n",
-        comment, hex(tones.tab), hex(tones.front), hex(tones.mountain));
 }
 
 std::filesystem::path data_home() {
@@ -77,7 +51,7 @@ std::filesystem::path data_home() {
 }
 
 // The icon under an installation prefix (CMakeLists.txt installs it there).
-constexpr std::string_view kIconInPrefix = "share/icons/hicolor/scalable/apps/nordend.svg";
+constexpr std::string_view kIconInPrefix = "share/icons/hicolor/scalable/apps/rummage.svg";
 
 }  // namespace
 
@@ -89,31 +63,42 @@ std::string hex(Color color) {
 }
 
 AppIconTones app_icon_tones(Color accent) {
-    const Lch ice_front = to_lch(kIceTones.front);
-    const Lch ice_tab = to_lch(kIceTones.tab);
-    const Lch ice_mountain = to_lch(kIceTones.mountain);
+    const Lch base_front = to_lch(kBaseTones.front);
+    const Lch base_tab = to_lch(kBaseTones.tab);
+    const Lch base_highlight = to_lch(kBaseTones.highlight);
     const Lch lch = to_lch(accent);
     const double chroma = std::min(lch.c, kMaxChroma);
     // Each tone: the installed icon's lightness, its chroma and hue relative to the front.
-    const auto tone = [&](const Lch& ice) {
-        return from_lch({ice.l, chroma * (ice.c / ice_front.c), lch.h + turn(ice_front.h, ice.h)});
+    const auto tone = [&](const Lch& base) {
+        return from_lch(
+            {base.l, chroma * (base.c / base_front.c), lch.h + turn(base_front.h, base.h)});
     };
-    return {.front = tone(ice_front), .tab = tone(ice_tab), .mountain = tone(ice_mountain)};
+    return {.front = tone(base_front), .tab = tone(base_tab), .highlight = tone(base_highlight)};
 }
 
 std::string app_icon_svg(std::optional<Color> accent) {
     if (!accent) {
-        return svg(kIceTones, kIceComment);
+        return std::string{kAppIconSvg};
     }
     const std::string comment = std::format(
-        "<!-- Nordend's application icon in the desktop's accent ({}), {} to follow it.\n"
-        "     Set icon.follow_accent = false in ~/.config/nordend/config.toml to take it away. "
+        "<!-- rummage's application icon in the desktop's accent ({}), {} to follow it.\n"
+        "     Set icon.follow_accent = false in ~/.config/rummage/config.toml to take it away. "
         "-->\n",
         hex(*accent), kWrittenMark);
-    return svg(app_icon_tones(*accent), comment);
+    std::string result{kAppIconSvg};
+    const auto tones = app_icon_tones(*accent);
+    for (const auto& [original, color] :
+         {std::pair{"#F7C65B", tones.front}, std::pair{"#CF954B", tones.tab},
+          std::pair{"#FFE4A2", tones.highlight}}) {
+        const auto replacement = hex(color);
+        for (std::size_t at = 0; (at = result.find(original, at)) != std::string::npos;
+             at += replacement.size())
+            result.replace(at, 7, replacement);
+    }
+    return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + comment + result;
 }
 
-bool written_by_nordend(const std::string& svg) {
+bool written_by_rummage(const std::string& svg) {
     return svg.find(kWrittenMark) != std::string::npos;
 }
 
@@ -122,7 +107,7 @@ AppIconPlace default_app_icon_place() {
     if (data.empty()) {
         return {};
     }
-    AppIconPlace place{.path = data / "icons" / "hicolor" / "scalable" / "apps" / "nordend.svg"};
+    AppIconPlace place{.path = data / "icons" / "hicolor" / "scalable" / "apps" / "rummage.svg"};
     std::error_code error;
     const std::filesystem::path exe = std::filesystem::read_symlink("/proc/self/exe", error);
     if (!error) {
@@ -143,7 +128,7 @@ AppIconChange sync_app_icon(const AppIconPlace& place, std::optional<Color> acce
         log::warn("icon: {}: {}", place.path.string(), current.error);
         return AppIconChange::failed;
     }
-    const bool ours = current.exists && written_by_nordend(current.text);
+    const bool ours = current.exists && written_by_rummage(current.text);
     std::string wanted;
     AppIconChange change = AppIconChange::written;
     if (accent) {
@@ -213,4 +198,4 @@ void AppIconKeeper::start(std::optional<Color> accent) {
         });
 }
 
-}  // namespace nordend::theme
+}  // namespace rummage::theme

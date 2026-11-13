@@ -14,26 +14,26 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_model.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/places.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_model.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/places.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::CancelToken;
-using nordend::core::EventLoop;
-using nordend::fs::Conflict;
-using nordend::fs::Resolution;
-using nordend::fs::TransferKind;
-using nordend::fs::TransferRequest;
-using nordend::fs::TransferResult;
-using nordend::fs::TrashSources;
-using nordend::test::TempDir;
-using nordend::views::Browser;
+using rummage::core::CancelToken;
+using rummage::core::EventLoop;
+using rummage::fs::Conflict;
+using rummage::fs::Resolution;
+using rummage::fs::TransferKind;
+using rummage::fs::TransferRequest;
+using rummage::fs::TransferResult;
+using rummage::fs::TrashSources;
+using rummage::test::TempDir;
+using rummage::views::Browser;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -79,17 +79,17 @@ struct Trashes {
     fs::path home = dir.path / "home";
     fs::path photos = home / "photos";
     fs::path disk = dir.path / "disk";
-    TrashSources before = nordend::fs::trash_sources();
+    TrashSources before = rummage::fs::trash_sources();
     TrashSources sources{
         .home = home / ".local/share/Trash", .tops = std::vector<fs::path>{disk}, .uid = geteuid()};
 
     Trashes() {
         fs::create_directories(photos);
         fs::create_directories(disk / "shots");
-        nordend::fs::set_trash_sources(sources);
+        rummage::fs::set_trash_sources(sources);
     }
 
-    ~Trashes() { nordend::fs::set_trash_sources(before); }
+    ~Trashes() { rummage::fs::set_trash_sources(before); }
 
     Trashes(const Trashes&) = delete;
     Trashes& operator=(const Trashes&) = delete;
@@ -110,7 +110,7 @@ struct Trashes {
             .destination = sources.home,
             .force_copy = false,
             .trash_top = directory.string().starts_with(disk.string()) ? disk : fs::path{}};
-        const TransferResult result = nordend::fs::run_trash(request, CancelToken{}, {});
+        const TransferResult result = rummage::fs::run_trash(request, CancelToken{}, {});
         REQUIRE(result.errors.empty());
         REQUIRE(result.refused.empty());
     }
@@ -120,15 +120,15 @@ struct Trashes {
 
 TransferResult restore(const Names& paths, Resolution answer = Resolution::skip,
                        std::vector<Conflict>* asked = nullptr) {
-    nordend::fs::TransferCallbacks callbacks;
+    rummage::fs::TransferCallbacks callbacks;
     callbacks.resolve = [answer, asked](const Conflict& conflict) {
         if (asked != nullptr) {
             asked->push_back(conflict);
         }
         return answer;
     };
-    return nordend::fs::run_restore({.kind = TransferKind::restore,
-                                     .source = nordend::fs::trash_path(),
+    return rummage::fs::run_restore({.kind = TransferKind::restore,
+                                     .source = rummage::fs::trash_path(),
                                      .names = paths,
                                      .destination = {},
                                      .force_copy = false},
@@ -138,18 +138,18 @@ TransferResult restore(const Names& paths, Resolution answer = Resolution::skip,
 }  // namespace
 
 TEST_CASE("trash folder: .trashinfo files as the specification has them") {
-    using nordend::fs::parse_trash_info;
+    using rummage::fs::parse_trash_info;
     const auto info = parse_trash_info(
         "[Trash Info]\nPath=/home/me/a%20b%C3%A8.txt\nDeletionDate=2026-10-29T21:25:31\n"
         "Path=/ignored\n",
         "/top");
     REQUIRE(info.has_value());
-    CHECK(info.value_or(nordend::fs::TrashInfo{}).original == "/home/me/a bè.txt");
-    CHECK(info.value_or(nordend::fs::TrashInfo{}).deleted == "2026-10-29T21:25:31");
+    CHECK(info.value_or(rummage::fs::TrashInfo{}).original == "/home/me/a bè.txt");
+    CHECK(info.value_or(rummage::fs::TrashInfo{}).deleted == "2026-10-29T21:25:31");
     // Relative to the top directory; other groups and comments ignored.
     const auto relative = parse_trash_info(
         "# a comment\n[Trash Info]\r\nPath=shots/P1.ORF\r\n[Other]\nPath=/no\n", "/media/disk");
-    CHECK(relative.value_or(nordend::fs::TrashInfo{}).original == "/media/disk/shots/P1.ORF");
+    CHECK(relative.value_or(rummage::fs::TrashInfo{}).original == "/media/disk/shots/P1.ORF");
     CHECK_FALSE(parse_trash_info("[Desktop Entry]\nPath=/x\n", "/").has_value());
     CHECK_FALSE(parse_trash_info("[Trash Info]\nDeletionDate=2026-10-29T21:25:31\n", "/"));
 }
@@ -167,13 +167,13 @@ TEST_CASE("trash folder: every trash merged, by original name, the newer ones nu
     Trashes::make(t.sources.home / "files" / "orphan", "x");
     Trashes::make(t.sources.home / "info" / "ghost.trashinfo", "[Trash Info]\nPath=/ghost\n");
 
-    const std::vector<nordend::fs::TrashDir> trashes = nordend::fs::existing_trashes(t.sources);
+    const std::vector<rummage::fs::TrashDir> trashes = rummage::fs::existing_trashes(t.sources);
     REQUIRE(trashes.size() == 2);
     CHECK(trashes[0].path == t.sources.home);
     CHECK(trashes[1].path == t.disk_trash());
 
-    std::vector<nordend::fs::TrashedItem> items = nordend::fs::list_trash(t.sources);
-    std::ranges::sort(items, {}, &nordend::fs::TrashedItem::name);
+    std::vector<rummage::fs::TrashedItem> items = rummage::fs::list_trash(t.sources);
+    std::ranges::sort(items, {}, &rummage::fs::TrashedItem::name);
     Names names;
     for (const auto& item : items) {
         names.push_back(item.name);
@@ -182,7 +182,7 @@ TEST_CASE("trash folder: every trash merged, by original name, the newer ones nu
     // Trashed in the same second: either a.txt may be the older; both are listed, one numbered.
     CHECK(names == Names{"P1.ORF", "P1.ORF.xmp", "a.2.txt", "a.txt"});
     const auto plain =
-        std::ranges::find(items, std::string{"a.txt"}, &nordend::fs::TrashedItem::name);
+        std::ranges::find(items, std::string{"a.txt"}, &rummage::fs::TrashedItem::name);
     CHECK((plain->info.original == t.photos / "a.txt" ||
            plain->info.original == t.disk / "shots" / "a.txt"));
 }
@@ -254,15 +254,15 @@ TEST_CASE("trash folder: the model lists every trash and follows changes") {
     t.trash(t.disk / "shots", {"b.txt"});
 
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
-    nordend::fs::DirectoryModel model{loop, pool, watcher, nordend::fs::MimeDatabase::load()};
-    model.open(nordend::fs::trash_path());
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
+    rummage::fs::DirectoryModel model{loop, pool, watcher, rummage::fs::MimeDatabase::load()};
+    model.open(rummage::fs::trash_path());
     CHECK(model.is_trash());
     REQUIRE(run_until(loop, [&] { return !model.loading(); }));
     const auto names = [&] {
         Names out;
-        for (const nordend::fs::Entry& entry : model.listing().entries()) {
+        for (const rummage::fs::Entry& entry : model.listing().entries()) {
             out.push_back(entry.name);
         }
         std::ranges::sort(out);
@@ -290,24 +290,24 @@ TEST_CASE("trash folder: in the browser, Restore from the menu; nothing else is 
     t.trash(t.photos, {"a.txt", "b.txt", "P1.ORF"});
 
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     browser.set_places({{.label = "Home", .path = t.home, .icon = "home"},
-                        {.label = "Trash", .path = nordend::fs::trash_path(), .icon = "trash"}});
-    browser.open(nordend::fs::trash_path());
+                        {.label = "Trash", .path = rummage::fs::trash_path(), .icon = "trash"}});
+    browser.open(rummage::fs::trash_path());
     browser.set_mode(Browser::Mode::details);
     const auto settle = [&] { return run_until(loop, [&] { return !browser.loading(); }); };
     REQUIRE(settle());
     const auto trash_icon = [&] { return browser.sidebar().places().at(1).icon; };
     REQUIRE(run_until(loop, [&] { return trash_icon() == "trash-filled"; }));
-    const std::shared_ptr<nordend::views::Folder> folder = browser.details().folder();
+    const std::shared_ptr<rummage::views::Folder> folder = browser.details().folder();
     REQUIRE(folder->is_trash());
     REQUIRE(folder->entries().size() == 4);
-    const auto key = [](xkb_keysym_t keysym, nordend::ui::Modifiers modifiers = {}) {
-        nordend::ui::KeyEvent event;
+    const auto key = [](xkb_keysym_t keysym, rummage::ui::Modifiers modifiers = {}) {
+        rummage::ui::KeyEvent event;
         event.keysym = keysym;
         event.modifiers = modifiers;
         return event;
@@ -330,8 +330,8 @@ TEST_CASE("trash folder: in the browser, Restore from the menu; nothing else is 
     CHECK(browser.status_bar().message() == "Restore it first to open it");
     folder->set_cursor(std::nullopt);
     CHECK(browser.key(key(XKB_KEY_Menu), Browser::Clock::now()));
-    REQUIRE(browser.context_menu().is_open());  // on empty space: only Empty Trash
-    REQUIRE(browser.context_menu().items().size() == 1);
+    REQUIRE(browser.context_menu().is_open());  // on empty space: Empty Trash and pane controls
+    REQUIRE(browser.context_menu().items().size() == 2);
     CHECK(browser.context_menu().items()[0].id == "empty_trash");
     CHECK(browser.key(key(XKB_KEY_Escape), Browser::Clock::now()));
 
@@ -339,7 +339,7 @@ TEST_CASE("trash folder: in the browser, Restore from the menu; nothing else is 
     folder->select_name("P1.ORF");
     CHECK(browser.key(key(XKB_KEY_Menu), Browser::Clock::now()));
     REQUIRE(browser.context_menu().is_open());
-    REQUIRE(browser.context_menu().items().size() == 3);
+    REQUIRE(browser.context_menu().items().size() == 4);
     CHECK(browser.context_menu().items()[0].id == "restore");
     CHECK(browser.context_menu().items()[1].id == "erase");
     CHECK(browser.key(key(XKB_KEY_Return), Browser::Clock::now()));
@@ -361,11 +361,11 @@ TEST_CASE("trash folder: in the browser, Restore from the menu; nothing else is 
 
 TEST_CASE("trash folder: the disks' trashes are found from the mount table") {
     CHECK(
-        nordend::fs::mount_points("36 25 8:0 / / rw - ext4 /dev/a rw\n"
+        rummage::fs::mount_points("36 25 8:0 / / rw - ext4 /dev/a rw\n"
                                   "38 27 8:1 / /run/media/me/My\\040Disk rw - ext4 /dev/b rw\n") ==
         std::vector<fs::path>{"/", "/run/media/me/My Disk"});
     // The real table: /proc reports a size of 0, so a sized read would find nothing.
     const std::vector<fs::path> points =
-        nordend::fs::mount_points(nordend::fs::read_proc_file("/proc/self/mountinfo"));
+        rummage::fs::mount_points(rummage::fs::read_proc_file("/proc/self/mountinfo"));
     CHECK(std::ranges::find(points, fs::path{"/"}) != points.end());
 }

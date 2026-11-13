@@ -1,4 +1,4 @@
-#include "nordend/thumbs/md5.hpp"
+#include "rummage/thumbs/md5.hpp"
 
 #include <array>
 #include <bit>
@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-namespace nordend::thumbs {
+namespace rummage::thumbs {
 namespace {
 
 // Per-round shift amounts and the sines table of RFC 1321.
@@ -97,4 +97,4 @@ std::string md5_hex(std::string_view data) {
     return hex;
 }
 
-}  // namespace nordend::thumbs
+}  // namespace rummage::thumbs

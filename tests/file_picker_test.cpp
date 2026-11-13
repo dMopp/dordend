@@ -1,4 +1,4 @@
-#include "nordend/core/file_picker.hpp"
+#include "rummage/core/file_picker.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -8,14 +8,14 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/views/file_picker.hpp"
+#include "rummage/views/file_picker.hpp"
 #include "temp_dir.hpp"
 
 namespace {
-namespace core = nordend::core;
+namespace core = rummage::core;
 namespace fs = std::filesystem;
-namespace views = nordend::views;
-using nordend::test::TempDir;
+namespace views = rummage::views;
+using rummage::test::TempDir;
 using Mode = core::PickerRequest::Mode;
 using namespace std::chrono_literals;
 
@@ -29,8 +29,8 @@ struct Fixture {
     TempDir temp;
     core::EventLoop loop;
     core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
-    std::shared_ptr<const nordend::fs::MimeDatabase> mime = nordend::fs::MimeDatabase::load();
+    rummage::fs::DirectoryWatcher watcher{loop};
+    std::shared_ptr<const rummage::fs::MimeDatabase> mime = rummage::fs::MimeDatabase::load();
     views::Browser browser{loop, pool, watcher, mime, [] {}, [](auto) {}};
     std::optional<core::PickerResult> result;
 

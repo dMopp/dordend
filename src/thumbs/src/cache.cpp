@@ -1,4 +1,4 @@
-#include "nordend/thumbs/cache.hpp"
+#include "rummage/thumbs/cache.hpp"
 
 #include <algorithm>
 #include <array>
@@ -14,12 +14,13 @@
 #include <utility>
 #include <vector>
 
-#include "nordend/picture/load.hpp"
-#include "nordend/picture/png.hpp"
-#include "nordend/picture/wuffs.hpp"
-#include "nordend/thumbs/md5.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/picture/png.hpp"
+#include "rummage/picture/wuffs.hpp"
+#include "rummage/thumbs/md5.hpp"
 
-namespace nordend::thumbs {
+namespace rummage::thumbs {
 namespace {
 
 constexpr std::string_view kUriKey = "Thumb::URI";
@@ -79,11 +80,11 @@ bool store(const std::filesystem::path& target, const picture::Image& image, con
     const std::vector<std::uint8_t> png =
         picture::encode_png(image, {{std::string{kUriKey}, uri},
                                     {std::string{kMtimeKey}, std::to_string(mtime)},
-                                    {"Software", "Nordend"}});
+                                    {"Software", "rummage"}});
     if (png.empty() || !make_private_directories(target.parent_path())) {
         return false;
     }
-    std::string temporary = target.string() + ".nordend-XXXXXX";
+    std::string temporary = target.string() + ".rummage-XXXXXX";
     const int fd = ::mkstemp(temporary.data());  // mode 0600
     if (fd < 0) {
         return false;
@@ -181,11 +182,14 @@ std::filesystem::path Cache::path_for(const std::filesystem::path& file, Size si
     return root_ / directory_name(size) / (md5_hex(file_uri(file)) + ".png");
 }
 
-std::filesystem::path Cache::fail_path(const std::filesystem::path& file) const {
-    return root_ / "fail" / app_ / (md5_hex(file_uri(file)) + ".png");
+std::filesystem::path Cache::fail_path(const std::filesystem::path& file,
+                                       std::string_view mime) const {
+    return root_ / "fail" / (mime.starts_with("video/") ? app_ + "-media-v1" : app_) /
+           (md5_hex(file_uri(file)) + ".png");
 }
 
-Thumbnail Cache::get(const std::filesystem::path& file, Size size) const {
+Thumbnail Cache::get(const std::filesystem::path& file, Size size, std::string_view mime,
+                     const core::CancelToken* cancel) const {
     struct stat info{};
     if (::stat(file.c_str(), &info) != 0) {
         return failure(std::error_code{errno, std::generic_category()}.message());
@@ -199,34 +203,45 @@ Thumbnail Cache::get(const std::filesystem::path& file, Size size) const {
             return {.image = std::move(*stored), .source = Source::cache, .error = {}};
         }
     }
-    const std::vector<std::uint8_t> failed = read_file(fail_path(file));
+    const std::vector<std::uint8_t> failed = read_file(fail_path(file, mime));
     if (!failed.empty() && matches(failed, uri, info.st_mtime)) {
         return failure("failed before, and unchanged since");
     }
-    return make(file, size, info.st_mtime);
+    return make(file, size, info.st_mtime, mime, cancel);
 }
 
-Thumbnail Cache::make(const std::filesystem::path& file, Size size) const {
+Thumbnail Cache::make(const std::filesystem::path& file, Size size, std::string_view mime,
+                      const core::CancelToken* cancel) const {
     struct stat info{};
     if (::stat(file.c_str(), &info) != 0) {
         return failure(std::error_code{errno, std::generic_category()}.message());
     }
-    return make(file, size, info.st_mtime);
+    return make(file, size, info.st_mtime, mime, cancel);
 }
 
-Thumbnail Cache::make(const std::filesystem::path& file, Size size, std::int64_t mtime) const {
+Thumbnail Cache::make(const std::filesystem::path& file, Size size, std::int64_t mtime,
+                      std::string_view mime, const core::CancelToken* cancel) const {
     const std::string uri = file_uri(file);
     const std::filesystem::path relative = file.lexically_relative(root_);
     if (!relative.empty() && *relative.begin() != "..") {
         return failure("a thumbnail itself");  // the spec: never thumbnail the cache
     }
     const std::uint32_t side = pixels(size);
-    picture::Loaded loaded =
-        picture::load_picture({.path = file, .max_width = side, .max_height = side});
+    if (cancel != nullptr && cancel->cancelled()) {
+        return failure("cancelled");
+    }
+    picture::Loaded loaded = picture::load_picture({.path = file,
+                                                    .max_width = side,
+                                                    .max_height = side,
+                                                    .mime = std::string{mime},
+                                                    .cancel = cancel});
     if (loaded.failure != picture::Failure::none) {
         // Remembered, so that it is not tried again until the file changes.
         const picture::Image blank{.width = 1, .height = 1, .rgba = {0, 0, 0, 0}};
-        static_cast<void>(store(fail_path(file), blank, uri, mtime));
+        if (loaded.failure != picture::Failure::unavailable &&
+            (cancel == nullptr || !cancel->cancelled())) {
+            static_cast<void>(store(fail_path(file, mime), blank, uri, mtime));
+        }
         return failure(std::string{loaded.error()} + " (" + loaded.detail + ")");
     }
     static_cast<void>(store(path_for(file, size), loaded.image, uri, mtime));
@@ -235,4 +250,4 @@ Thumbnail Cache::make(const std::filesystem::path& file, Size size, std::int64_t
             .error = {}};
 }
 
-}  // namespace nordend::thumbs
+}  // namespace rummage::thumbs

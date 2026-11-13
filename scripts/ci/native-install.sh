@@ -7,38 +7,49 @@ case "$format" in
     deb)
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        apt-get install -y --no-install-recommends /packages/nordend_*.deb
-        dpkg --verify nordend
-        license=/usr/share/doc/nordend/copyright
+        apt-get install -y --no-install-recommends /packages/rummage_*.deb
+        dpkg --verify rummage
+        license=/usr/share/doc/rummage/copyright
         ;;
     rpm)
-        dnf install -y /packages/nordend-[0-9]*.x86_64.rpm
-        rpm --verify nordend
-        license=/usr/share/licenses/nordend/LICENSE
+        dnf install -y /packages/rummage-[0-9]*.x86_64.rpm
+        rpm --verify rummage
+        license=/usr/share/licenses/rummage/LICENSE
         ;;
     tumbleweed)
         zypper --non-interactive refresh
         zypper --non-interactive dup --no-recommends
-        zypper --non-interactive install --no-recommends --allow-unsigned-rpm /packages/nordend-[0-9]*.x86_64.rpm
-        rpm --verify nordend
-        license=/usr/share/licenses/nordend/LICENSE
+        zypper --non-interactive install --no-recommends --allow-unsigned-rpm /packages/rummage-[0-9]*.x86_64.rpm
+        rpm --verify rummage
+        license=/usr/share/licenses/rummage/LICENSE
         ;;
     arch)
         # The minimal image skips documentation; verify the complete package payload.
         sed -i 's@usr/share/doc/\*@@g' /etc/pacman.conf
         pacman -Syu --noconfirm
-        pacman -U --noconfirm /packages/nordend-[0-9]*-x86_64.pkg.tar.zst
-        pacman -Qkk nordend
-        license=/usr/share/licenses/nordend/LICENSE
+        pacman -U --noconfirm /packages/rummage-[0-9]*-x86_64.pkg.tar.zst
+        pacman -Qkk rummage
+        license=/usr/share/licenses/rummage/LICENSE
         ;;
     *) exit 1 ;;
 esac
 # Check shared libraries before adding tools which could mask a missing dependency.
-for executable in /usr/bin/nordend /usr/libexec/nordend/nordend-preview; do
+for executable in /usr/bin/rummage /usr/libexec/rummage/rummage-preview; do
     libraries=$(ldd "$executable")
     printf '%s\n' "$libraries"
     if grep -F 'not found' <<< "$libraries"; then exit 1; fi
 done
+# The base package must work before the optional media package is installed.
+test ! -e /usr/libexec/rummage/rummage-media
+case "$format" in
+    deb) apt-get install -y --no-install-recommends /packages/rummage-media_*.deb ;;
+    rpm) dnf install -y /packages/rummage-media-[0-9]*.x86_64.rpm ;;
+    tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm /packages/rummage-media-[0-9]*.x86_64.rpm ;;
+    arch) pacman -U --noconfirm /packages/rummage-media-[0-9]*-x86_64.pkg.tar.zst ;;
+esac
+libraries=$(ldd /usr/libexec/rummage/rummage-media)
+printf '%s\n' "$libraries"
+if grep -F 'not found' <<< "$libraries"; then exit 1; fi
 case "$format" in
     deb) apt-get install -y --no-install-recommends desktop-file-utils ;;
     rpm) dnf install -y desktop-file-utils ;;

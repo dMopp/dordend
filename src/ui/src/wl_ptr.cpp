@@ -1,6 +1,6 @@
-#include "nordend/ui/wl_ptr.hpp"
+#include "rummage/ui/wl_ptr.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 
 void destroy(wl_display* display) noexcept { wl_display_disconnect(display); }
 
@@ -96,4 +96,4 @@ void destroy(wp_cursor_shape_device_v1* device) noexcept {
     wp_cursor_shape_device_v1_destroy(device);
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

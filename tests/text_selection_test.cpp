@@ -1,14 +1,14 @@
-#include "nordend/views/text_selection.hpp"
+#include "rummage/views/text_selection.hpp"
 
 #include <string>
 #include <vector>
 
 #include <doctest/doctest.h>
 
-using nordend::views::byte_at_column;
-using nordend::views::column_at_byte;
-using nordend::views::TextPoint;
-using nordend::views::TextSelection;
+using rummage::views::byte_at_column;
+using rummage::views::column_at_byte;
+using rummage::views::TextPoint;
+using rummage::views::TextSelection;
 
 namespace {
 

@@ -1,4 +1,4 @@
-#include "nordend/views/context_menu.hpp"
+#include "rummage/views/context_menu.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -15,25 +15,25 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/config.hpp"
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/operations.hpp"
-#include "nordend/fs/places.hpp"
-#include "nordend/ui/offscreen.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/config.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/operations.hpp"
+#include "rummage/fs/places.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::views::Browser;
-using nordend::views::ContextMenu;
-using nordend::views::Folder;
-using nordend::views::MenuItem;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::views::Browser;
+using rummage::views::ContextMenu;
+using rummage::views::Folder;
+using rummage::views::MenuItem;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -93,11 +93,11 @@ struct Fixture {
     TempDir dir;
     fs::path photos = dir.path / "photos";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     // What "Open With" was asked and did.
     std::vector<Browser::AppChoice> apps{
         {.id = "viewer.desktop", .name = "Viewer", .is_default = true},
@@ -115,16 +115,16 @@ struct Fixture {
         browser.set_home_trash(dir.path / "Trash");
         browser.set_templates_dir(dir.path / "templates");
         browser.set_open_with_handlers(
-            [this](const fs::path& /*directory*/, const nordend::fs::Entry& entry,
+            [this](const fs::path& /*directory*/, const rummage::fs::Entry& entry,
                    const std::function<void(std::vector<Browser::AppChoice>)>& done) {
                 asked_type = entry.name;
                 done(apps);
             },
-            [this](const fs::path& /*directory*/, const std::vector<nordend::fs::Entry>& files,
+            [this](const fs::path& /*directory*/, const std::vector<rummage::fs::Entry>& files,
                    std::string app_id) {
                 opened_with = std::move(app_id);
                 opened.clear();
-                for (const nordend::fs::Entry& file : files) {
+                for (const rummage::fs::Entry& file : files) {
                     opened.push_back(file.name);
                 }
             });
@@ -149,10 +149,10 @@ struct Fixture {
         folder()->set_cursor(std::nullopt);
         for (const std::string& name : names) {
             const auto& entries = folder()->entries();
-            const auto it = std::ranges::find(entries, name, &nordend::fs::Entry::name);
+            const auto it = std::ranges::find(entries, name, &rummage::fs::Entry::name);
             REQUIRE(it != entries.end());
             folder()->set_cursor(static_cast<std::size_t>(it - entries.begin()),
-                                 nordend::views::SelectMode::toggle);
+                                 rummage::views::SelectMode::toggle);
         }
     }
 
@@ -236,9 +236,9 @@ TEST_CASE("context menu: the keyboard moves over what can be chosen, in and out 
     ran = 0;
     menu.open(10, 10, {item("open", true, [&ran] { ran = 10; })}, false);
     CHECK_FALSE(menu.highlighted().has_value());  // by the pointer: nothing highlighted yet
-    nordend::ui::PointerEvent click;
-    click.kind = nordend::ui::PointerEvent::Kind::press;
-    click.button = nordend::ui::PointerButton::left;
+    rummage::ui::PointerEvent click;
+    click.kind = rummage::ui::PointerEvent::Kind::press;
+    click.button = rummage::ui::PointerButton::left;
     CHECK(menu.pointer(click));
     CHECK_FALSE(menu.is_open());
     CHECK(ran == 0);
@@ -252,7 +252,7 @@ TEST_CASE("context menu: the items for one entry, several, empty space; paste on
     REQUIRE(f.menu().is_open());
     CHECK(ids(f.menu().items()) == Names{"open", "open_with", "copy", "cut", "-paste", "rename",
                                          "trash", "erase", "properties", "action:copy_location",
-                                         "sort"});
+                                         "sort", "panes"});
     CHECK(f.menu().items()[2].keys == "Ctrl+C");  // from the shortcuts table
     CHECK(f.menu().items()[6].keys == "Delete");
     CHECK(f.press(key(XKB_KEY_Escape)));
@@ -263,13 +263,14 @@ TEST_CASE("context menu: the items for one entry, several, empty space; paste on
     f.browser.open_menu(100, 100, false);
     CHECK(ids(f.menu().items()) == Names{"open", "open_with", "copy", "cut", "-paste", "-rename",
                                          "trash", "erase", "-properties", "action:copy_location",
-                                         "sort"});
+                                         "sort", "panes"});
     f.menu().close();
     f.select({"sub"});
     CHECK(f.press(key(XKB_KEY_F10, {.shift = true})));
     CHECK(ids(f.menu().items()) == Names{"open", "open_with", "open_tab", "open_terminal",
                                          "add_bookmark", "copy", "cut", "-paste", "rename", "trash",
-                                         "erase", "properties", "action:copy_location", "sort"});
+                                         "erase", "properties", "action:copy_location", "sort",
+                                         "panes"});
 
     // Copy from the menu; then Paste can be chosen, here and on empty space.
     f.choose("copy");
@@ -279,7 +280,7 @@ TEST_CASE("context menu: the items for one entry, several, empty space; paste on
     CHECK(f.press(key(XKB_KEY_Menu)));
     CHECK(ids(f.menu().items()) == Names{"new_folder", "new_file", "paste", "add_bookmark",
                                          "open_terminal", "action:copy_location", "sort",
-                                         "properties"});
+                                         "properties", "panes"});
     REQUIRE(f.settle());  // the templates looked for: none
     CHECK(ids(f.menu().items()[1].children) == Names{"empty_file"});
 }
@@ -297,12 +298,12 @@ TEST_CASE("context menu: Sort By sorts every view, and the folders they open lat
     f.browser.set_mode(Browser::Mode::grid);
     REQUIRE(run_until(f.loop, [&f] {
         const auto& entries = f.browser.grid().folder()->entries();
-        const auto a = std::ranges::find(entries, "a.txt", &nordend::fs::Entry::name);
+        const auto a = std::ranges::find(entries, "a.txt", &rummage::fs::Entry::name);
         return a != entries.end() && a->size == 5000;
     }));
     const auto names = [](const Folder& folder) {
         Names out;
-        for (const nordend::fs::Entry& entry : folder.entries()) {
+        for (const rummage::fs::Entry& entry : folder.entries()) {
             out.push_back(entry.name);
         }
         return out;
@@ -340,12 +341,14 @@ TEST_CASE("context menu: Sort By sorts every view, and the folders they open lat
           Names{"sub", "b.txt", "P1.ORF.xmp", "P1.ORF", "a.txt"});
     f.select({"a.txt"});
     f.browser.open_menu(100, 100, false);
-    CHECK(checked(f.menu().items().back()) == Names{"sort:size", "sort:ascending"});
-    f.menu().items().back().children.back().action();  // Descending
+    const auto sorted = std::ranges::find(f.menu().items(), "sort", &MenuItem::id);
+    REQUIRE(sorted != f.menu().items().end());
+    CHECK(checked(*sorted) == Names{"sort:size", "sort:ascending"});
+    sorted->children.back().action();  // Descending
     f.menu().close();
     CHECK(names(*f.browser.grid().folder()) ==
           Names{"sub", "a.txt", "P1.ORF", "P1.ORF.xmp", "b.txt"});
-    CHECK(f.browser.state().sort_key == nordend::fs::SortKey::size);
+    CHECK(f.browser.state().sort_key == rummage::fs::SortKey::size);
     CHECK(f.browser.state().sort_descending);
 
     // A folder opened afterwards, in the columns, is sorted so too; the details show it.
@@ -355,11 +358,11 @@ TEST_CASE("context menu: Sort By sorts every view, and the folders they open lat
     REQUIRE(run_until(
         f.loop, [&f] { return f.browser.columns().focused_folder()->entries().size() == 3; }));
     CHECK(names(*f.browser.columns().focused_folder()) == Names{"deeper", "big", "small"});
-    CHECK(f.browser.details().order().key == nordend::fs::SortKey::size);
+    CHECK(f.browser.details().order().key == rummage::fs::SortKey::size);
 
     // A click on a title of the details sorts the other views too.
     f.browser.set_mode(Browser::Mode::details);
-    f.browser.details().sort_by(nordend::views::DetailsView::Field::name);  // name, ascending
+    f.browser.details().sort_by(rummage::views::DetailsView::Field::name);  // name, ascending
     f.browser.set_mode(Browser::Mode::grid);
     f.browser.open(f.photos);
     REQUIRE(f.settle());
@@ -450,7 +453,7 @@ TEST_CASE("context menu: New File, empty or from a template, never over an exist
     chmod((templates / "Letter.txt").c_str(), 0640);
     std::ofstream{templates / ".hidden"} << "x";
     std::ofstream{templates / "Notes.md~"} << "x";
-    CHECK(nordend::fs::templates_in(templates) == Names{"Letter.txt"});
+    CHECK(rummage::fs::templates_in(templates) == Names{"Letter.txt"});
 
     f.select({});
     CHECK(f.press(key(XKB_KEY_Menu)));
@@ -485,39 +488,39 @@ TEST_CASE("context menu: New File, empty or from a template, never over an exist
 TEST_CASE("new file: numbered names, a template's contents, nothing left on failure") {
     const TempDir dir;
     std::ofstream{dir.path / "New File"} << "old";
-    const nordend::fs::MadeFile empty = nordend::fs::make_file(dir.path, "New File");
+    const rummage::fs::MadeFile empty = rummage::fs::make_file(dir.path, "New File");
     CHECK(empty.name == "New File 2");
     CHECK(read_file(dir.path / "New File") == "old");
-    CHECK(nordend::fs::make_file(dir.path, "a.tar.gz").name == "a.tar.gz");
-    CHECK(nordend::fs::make_file(dir.path, "a.tar.gz").name == "a.tar 2.gz");
-    const nordend::fs::MadeFile missing =
-        nordend::fs::make_file(dir.path, "x.txt", dir.path / "no template");
+    CHECK(rummage::fs::make_file(dir.path, "a.tar.gz").name == "a.tar.gz");
+    CHECK(rummage::fs::make_file(dir.path, "a.tar.gz").name == "a.tar 2.gz");
+    const rummage::fs::MadeFile missing =
+        rummage::fs::make_file(dir.path, "x.txt", dir.path / "no template");
     CHECK(missing.error == std::errc::no_such_file_or_directory);
     CHECK_FALSE(fs::exists(dir.path / "x.txt"));
 }
 
 TEST_CASE("new file: the templates folder, as the user dirs say") {
     const TempDir dir;
-    nordend::fs::PlaceSources sources{.home = dir.path / "home",
+    rummage::fs::PlaceSources sources{.home = dir.path / "home",
                                       .config_home = dir.path / "config"};
     fs::create_directories(sources.home / "Templates");
     fs::create_directories(sources.home / "Modelli");
     fs::create_directories(sources.config_home);
-    CHECK(nordend::fs::templates_dir(sources) == sources.home / "Templates");  // no user-dirs
+    CHECK(rummage::fs::templates_dir(sources) == sources.home / "Templates");  // no user-dirs
     std::ofstream{sources.config_home / "user-dirs.dirs"}
         << "XDG_PICTURES_DIR=\"$HOME/Pictures\"\n";
-    CHECK(nordend::fs::templates_dir(sources).empty());  // the file says nothing about it
+    CHECK(rummage::fs::templates_dir(sources).empty());  // the file says nothing about it
     std::ofstream{sources.config_home / "user-dirs.dirs"}
         << "XDG_TEMPLATES_DIR=\"$HOME/Modelli\"\n";
-    CHECK(nordend::fs::templates_dir(sources) == sources.home / "Modelli");
+    CHECK(rummage::fs::templates_dir(sources) == sources.home / "Modelli");
     std::ofstream{sources.config_home / "user-dirs.dirs"} << "XDG_TEMPLATES_DIR=\"$HOME/Nope\"\n";
-    CHECK(nordend::fs::templates_dir(sources).empty());  // not there
+    CHECK(rummage::fs::templates_dir(sources).empty());  // not there
 }
 
 TEST_CASE("actions: copy location shares menu and palette and captures its target") {
     Fixture f;
-    std::vector<nordend::views::SystemClipboard::Format> offered;
-    nordend::views::SystemClipboard clipboard;
+    std::vector<rummage::views::SystemClipboard::Format> offered;
+    rummage::views::SystemClipboard clipboard;
     clipboard.offer = [&](auto formats) { offered = std::move(formats); };
     f.browser.set_system_clipboard(std::move(clipboard));
     f.select({"a.txt", "b.txt"});
@@ -530,7 +533,7 @@ TEST_CASE("actions: copy location shares menu and palette and captures its targe
     f.select({"sub"});
     auto items = f.browser.palette_items();
     const auto item =
-        std::ranges::find(items, "action:copy_location", &nordend::views::PaletteItem::id);
+        std::ranges::find(items, "action:copy_location", &rummage::views::PaletteItem::id);
     REQUIRE(item != items.end());
     f.select({"a.txt"});
     item->action();
@@ -543,7 +546,7 @@ TEST_CASE("actions: copy location shares menu and palette and captures its targe
 
 TEST_CASE("actions: custom handoffs share applicability and capture selection across navigation") {
     Fixture f;
-    using nordend::core::Action;
+    using rummage::core::Action;
     std::vector<Action> actions{{.id = "inspect",
                                  .label = "Inspect",
                                  .argv = {"inspector", "{files}"},
@@ -558,7 +561,7 @@ TEST_CASE("actions: custom handoffs share applicability and capture selection ac
     bool available = true;
     f.browser.set_action_handoff(
         [&](const auto& action, const auto& context) {
-            launched = nordend::core::action_arguments(action, context);
+            launched = rummage::core::action_arguments(action, context);
             directory = context.directory;
         },
         [&](const auto&, const auto&) { return available; });
@@ -587,11 +590,11 @@ TEST_CASE("actions: custom handoffs share applicability and capture selection ac
     REQUIRE(f.settle());
     f.select({"a.txt", "sub"});
     const auto mixed = f.browser.palette_items();
-    CHECK(std::ranges::find(mixed, "action:inspect", &nordend::views::PaletteItem::id) ==
+    CHECK(std::ranges::find(mixed, "action:inspect", &rummage::views::PaletteItem::id) ==
           mixed.end());
     f.select({"a.txt"});
     const auto supported = f.browser.palette_items();
-    REQUIRE(std::ranges::find(supported, "action:inspect", &nordend::views::PaletteItem::id) !=
+    REQUIRE(std::ranges::find(supported, "action:inspect", &rummage::views::PaletteItem::id) !=
             supported.end());
     available = false;
     f.browser.open_menu(100, 100, false);
@@ -601,13 +604,13 @@ TEST_CASE("actions: custom handoffs share applicability and capture selection ac
     const bool enabled = parent ? missing->enabled : missing->children.front().enabled;
     CHECK_FALSE(enabled);
     const auto unavailable = f.browser.palette_items();
-    CHECK(std::ranges::find(unavailable, "action:inspect", &nordend::views::PaletteItem::id) ==
+    CHECK(std::ranges::find(unavailable, "action:inspect", &rummage::views::PaletteItem::id) ==
           unavailable.end());
 }
 
 TEST_CASE("actions: parent menu actions precede the submenu in configuration order") {
     Fixture f;
-    using nordend::core::Action;
+    using rummage::core::Action;
     const std::vector<Action> actions{{.id = "goblin",
                                        .label = "Goblin",
                                        .argv = {"goblin"},
@@ -629,7 +632,7 @@ TEST_CASE("actions: parent menu actions precede the submenu in configuration ord
     std::vector<std::string> launched;
     f.browser.set_action_handoff(
         [&](const auto& action, const auto& context) {
-            launched = nordend::core::action_arguments(action, context);
+            launched = rummage::core::action_arguments(action, context);
         },
         [](const auto&, const auto&) { return true; });
     f.select({"a.txt", "b.txt"});
@@ -672,13 +675,13 @@ TEST_CASE("actions: archive presets appear in menu and palette and hand off lite
     f.choose("action:extract_here");
     CHECK(launched == std::vector<std::string>{"extract_here", archive.string()});
     const auto items = f.browser.palette_items();
-    const auto to = std::ranges::find(items, "action:extract_to", &nordend::views::PaletteItem::id);
+    const auto to = std::ranges::find(items, "action:extract_to", &rummage::views::PaletteItem::id);
     REQUIRE(to != items.end());
     to->action();
     CHECK(launched == std::vector<std::string>{"extract_to", archive.string()});
     f.browser.set_action_handoff({}, {});
     const auto picker_items = f.browser.palette_items();
-    CHECK(std::ranges::find(picker_items, "action:extract_to", &nordend::views::PaletteItem::id) ==
+    CHECK(std::ranges::find(picker_items, "action:extract_to", &rummage::views::PaletteItem::id) ==
           picker_items.end());
 }
 
@@ -755,7 +758,7 @@ TEST_CASE("context menu: asynchronously filled nested groups preserve keyboard n
 }
 
 TEST_CASE("context menu: layout moves built-ins and actions without duplicates") {
-    const auto parsed = nordend::core::parse_config(R"(
+    const auto parsed = rummage::core::parse_config(R"(
 [[actions]]
 id = "script"
 label = "Script"
@@ -789,7 +792,7 @@ sidebar = []
     Names launched;
     f.browser.set_action_handoff(
         [&](const auto& action, const auto& context) {
-            launched = nordend::core::action_arguments(action, context);
+            launched = rummage::core::action_arguments(action, context);
         },
         [](const auto&, const auto&) { return true; });
     f.select({"a.txt", "b.txt"});
@@ -821,7 +824,7 @@ sidebar = []
     CHECK(launched == Names{"tool", (f.photos / "a.txt").string(), (f.photos / "b.txt").string()});
     // Layout hiding/relabeling doesn't remove registry actions from the palette.
     const auto palette = f.browser.palette_items();
-    CHECK(std::ranges::find(palette, "action:script", &nordend::views::PaletteItem::id) !=
+    CHECK(std::ranges::find(palette, "action:script", &rummage::views::PaletteItem::id) !=
           palette.end());
 
     f.select({});
@@ -831,7 +834,7 @@ sidebar = []
     REQUIRE(f.menu().items()[0].children.size() == 2);
     CHECK(f.menu().items()[0].children[0].id == "new_file");
     auto hidden = parsed.config.context_menu;
-    hidden.background = std::vector<nordend::core::MenuNode>{};
+    hidden.background = std::vector<rummage::core::MenuNode>{};
     f.browser.set_context_menu(hidden);
     f.browser.open_menu(10, 10, true);
     CHECK_FALSE(f.menu().is_open());
@@ -839,7 +842,7 @@ sidebar = []
 }
 
 TEST_CASE("context menu: remaining items may be nested and empty groups are omitted") {
-    using nordend::core::MenuNode;
+    using rummage::core::MenuNode;
     auto group = item("actions");
     group.submenu = true;
     group.children = {item("action:a"), item("action:b")};
@@ -849,7 +852,7 @@ TEST_CASE("context menu: remaining items may be nested and empty groups are omit
         {.label = "Everything else", .items = {{.remaining = true}}},
         {.label = "Hidden", .items = {{.id = "unavailable"}}},
     };
-    const auto items = nordend::views::arrange_menu(available, layout);
+    const auto items = rummage::views::arrange_menu(available, layout);
     REQUIRE(items.size() == 2);
     CHECK(items[0].id == "action:a");
     REQUIRE(items[1].children.size() == 2);
@@ -858,9 +861,9 @@ TEST_CASE("context menu: remaining items may be nested and empty groups are omit
 }
 
 TEST_CASE("context menu: pointer navigates nested panels and switches sibling groups") {
-    nordend::ui::Offscreen gl{800, 400};
-    nordend::ui::FontSystem fonts;
-    nordend::ui::Renderer renderer{fonts};
+    rummage::ui::Offscreen gl{800, 400};
+    rummage::ui::FontSystem fonts;
+    rummage::ui::Renderer renderer{fonts};
     ContextMenu menu{[] {}};
     int ran = 0;
     auto scripts = item("scripts");
@@ -877,15 +880,15 @@ TEST_CASE("context menu: pointer navigates nested panels and switches sibling gr
     root.submenu = true;
     root.children = {scripts, external};
     const auto draw = [&] {
-        renderer.begin_frame(800, 400, 1.0F, nordend::ui::Color::rgb(0x202020));
-        menu.draw(renderer, {0, 0, 800, 400}, nordend::theme::Palette{});
+        renderer.begin_frame(800, 400, 1.0F, rummage::ui::Color::rgb(0x202020));
+        menu.draw(renderer, {0, 0, 800, 400}, rummage::theme::Palette{});
         renderer.end_frame();
     };
     const auto pointer = [&](float x, float y, bool click = false) {
-        nordend::ui::PointerEvent event;
-        event.kind = click ? nordend::ui::PointerEvent::Kind::press
-                           : nordend::ui::PointerEvent::Kind::motion;
-        event.button = nordend::ui::PointerButton::left;
+        rummage::ui::PointerEvent event;
+        event.kind = click ? rummage::ui::PointerEvent::Kind::press
+                           : rummage::ui::PointerEvent::Kind::motion;
+        event.button = rummage::ui::PointerButton::left;
         event.x = x;
         event.y = y;
         CHECK(menu.pointer(event));
@@ -1023,9 +1026,9 @@ TEST_CASE("properties: obsolete metadata load cannot replace a newly opened item
 }
 
 TEST_CASE("properties: keyboard search selects a themed icon and custom artwork stays staged") {
-    std::unique_ptr<nordend::ui::Offscreen> gl;
+    std::unique_ptr<rummage::ui::Offscreen> gl;
     try {
-        gl = std::make_unique<nordend::ui::Offscreen>(800, 640);
+        gl = std::make_unique<rummage::ui::Offscreen>(800, 640);
     } catch (const std::runtime_error& error) {
         MESSAGE("no offscreen OpenGL: " << error.what());
         return;
@@ -1033,24 +1036,24 @@ TEST_CASE("properties: keyboard search selects a themed icon and custom artwork 
     Fixture f;
     const char* data_home = std::getenv("XDG_DATA_HOME");
     REQUIRE(data_home != nullptr);
-    const auto theme = fs::path{data_home} / "icons/nordend-properties-test";
+    const auto theme = fs::path{data_home} / "icons/rummage-properties-test";
     fs::create_directories(theme / "48");
     std::ofstream{theme / "index.theme"} << "[Icon Theme]\nDirectories=48\n[48]\nSize=48\n";
     const std::string svg =
         "<svg width='32' height='32'><rect width='32' height='32' fill='red'/></svg>";
     std::ofstream{theme / "48/folder-red.svg"} << svg;
     std::ofstream{theme / "48/folder-blue.svg"} << svg;
-    nordend::ui::FontSystem fonts;
-    nordend::ui::Renderer renderer{fonts};
-    nordend::ui::IconSet icons{fonts};
-    icons.set_theme("nordend-properties-test");
+    rummage::ui::FontSystem fonts;
+    rummage::ui::Renderer renderer{fonts};
+    rummage::ui::IconSet icons{fonts};
+    icons.set_theme("rummage-properties-test");
     f.select({"sub"});
     f.browser.show_properties();
     REQUIRE(f.settle());
     auto& properties = f.browser.properties_dialog();
     const auto draw = [&] {
-        renderer.begin_frame(800, 640, 1, nordend::ui::Color::rgb(0));
-        properties.draw(renderer, {0, 0, 800, 640}, nordend::theme::Palette{}, icons);
+        renderer.begin_frame(800, 640, 1, rummage::ui::Color::rgb(0));
+        properties.draw(renderer, {0, 0, 800, 640}, rummage::theme::Palette{}, icons);
         renderer.end_frame();
     };
     draw();
@@ -1058,7 +1061,7 @@ TEST_CASE("properties: keyboard search selects a themed icon and custom artwork 
     REQUIRE(properties.picking());
     draw();
     REQUIRE(f.settle());
-    nordend::ui::KeyEvent query;
+    rummage::ui::KeyEvent query;
     query.text = "blue";
     f.press(query);
     draw();
@@ -1082,4 +1085,43 @@ TEST_CASE("properties: keyboard search selects a themed icon and custom artwork 
     CHECK(properties.icon() == (theme / "48/folder-red.svg").string());
     f.press(key(XKB_KEY_Escape));
     CHECK(read_file(f.photos / "sub/.directory").find("Icon=folder-blue") != std::string::npos);
+}
+
+TEST_CASE("actions: missing archive tools remain actionable to explain installation") {
+    Fixture f;
+    f.dir.write("archive.zip", std::string{"PK\005\006"} + std::string(18, '\0'));
+    f.browser.open(f.dir.path);
+    REQUIRE(f.settle());
+    f.select({"archive.zip"});
+    unsigned launched = 0;
+    f.browser.set_action_handoff([&](const auto&, const auto&) { ++launched; },
+                                 [](const auto&, const auto&) { return false; });
+    f.browser.open_menu(100, 100, false);
+    const auto item = std::ranges::find(f.menu().items(), "action:extract_here", &MenuItem::id);
+    REQUIRE(item != f.menu().items().end());
+    CHECK(item->enabled);
+    CHECK(item->label.find("setup required") != std::string::npos);
+    f.choose("action:extract_here");
+    CHECK(launched == 1);
+    const auto items = f.browser.palette_items();
+    const auto to = std::ranges::find(items, "action:extract_to", &rummage::views::PaletteItem::id);
+    REQUIRE(to != items.end());
+    to->action();
+    CHECK(launched == 2);
+}
+
+TEST_CASE("actions: errors remain queued and copyable when a later archive succeeds") {
+    Fixture f;
+    f.browser.show_action_result("First archive failed\nInstall unrar", true);
+    f.browser.show_action_result("Second archive failed\nDisk full", true);
+    f.browser.show_action_result("Extracted third archive", false);
+    auto& errors = f.browser.action_errors();
+    CHECK(errors.pending() == 2);
+    CHECK(errors.detail() == "First archive failed\nInstall unrar");
+    CHECK(f.browser.has_overlay());
+    errors.key({.keysym = XKB_KEY_Return, .text = {}});
+    CHECK(errors.pending() == 1);
+    CHECK(errors.detail() == "Second archive failed\nDisk full");
+    errors.key({.keysym = XKB_KEY_Escape, .text = {}});
+    CHECK_FALSE(errors.is_open());
 }

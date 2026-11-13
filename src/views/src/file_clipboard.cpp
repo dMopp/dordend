@@ -1,11 +1,11 @@
-#include "nordend/views/file_clipboard.hpp"
+#include "rummage/views/file_clipboard.hpp"
 
 #include <algorithm>
 #include <utility>
 
-#include "nordend/thumbs/cache.hpp"
+#include "rummage/thumbs/cache.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 int hex_value(char c) {
@@ -143,4 +143,4 @@ std::optional<ClipboardFiles> parse_gnome_copied_files(std::string_view text) {
     return files;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

@@ -9,21 +9,21 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::ui::PointerButton;
-using nordend::ui::PointerEvent;
-using nordend::views::Browser;
-using nordend::views::Folder;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::ui::PointerButton;
+using rummage::ui::PointerEvent;
+using rummage::views::Browser;
+using rummage::views::Folder;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -58,7 +58,7 @@ const Modifiers kCtrl{.ctrl = true};
 
 Names names_of(const Folder& folder) {
     Names names;
-    for (const nordend::fs::Entry& entry : folder.entries()) {
+    for (const rummage::fs::Entry& entry : folder.entries()) {
         names.push_back(entry.name);
     }
     return names;
@@ -69,11 +69,11 @@ struct Fixture {
     TempDir dir;
     fs::path root = dir.path / "root";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
 
     Fixture() {
         fs::create_directories(root / "a" / "x");
@@ -125,7 +125,7 @@ struct Fixture {
     [[nodiscard]] fs::path where() { return shown()->path(); }
 
     [[nodiscard]] std::string cursor() {
-        const nordend::fs::Entry* const entry = shown()->cursor_entry();
+        const rummage::fs::Entry* const entry = shown()->cursor_entry();
         return entry != nullptr ? entry->name : "";
     }
 
@@ -250,11 +250,11 @@ TEST_CASE("hidden files: left out at first, Ctrl+H shows them in every view") {
         REQUIRE(f.settle());
         CHECK_FALSE(f.browser.shows_hidden());
         CHECK(names_of(*f.shown()) == Names{"a", "b", "c.txt"});
-        CHECK(nordend::views::status_of(*f.shown()) == "3 items, 2 hidden");
+        CHECK(rummage::views::status_of(*f.shown()) == "3 items, 2 hidden");
 
         f.press(key(XKB_KEY_h, kCtrl));
         CHECK(names_of(*f.shown()) == Names{".config", "a", "b", ".profile", "c.txt"});
-        CHECK(nordend::views::status_of(*f.shown()) == "5 items");
+        CHECK(rummage::views::status_of(*f.shown()) == "5 items");
         CHECK(f.browser.status_bar().message() == "Hidden files shown");
 
         // Whatever is selected while they are shown, nothing acts on them once left out.

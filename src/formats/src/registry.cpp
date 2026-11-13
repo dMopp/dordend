@@ -4,11 +4,11 @@
 #include <span>
 #include <unistd.h>
 
-#include "nordend/formats/formats.hpp"
-#include "nordend/formats/image/load.hpp"
-#include "nordend/formats/image/photo.hpp"
+#include "rummage/formats/formats.hpp"
+#include "rummage/formats/image/load.hpp"
+#include "rummage/formats/image/photo.hpp"
 
-namespace nordend::formats {
+namespace rummage::formats {
 namespace {
 
 // Enough for every family's magic numbers.
@@ -60,4 +60,4 @@ picture::PhotoInfo photo_info(int fd) {
     return family.info != nullptr ? family.info(fd) : picture::PhotoInfo{};
 }
 
-}  // namespace nordend::formats
+}  // namespace rummage::formats

@@ -1,14 +1,14 @@
 #pragma once
 
-// TIFF images, decoded by Nordend's own code (ROADMAP 2c): strips and tiles, chunky and planar,
+// TIFF images, decoded by rummage's own code (ROADMAP 2c): strips and tiles, chunky and planar,
 // no compression, LZW, Deflate, PackBits, the horizontal and floating-point predictors, 1 to 16
 // bit integers and 16 to 64 bit floats, grey, RGB, palette and CMYK, with or without alpha, to
 // 8-bit RGBA. The first full-resolution image of the file; its Orientation tag is reported.
 
 #include "container.hpp"
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 
 // Whether a file built like TIFF is a camera raw (it holds a colour filter array or linear raw
 // image, a 10/12/14-bit one, is a DNG, or is a Canon CR2): those show their embedded previews,
@@ -25,4 +25,4 @@ namespace nordend::formats::image::tiff {
 [[nodiscard]] std::optional<std::span<const std::uint8_t>> jpeg_in_tiff(
     std::span<const std::uint8_t> data);
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

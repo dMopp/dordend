@@ -3,11 +3,11 @@
 #include <array>
 #include <cstddef>
 
-#include "nordend/theme/palette.hpp"
-#include "nordend/ui/color.hpp"
-#include "nordend/ui/text.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/ui/color.hpp"
+#include "rummage/ui/text.hpp"
 
-namespace nordend::app {
+namespace rummage::app {
 namespace {
 
 using ui::BoxStyle;
@@ -187,11 +187,11 @@ void draw_text_samples(Renderer& r, const Ink& ink, float y, float width) {
 
     const std::array samples{
         Sample{11.0F, "11 px \u2014 The quick brown fox jumps over the lazy dog 0123456789"},
-        Sample{14.0F, "14 px \u2014 Nordend: file manager nativo per Wayland"},
+        Sample{14.0F, "14 px \u2014 rummage: file manager nativo per Wayland"},
         Sample{20.0F,
                "Accenti: \u00e0\u00e8\u00e9\u00ec\u00f2\u00f9 \u00c0\u00c8\u00c9 "
                "\u00f1 \u00e7 \u00df \u00f8 \u00e5 \u0153 \u2014 decomposta: e\u0301"},
-        Sample{32.0F, "32 px Nordend Ag"},
+        Sample{32.0F, "32 px rummage Ag"},
         Sample{14.0F,
                "Emoji: Foto \U0001F4F7 vacanza \U0001F3D4\uFE0F famiglia "
                "\U0001F468\u200D\U0001F469\u200D\U0001F467 ok \U0001F44D\U0001F3FD"},
@@ -242,4 +242,4 @@ void draw_test_scene(Renderer& renderer, const Rect& bounds, const theme::Palett
     renderer.pop_clip();
 }
 
-}  // namespace nordend::app
+}  // namespace rummage::app

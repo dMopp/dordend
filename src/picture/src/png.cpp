@@ -1,4 +1,4 @@
-#include "nordend/picture/png.hpp"
+#include "rummage/picture/png.hpp"
 
 #include <algorithm>
 #include <array>
@@ -6,7 +6,7 @@
 #include <string_view>
 #include <zlib.h>
 
-namespace nordend::picture {
+namespace rummage::picture {
 namespace {
 
 constexpr std::array<std::uint8_t, 8> kSignature{0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
@@ -148,4 +148,4 @@ PngText png_text(std::span<const std::uint8_t> png) {
     return text;
 }
 
-}  // namespace nordend::picture
+}  // namespace rummage::picture

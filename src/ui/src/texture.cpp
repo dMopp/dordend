@@ -1,9 +1,9 @@
-#include "nordend/ui/texture.hpp"
+#include "rummage/ui/texture.hpp"
 
 #include <GLES3/gl3.h>
 #include <vector>
 
-namespace nordend::ui {
+namespace rummage::ui {
 
 Texture::Texture(std::uint32_t width, std::uint32_t height, std::span<const std::uint8_t> rgba)
     : width_{width}, height_{height} {
@@ -35,4 +35,4 @@ Texture::~Texture() { glDeleteTextures(1, &id_); }
 
 std::size_t Texture::bytes() const noexcept { return std::size_t{width_} * height_ * 4 * 4 / 3; }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

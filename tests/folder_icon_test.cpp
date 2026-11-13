@@ -1,61 +1,61 @@
-#include "nordend/fs/folder_icon.hpp"
+#include "rummage/fs/folder_icon.hpp"
 
 #include <sys/stat.h>
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/file.hpp"
-#include "nordend/fs/directory.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/fs/directory.hpp"
 #include "temp_dir.hpp"
 
-using nordend::fs::FolderIcons;
-using nordend::fs::parse_folder_icon;
-using nordend::test::TempDir;
+using rummage::fs::FolderIcons;
+using rummage::fs::parse_folder_icon;
+using rummage::test::TempDir;
 namespace fs = std::filesystem;
 
 TEST_CASE("folder icon settings: preserve unrelated content and escape values") {
     const std::string before =
         "# Dolphin settings\r\n[Desktop Entry]\r\nName=Projects\r\nIcon=old\r\n"
         "Icon=duplicate\r\n[Settings]\r\nHiddenFilesShown=true\r\n";
-    const auto after = nordend::fs::update_folder_icon_text(before, "./my icon.svg");
+    const auto after = rummage::fs::update_folder_icon_text(before, "./my icon.svg");
     CHECK(after ==
           "# Dolphin settings\r\n[Desktop Entry]\r\nIcon=./my\\sicon.svg\r\nName=Projects\r\n"
           "[Settings]\r\nHiddenFilesShown=true\r\n");
     CHECK(parse_folder_icon(after, "/work") == "/work/my icon.svg");
-    const auto reset = nordend::fs::update_folder_icon_text(after, "");
+    const auto reset = rummage::fs::update_folder_icon_text(after, "");
     CHECK(reset.find("Icon=") == std::string::npos);
     CHECK(reset.find("Name=Projects") != std::string::npos);
     CHECK(reset.find("HiddenFilesShown=true") != std::string::npos);
-    CHECK(nordend::fs::update_folder_icon_text("[Settings]\nView=2", "folder-red") ==
+    CHECK(rummage::fs::update_folder_icon_text("[Settings]\nView=2", "folder-red") ==
           "[Settings]\nView=2\n[Desktop Entry]\nIcon=folder-red\n");
-    CHECK(nordend::fs::update_folder_icon_text("", "").empty());
+    CHECK(rummage::fs::update_folder_icon_text("", "").empty());
 }
 
 TEST_CASE("folder icon settings: atomic save, reset and refusing unsafe metadata") {
     TempDir dir;
-    CHECK(nordend::fs::save_folder_icon(dir.path, "folder-music").empty());
-    CHECK(nordend::fs::read_folder_icon_setting(dir.path).icon == "folder-music");
+    CHECK(rummage::fs::save_folder_icon(dir.path, "folder-music").empty());
+    CHECK(rummage::fs::read_folder_icon_setting(dir.path).icon == "folder-music");
     dir.write(".directory", "[Desktop Entry]\nIcon=folder-red\n[Settings]\nView=3\n");
     ::chmod((dir.path / ".directory").c_str(), 0600);
-    CHECK(nordend::fs::save_folder_icon(dir.path, "").empty());
-    CHECK(nordend::core::read_text_file(dir.path / ".directory").text ==
+    CHECK(rummage::fs::save_folder_icon(dir.path, "").empty());
+    CHECK(rummage::core::read_text_file(dir.path / ".directory").text ==
           "[Desktop Entry]\n[Settings]\nView=3\n");
     CHECK((fs::status(dir.path / ".directory").permissions() & fs::perms::mask) ==
           (fs::perms::owner_read | fs::perms::owner_write));
     fs::remove(dir.path / ".directory");
     dir.write("external", "keep me");
     fs::create_symlink("external", dir.path / ".directory");
-    CHECK_FALSE(nordend::fs::save_folder_icon(dir.path, "folder-blue").empty());
+    CHECK_FALSE(rummage::fs::save_folder_icon(dir.path, "folder-blue").empty());
     CHECK(fs::is_symlink(dir.path / ".directory"));
-    CHECK(nordend::core::read_text_file(dir.path / "external").text == "keep me");
+    CHECK(rummage::core::read_text_file(dir.path / "external").text == "keep me");
     fs::remove(dir.path / ".directory");
     REQUIRE(::mkfifo((dir.path / ".directory").c_str(), 0600) == 0);
-    CHECK_FALSE(nordend::fs::save_folder_icon(dir.path, "folder-blue").empty());
+    CHECK_FALSE(rummage::fs::save_folder_icon(dir.path, "folder-blue").empty());
     fs::remove(dir.path / ".directory");
     dir.write(".directory", std::string(65537, 'x'));
-    CHECK_FALSE(nordend::fs::save_folder_icon(dir.path, "folder-blue").empty());
+    CHECK_FALSE(rummage::fs::save_folder_icon(dir.path, "folder-blue").empty());
     CHECK(fs::file_size(dir.path / ".directory") == 65537);
-    CHECK_FALSE(nordend::fs::save_folder_icon(dir.path / "gone", "folder-blue").empty());
+    CHECK_FALSE(rummage::fs::save_folder_icon(dir.path / "gone", "folder-blue").empty());
     CHECK_FALSE(fs::exists(dir.path / "gone"));
 }
 
@@ -134,8 +134,8 @@ TEST_CASE("folder icons: directory loads and incremental reads carry icons, incl
     dir.write("custom/.directory", "[Desktop Entry]\nIcon=folder-development\n");
     fs::create_directory_symlink("custom", dir.path / "link");
     dir.write("plain.txt", "text");
-    std::vector<nordend::fs::Entry> entries;
-    const auto result = nordend::fs::read_directory(dir.path, {}, {}, [&](auto chunk) {
+    std::vector<rummage::fs::Entry> entries;
+    const auto result = rummage::fs::read_directory(dir.path, {}, {}, [&](auto chunk) {
         entries.insert(entries.end(), chunk.begin(), chunk.end());
     });
     REQUIRE_FALSE(result.error);
@@ -144,7 +144,7 @@ TEST_CASE("folder icons: directory loads and incremental reads carry icons, incl
         CHECK(entry.folder_icon == (entry.is_directory() ? "folder-development" : ""));
     }
     dir.write("custom/.directory", "[Desktop Entry]\nIcon=folder-blue\n");
-    const auto updated = nordend::fs::read_entries(dir.path, {"custom", "link"}, {});
+    const auto updated = rummage::fs::read_entries(dir.path, {"custom", "link"}, {});
     REQUIRE(updated[0]);
     REQUIRE(updated[1]);
     CHECK(updated[0]->folder_icon == "folder-blue");

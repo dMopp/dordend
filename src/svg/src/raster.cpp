@@ -2,7 +2,7 @@
 
 #include "internal.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 namespace {
 using Tag = std::remove_pointer_t<decltype(FT_Outline::tags)>;
 using Contour = std::remove_pointer_t<decltype(FT_Outline::contours)>;
@@ -713,4 +713,4 @@ void Raster::draw(Canvas& canvas, const Path& source, const Matrix& world, const
     auto outline = result.get(false);
     render(library, canvas, outline, paint, opacity);
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

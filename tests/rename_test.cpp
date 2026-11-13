@@ -14,25 +14,25 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/operations.hpp"
-#include "nordend/ui/text_field.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/operations.hpp"
+#include "rummage/ui/text_field.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::ui::TextField;
-using nordend::views::Browser;
-using nordend::views::Folder;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::ui::TextField;
+using rummage::views::Browser;
+using rummage::views::Folder;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
-namespace ops = nordend::fs;
+namespace ops = rummage::fs;
 
 namespace {
 
@@ -228,12 +228,12 @@ struct BrowserFixture {
     TempDir dir;
     fs::path root = dir.path / "root";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     std::vector<std::pair<std::string, bool>> messages;
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
 
     BrowserFixture() {
         fs::create_directories(root / "alpha");
@@ -261,7 +261,7 @@ struct BrowserFixture {
     }
 
     std::string cursor() {
-        const nordend::fs::Entry* entry = folder()->cursor_entry();
+        const rummage::fs::Entry* entry = folder()->cursor_entry();
         return entry == nullptr ? std::string{} : entry->name;
     }
 
@@ -330,7 +330,7 @@ TEST_CASE("browser: F2 renames in place, the extension left out, sidecars along"
         REQUIRE(f.settle());
 
         CHECK(f.press(key(XKB_KEY_F2)));
-        nordend::views::NameEditor& editor = f.browser.name_editor();
+        rummage::views::NameEditor& editor = f.browser.name_editor();
         REQUIRE(editor.active());
         CHECK(selected(editor.field()) == "P1");
         // Every key is the field's meanwhile: Space, Ctrl+2 and arrows do not reach the view.
@@ -357,7 +357,7 @@ TEST_CASE("browser: a refused name keeps the field; Escape leaves everything as 
     REQUIRE(f.settle());
     f.folder()->select_name("notes.txt");
     REQUIRE(f.settle());
-    nordend::views::NameEditor& editor = f.browser.name_editor();
+    rummage::views::NameEditor& editor = f.browser.name_editor();
 
     CHECK(f.press(key(XKB_KEY_F2)));
     CHECK(f.press(key(XKB_KEY_a, {.ctrl = true})));
@@ -394,7 +394,7 @@ TEST_CASE("browser: Ctrl+Shift+N makes a folder and edits its name") {
         REQUIRE(f.settle());
         f.folder()->select_name("notes.txt");
         REQUIRE(f.settle());
-        nordend::views::NameEditor& editor = f.browser.name_editor();
+        rummage::views::NameEditor& editor = f.browser.name_editor();
 
         CHECK(f.press(key(XKB_KEY_N, {.ctrl = true, .shift = true})));
         REQUIRE(run_until(f.loop, [&] { return editor.active(); }));
@@ -426,4 +426,33 @@ TEST_CASE("browser: F2 with nothing under the cursor, and in the sidebar, does n
     f.browser.sidebar().set_focused(true);
     CHECK_FALSE(f.press(key(XKB_KEY_F2)));
     CHECK_FALSE(f.browser.name_editor().active());
+}
+
+TEST_CASE("archive password: Unicode editing, paste, confirmation and cancellation") {
+    rummage::views::ConfirmDialog dialog{[] {}};
+    std::optional<std::string> answer;
+    unsigned answered = 0;
+    const auto receive = [&](auto value) {
+        answer = std::move(value);
+        ++answered;
+    };
+    dialog.open_password("secret.7z", false, receive);
+    REQUIRE(dialog.is_open());
+    dialog.key(typed("päss 🔒"));
+    dialog.key(key(XKB_KEY_BackSpace));
+    dialog.paste("word");
+    dialog.paste("invalid\nline");
+    dialog.key(key(XKB_KEY_Return));
+    CHECK_FALSE(dialog.is_open());
+    CHECK(answer == "päss word");
+    CHECK(answered == 1);
+    dialog.open_password("secret.7z", true, receive);
+    CHECK(dialog.detail().starts_with("Password rejected"));
+    dialog.key(typed("discard"));
+    dialog.key(key(XKB_KEY_Escape));
+    CHECK_FALSE(answer);
+    CHECK(answered == 2);
+    dialog.open_password("secret.7z", false, receive);
+    dialog.key(key(XKB_KEY_Return));
+    CHECK(answer == "");  // a new prompt cannot reuse the previous password
 }

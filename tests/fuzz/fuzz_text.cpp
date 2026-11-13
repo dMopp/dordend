@@ -9,14 +9,14 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "nordend/formats/text/read.hpp"
-#include "nordend/formats/text/syntax.hpp"
+#include "rummage/formats/text/read.hpp"
+#include "rummage/formats/text/syntax.hpp"
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     if (size == 0) {
         return 0;
     }
-    static constexpr std::array<nordend::text::Limits, 4> kLimits{{
+    static constexpr std::array<rummage::text::Limits, 4> kLimits{{
         {},
         {.max_bytes = 8192, .max_line_bytes = 256, .max_lines = 40, .tab_width = 4},
         {.max_bytes = 64, .max_line_bytes = 3, .max_lines = 0, .tab_width = 8},
@@ -38,7 +38,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
                                                              "application/x-desktop",
                                                              "text/markdown",
                                                              "text/x-patch"};
-    nordend::text::Limits limits = kLimits.at(data[0] % kLimits.size());
+    rummage::text::Limits limits = kLimits.at(data[0] % kLimits.size());
     const std::string_view mime = kTypes.at((data[0] / kLimits.size()) % kTypes.size());
     // Languages found by name only (with text/plain): ignore files, .gitattributes.
     // A log is read from its end (Limits::tail).
@@ -48,14 +48,14 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         kNames.at((data[0] / (kLimits.size() * kTypes.size())) % kNames.size());
     const std::span<const std::uint8_t> file{data + 1, size - 1};
     limits.tail = name.ends_with(".log");
-    static_cast<void>(nordend::formats::text::decode(file, true, limits));
+    static_cast<void>(rummage::formats::text::decode(file, true, limits));
     const int fd = ::memfd_create("fuzz", MFD_CLOEXEC);
     if (fd < 0) {
         return 0;
     }
     if (::write(fd, file.data(), file.size()) == static_cast<ssize_t>(file.size())) {
-        nordend::text::Loaded loaded = nordend::formats::text::read(fd, limits);
-        nordend::formats::text::colour(loaded.text, name, mime);
+        rummage::text::Loaded loaded = rummage::formats::text::read(fd, limits);
+        rummage::formats::text::colour(loaded.text, name, mime);
     }
     ::close(fd);
     return 0;

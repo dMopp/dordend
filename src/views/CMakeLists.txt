@@ -1,20 +1,22 @@
 # fzy (third_party/fzy): the fuzzy matcher of the command palette. Compiled on its own, as C,
 # without our warnings.
-add_library(nordend_fzy STATIC ${PROJECT_SOURCE_DIR}/third_party/fzy/src/match.c)
-target_include_directories(nordend_fzy SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/third_party)
-target_compile_options(nordend_fzy PRIVATE -w)
-if(NORDEND_SANITIZER)
-    target_compile_options(nordend_fzy PRIVATE -fsanitize=${NORDEND_SANITIZER})
+add_library(rummage_fzy STATIC ${PROJECT_SOURCE_DIR}/third_party/fzy/src/match.c)
+target_include_directories(rummage_fzy SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/third_party)
+target_compile_options(rummage_fzy PRIVATE -w)
+if(RUMMAGE_SANITIZER)
+    target_compile_options(rummage_fzy PRIVATE -fsanitize=${RUMMAGE_SANITIZER})
 endif()
 
-add_library(nordend_views
+add_library(rummage_views
     src/breadcrumb.cpp
     src/browser_actions.cpp
+    src/browser_panes.cpp
     src/browser.cpp
     src/browser_palette.cpp
     src/column.cpp
     src/column_view.cpp
     src/command_palette.cpp
+    src/error_dialog.cpp
     src/confirm_dialog.cpp
     src/conflict_dialog.cpp
     src/context_menu.cpp
@@ -45,9 +47,9 @@ add_library(nordend_views
     src/text_selection.cpp
     src/thumbnails.cpp
     src/undo.cpp)
-add_library(nordend::views ALIAS nordend_views)
+add_library(rummage::views ALIAS rummage_views)
 
-target_include_directories(nordend_views PUBLIC include)
-target_link_libraries(nordend_views
-    PUBLIC nordend::core nordend::ui nordend::fs nordend::theme nordend::thumbs nordend::preview
-    PRIVATE nordend::warnings PkgConfig::TOMLPLUSPLUS nordend_fzy)
+target_include_directories(rummage_views PUBLIC include)
+target_link_libraries(rummage_views
+    PUBLIC rummage::core rummage::ui rummage::fs rummage::theme rummage::thumbs rummage::preview
+    PRIVATE rummage::warnings PkgConfig::TOMLPLUSPLUS rummage_fzy)

@@ -1,4 +1,4 @@
-#include "nordend/formats/image/preview.hpp"
+#include "rummage/formats/image/preview.hpp"
 
 #include <algorithm>
 #include <cerrno>
@@ -15,11 +15,11 @@
 #include "camera/previews.hpp"
 #include "fd_file.hpp"
 #include "jpeg_segments.hpp"
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 #include "tiff/decode.hpp"
 #include "tiff/extract.hpp"
 
-namespace nordend::formats::image {
+namespace rummage::formats::image {
 namespace {
 
 // Bytes read to find a preview's size in its header, and to read a raw file's first IFD.
@@ -156,7 +156,7 @@ EmbeddedPreview embedded_preview(int fd, std::uint32_t min_long_side) {
     }
     const std::optional<camera::CameraFile> camera = camera::read(*file);
     if (!camera) {
-        return result;  // a type that keeps none Nordend reads (PNG, Sigma X3F): none, no error
+        return result;  // a type that keeps none rummage reads (PNG, Sigma X3F): none, no error
     }
     std::vector<Candidate> candidates;
     for (const camera::Found& found : camera->previews) {
@@ -295,4 +295,4 @@ Decoded decode_preview(const EmbeddedPreview& preview) {
     return result;
 }
 
-}  // namespace nordend::formats::image
+}  // namespace rummage::formats::image

@@ -1,4 +1,0 @@
-[portal]
-DBusName=org.freedesktop.impl.portal.desktop.nordend
-Interfaces=org.freedesktop.impl.portal.FileChooser;
-UseIn=umbriel;

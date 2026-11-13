@@ -1,6 +1,6 @@
-// Every DNG in the NORDEND_RAW_SAMPLES folder (not in the repository) read by Nordend's own
+// Every DNG in the RUMMAGE_RAW_SAMPLES folder (not in the repository) read by rummage's own
 // reader (ROADMAP 2d-1) and by LibRaw: the same values, linearized, at every site. LibRaw is the
-// reference only: it is linked into the tests when found, never into Nordend or its helper.
+// reference only: it is linked into the tests when found, never into rummage or its helper.
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -22,14 +22,14 @@
 #include "tiff/container.hpp"
 
 namespace fs = std::filesystem;
-namespace image = nordend::formats::image;
-namespace dng = nordend::formats::image::dng;
-namespace tiff = nordend::formats::image::tiff;
+namespace image = rummage::formats::image;
+namespace dng = rummage::formats::image::dng;
+namespace tiff = rummage::formats::image::tiff;
 
 namespace {
 
 const fs::path kSamples = [] {
-    const char* folder = std::getenv("NORDEND_RAW_SAMPLES");
+    const char* folder = std::getenv("RUMMAGE_RAW_SAMPLES");
     return fs::path{folder != nullptr ? folder : ""};
 }();
 

@@ -18,7 +18,7 @@
 #include "../tiff/container.hpp"
 #include "previews.hpp"
 
-namespace nordend::formats::image::camera {
+namespace rummage::formats::image::camera {
 namespace {
 
 constexpr std::size_t kExifHead = std::size_t{256} * 1024;
@@ -53,7 +53,7 @@ const tiff::Ifd* holding(std::span<const Group> groups, std::uint16_t tag) {
     return nullptr;
 }
 
-// An ASCII value up to its first NUL, without the spaces and tabs at its end (as Nordend showed
+// An ASCII value up to its first NUL, without the spaces and tabs at its end (as rummage showed
 // exiv2's).
 std::string text(std::span<const Group> groups, std::uint16_t tag) {
     const tiff::Ifd* ifd = holding(groups, tag);
@@ -464,4 +464,4 @@ picture::PhotoInfo read_info(const detail::FdFile& file) {
     return info;
 }
 
-}  // namespace nordend::formats::image::camera
+}  // namespace rummage::formats::image::camera

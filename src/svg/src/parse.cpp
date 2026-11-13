@@ -3,7 +3,7 @@
 
 #include "internal.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 std::string_view trim(std::string_view s) {
     auto a = s.find_first_not_of(" \t\r\n");
     if (a == s.npos) {
@@ -198,4 +198,4 @@ Matrix viewport(std::string_view viewbox, std::string_view aspect, double width,
     }
     return {sx, 0, 0, sy, tx, ty};
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

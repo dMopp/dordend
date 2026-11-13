@@ -1,4 +1,4 @@
-#include "nordend/views/fuzzy.hpp"
+#include "rummage/views/fuzzy.hpp"
 
 #include <cctype>
 #include <cmath>
@@ -9,7 +9,7 @@
 
 #include "fzy/src/match.h"  // NOLINT(misc-include-cleaner): has_match, match, match_positions
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 // A match in a path's name ranks above any match that needs its folders.
@@ -103,4 +103,4 @@ std::vector<std::size_t> fuzzy_positions(std::string_view query, std::string_vie
     return FuzzyQuery{query}.positions(text);
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

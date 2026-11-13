@@ -1,4 +1,4 @@
-#include "nordend/fs/mime.hpp"
+#include "rummage/fs/mime.hpp"
 
 #include <algorithm>
 #include <array>
@@ -15,11 +15,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include "nordend/core/file.hpp"
-#include "nordend/core/log.hpp"
-#include "nordend/fs/entry.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/fs/entry.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 // Bytes read for the text/binary guess when magic needs fewer.
@@ -569,7 +569,7 @@ MimeId MimeDatabase::by_content(std::span<const std::byte> head) const {
     return impl_->sniff(head).mime;
 }
 
-// The order of GLib's g_content_type_guess, so Nordend agrees with GTK apps and gio.
+// The order of GLib's g_content_type_guess, so rummage agrees with GTK apps and gio.
 MimeId MimeDatabase::to_open(MimeId mime, std::string_view file_name) const {
     if (mime != kZeroSize) {
         return mime;
@@ -704,4 +704,4 @@ std::size_t MimeDatabase::glob_count() const noexcept { return impl_->globs.size
 
 std::size_t MimeDatabase::magic_count() const noexcept { return impl_->magic.size(); }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

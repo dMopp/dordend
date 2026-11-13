@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes small DNGs for nordend-fuzz-dng (ROADMAP 2d) into the folder given: a 16x16 RGB
+"""Writes small DNGs for rummage-fuzz-dng (ROADMAP 2d) into the folder given: a 16x16 RGB
 thumbnail in IFD0 with the colour tags, the raw image in a SubIFD, in the shapes the reader
 knows: 16-bit and packed 12-bit CFA strips, lossless JPEG strips and tiles (from the fixtures in
 tests/data/image/dng), linear raw, a linearization table, black level deltas, crops, opcode

@@ -1,10 +1,10 @@
-#include "nordend/views/thumbnails.hpp"
+#include "rummage/views/thumbnails.hpp"
 
 #include <algorithm>
 #include <utility>
 #include <vector>
 
-namespace nordend::views {
+namespace rummage::views {
 
 Thumbnails::Thumbnails(core::WorkerPool& pool, std::shared_ptr<const thumbs::Cache> cache,
                        std::function<void()> redraw)
@@ -20,12 +20,13 @@ Thumbnails::~Thumbnails() {
 }
 
 const ui::Texture* Thumbnails::get(const std::filesystem::path& file, std::int64_t modified_ns,
-                                   thumbs::Size size) {
+                                   thumbs::Size size, std::string_view mime) {
     std::string key = file.string();
     key += '\n';
     key += thumbs::directory_name(size);
     key += '\n';
     key += std::to_string(modified_ns);
+    key += mime;
     auto [it, added] = slots_.try_emplace(key);
     Slot& slot = it->second;
     slot.used = frame_;
@@ -33,8 +34,8 @@ const ui::Texture* Thumbnails::get(const std::filesystem::path& file, std::int64
         ++in_flight_;
         slot.job = pool_.submit(
             core::Priority::visible,
-            [cache = cache_, file, size](const core::CancelToken& /*token*/) {
-                thumbs::Thumbnail thumbnail = cache->get(file, size);
+            [cache = cache_, file, size, mime = std::string{mime}](const core::CancelToken& token) {
+                thumbs::Thumbnail thumbnail = cache->get(file, size, mime, &token);
                 return std::make_shared<picture::Image>(std::move(thumbnail.image));
             },
             [this, alive = alive_, key](std::shared_ptr<picture::Image> pixels) {
@@ -111,4 +112,4 @@ Thumbnails::Usage Thumbnails::usage() const {
     return usage;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

@@ -1,4 +1,4 @@
-#include "nordend/isolate/helpers.hpp"
+#include "rummage/isolate/helpers.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -18,36 +18,36 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/formats/image/load.hpp"
-#include "nordend/formats/image/photo.hpp"
-#include "nordend/formats/text/read.hpp"
-#include "nordend/picture/load.hpp"
-#include "nordend/text/text.hpp"
+#include "rummage/formats/image/load.hpp"
+#include "rummage/formats/image/photo.hpp"
+#include "rummage/formats/text/read.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/text/text.hpp"
 #include "protocol.hpp"
 #include "temp_dir.hpp"
 
 namespace fs = std::filesystem;
-namespace image = nordend::formats::image;
-namespace picture = nordend::picture;
-namespace isolate = nordend::isolate;
-namespace text = nordend::text;
-using nordend::test::TempDir;
+namespace image = rummage::formats::image;
+namespace picture = rummage::picture;
+namespace isolate = rummage::isolate;
+namespace text = rummage::text;
+using rummage::test::TempDir;
 using picture::Failure;
 
 namespace {
 
-const fs::path kData = fs::path{NORDEND_TEST_DATA} / "image";
+const fs::path kData = fs::path{RUMMAGE_TEST_DATA} / "image";
 
 isolate::HelperOptions real(std::size_t max_helpers = 4) {
     isolate::HelperOptions options;
-    options.program = NORDEND_PREVIEW_HELPER;
+    options.program = RUMMAGE_PREVIEW_HELPER;
     options.max_helpers = max_helpers;
     return options;
 }
 
 isolate::HelperOptions fake(const char* mode) {
     isolate::HelperOptions options;
-    options.program = NORDEND_FAKE_HELPER;
+    options.program = RUMMAGE_FAKE_HELPER;
     options.args = {mode};
     options.max_helpers = 1;
     options.timeout = std::chrono::milliseconds{300};
@@ -148,7 +148,7 @@ TEST_CASE("helpers: an idle helper is closed and waited for, then replaced unsee
     CHECK(helpers.load(request(kData / "blocks.png")).failure == Failure::none);
     CHECK(helpers.running() == 1);
     std::this_thread::sleep_for(std::chrono::milliseconds{300});
-    CHECK(helpers.running() == 0);  // closed by Nordend and waited for: no zombie
+    CHECK(helpers.running() == 0);  // closed by rummage and waited for: no zombie
     CHECK(helpers.load(request(kData / "blocks.png")).failure == Failure::none);
     // A goodbye racing with a request: sent again to a new one (which says goodbye too here).
     isolate::Helpers leaving{fake("goodbye")};
@@ -172,7 +172,7 @@ TEST_CASE("helpers: a helper that crashes, hangs or talks nonsense is let go of"
     }
 }
 
-TEST_CASE("helpers: a helper without its cage never works, and Nordend says why") {
+TEST_CASE("helpers: a helper without its cage never works, and rummage says why") {
     isolate::Helpers helpers{fake("no-sandbox")};
     const picture::Loaded loaded = helpers.load(request(kData / "blocks.png"));
     CHECK(loaded.failure == Failure::unavailable);
@@ -182,7 +182,7 @@ TEST_CASE("helpers: a helper without its cage never works, and Nordend says why"
 
 TEST_CASE("helpers: no helper, no picture, and nothing parsed here instead") {
     isolate::HelperOptions missing;
-    missing.program = "/nonexistent/nordend-preview";
+    missing.program = "/nonexistent/rummage-preview";
     isolate::Helpers helpers{missing};
     const picture::Loaded loaded = helpers.load(request(kData / "blocks.png"));
     CHECK(loaded.failure == Failure::unavailable);
@@ -232,7 +232,7 @@ TEST_CASE("helpers: the helper reads the same text as this process") {
         write("empty.txt", ""),
         write("newline.txt", "\n"),
         write("many.txt", many),
-        fs::path{NORDEND_TEST_DATA} / ".." / "text_test.cpp",
+        fs::path{RUMMAGE_TEST_DATA} / ".." / "text_test.cpp",
     };
     isolate::Helpers helpers{real(1)};
     for (const text::Limits limits :
@@ -245,7 +245,7 @@ TEST_CASE("helpers: the helper reads the same text as this process") {
             const text::LoadRequest request{
                 .path = file, .mime = code ? "text/x-c++src" : "text/plain", .limits = limits};
             const text::Loaded there = helpers.load_text(request);
-            const text::Loaded here = nordend::formats::text::load(request);
+            const text::Loaded here = rummage::formats::text::load(request);
             CHECK(there.failure == here.failure);
             CHECK(there.detail == here.detail);
             CHECK(there.text.lines == here.text.lines);

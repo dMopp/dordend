@@ -1,4 +1,4 @@
-#include "nordend/views/details_view.hpp"
+#include "rummage/views/details_view.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,12 +12,12 @@
 
 #include "draw_helpers.hpp"
 #include "item_style.hpp"
-#include "nordend/fs/icon.hpp"
-#include "nordend/ui/text_field.hpp"
-#include "nordend/views/format.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/fs/icon.hpp"
+#include "rummage/ui/text_field.hpp"
+#include "rummage/views/format.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 using Field = DetailsView::Field;
@@ -527,7 +527,7 @@ void DetailsView::draw(ui::Renderer& renderer, const ui::Rect& bounds,
             renderer.draw_box(
                 {table_left, y + kRowInset, table_width, size_.row - (2.0F * kRowInset)},
                 {.fill = style.fill.value_or(kTransparent),
-                 .radius = ui::Corners::all(6.0F),
+                 .radius = {},
                  .border_width = style.ring ? 1.5F : 0.0F,
                  .border = style.ring.value_or(kTransparent)});
         }
@@ -618,15 +618,12 @@ void DetailsView::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         const float travel = rows_.height - thumb;
         const float thumb_y = rows_.y + (travel * offset / scroller_.max_offset());
         renderer.draw_box({rows_.right() - kScrollbarWidth - 2.0F, thumb_y, kScrollbarWidth, thumb},
-                          {.fill = palette.on_surface_variant.with_alpha(0.45F),
-                           .radius = ui::Corners::all(kScrollbarWidth / 2.0F)});
+                          {.fill = palette.on_surface_variant.with_alpha(0.45F), .radius = {}});
     }
     if (drop_ != nullptr && drop_->covers(root_->path())) {
-        renderer.draw_box({rows_.x + 2.0F, rows_.y + 2.0F, rows_.width - 4.0F, rows_.height - 4.0F},
-                          {.fill = kTransparent,
-                           .radius = ui::Corners::all(8.0F),
-                           .border_width = 2.0F,
-                           .border = palette.primary});
+        renderer.draw_box(
+            {rows_.x + 2.0F, rows_.y + 2.0F, rows_.width - 4.0F, rows_.height - 4.0F},
+            {.fill = kTransparent, .radius = {}, .border_width = 2.0F, .border = palette.primary});
     }
     renderer.pop_clip();
     if (pane) {
@@ -1011,4 +1008,4 @@ std::optional<std::pair<float, float>> DetailsView::cursor_anchor() const {
     return std::pair{rows_.x + 48.0F, bottom};
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

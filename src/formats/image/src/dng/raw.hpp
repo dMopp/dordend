@@ -1,6 +1,6 @@
 #pragma once
 
-// A DNG's sensor data, read by Nordend's own code (ROADMAP 2d-1): the main image (colour filter
+// A DNG's sensor data, read by rummage's own code (ROADMAP 2d-1): the main image (colour filter
 // array or linear raw), uncompressed at 8 to 16 bits (packed when not 8 or 16) or as lossless
 // JPEG, in strips or tiles, through the linearization table. What turns it into a picture (black
 // and white levels, colour, demosaic) is the development's (2d-2); here the levels are only read.
@@ -16,9 +16,9 @@
 #include <vector>
 
 #include "../tiff/container.hpp"
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 
 inline constexpr std::uint64_t kCfa = 32803;
 inline constexpr std::uint64_t kLinearRaw = 34892;
@@ -73,4 +73,4 @@ using Band = std::function<bool(std::uint32_t first_row, std::uint32_t rows,
 [[nodiscard]] std::optional<std::vector<std::uint16_t>> read_all(const Raw& raw,
                                                                  std::string& error);
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

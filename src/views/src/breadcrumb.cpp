@@ -1,13 +1,13 @@
-#include "nordend/views/breadcrumb.hpp"
+#include "rummage/views/breadcrumb.hpp"
 
 #include <algorithm>
 #include <utility>
 
 #include "draw_helpers.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kPadding = 16.0F;  // either end of the bar
@@ -120,12 +120,11 @@ void Breadcrumb::draw(ui::Renderer& renderer, const ui::Rect& bounds, const them
         const bool drop = drop_target_ == crumb.path;
         if (drop) {
             renderer.draw_box(box, {.fill = palette.primary_container,
-                                    .radius = ui::Corners::all(6.0F),
+                                    .radius = {},
                                     .border_width = 1.5F,
                                     .border = palette.primary});
         } else if (hovered_ == i && !last) {
-            renderer.draw_box(
-                box, {.fill = palette.surface_container_high, .radius = ui::Corners::all(6.0F)});
+            renderer.draw_box(box, {.fill = palette.surface_container_high, .radius = {}});
         }
         ui::Color color = last || hovered_ == i ? palette.on_surface : palette.on_surface_variant;
         if (drop) {
@@ -215,4 +214,4 @@ std::vector<std::string> Breadcrumb::shown() const {
     return out;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

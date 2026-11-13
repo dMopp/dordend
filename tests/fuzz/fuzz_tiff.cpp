@@ -1,4 +1,4 @@
-// Fuzzes Nordend's own TIFF reader (ROADMAP 2c) from memory: the container, the codecs, the
+// Fuzzes rummage's own TIFF reader (ROADMAP 2c) from memory: the container, the codecs, the
 // predictors and the conversions. Pictures are capped at 4 MP so that each run stays fast.
 #include <cstddef>
 #include <cstdint>
@@ -6,7 +6,7 @@
 
 #include "tiff/decode.hpp"
 
-namespace tiff = nordend::formats::image::tiff;
+namespace tiff = rummage::formats::image::tiff;
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     const std::span<const std::uint8_t> bytes{data, size};

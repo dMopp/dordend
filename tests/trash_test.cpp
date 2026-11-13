@@ -1,4 +1,4 @@
-#include "nordend/fs/trash.hpp"
+#include "rummage/fs/trash.hpp"
 
 #include <algorithm>
 #include <array>
@@ -20,20 +20,20 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::CancelToken;
-using nordend::core::EventLoop;
-using nordend::fs::TransferKind;
-using nordend::fs::TransferRequest;
-using nordend::fs::TransferResult;
-using nordend::test::TempDir;
-using nordend::views::Browser;
+using rummage::core::CancelToken;
+using rummage::core::EventLoop;
+using rummage::fs::TransferKind;
+using rummage::fs::TransferRequest;
+using rummage::fs::TransferResult;
+using rummage::test::TempDir;
+using rummage::views::Browser;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -76,7 +76,7 @@ TransferResult trash(const fs::path& source, const Names& names, const fs::path&
                             .destination = home,
                             .force_copy = false,
                             .trash_top = top};
-    return nordend::fs::run_trash(request, CancelToken{}, {});
+    return rummage::fs::run_trash(request, CancelToken{}, {});
 }
 
 bool run_until(EventLoop& loop, const std::function<bool()>& done) {
@@ -97,8 +97,8 @@ bool run_until(EventLoop& loop, const std::function<bool()>& done) {
 }  // namespace
 
 TEST_CASE("trash: names and paths are written as GLib writes them") {
-    using nordend::fs::escape_path;
-    using nordend::fs::trash_name;
+    using rummage::fs::escape_path;
+    using rummage::fs::trash_name;
     CHECK(escape_path("/home/a b/è%~_-.txt", true) == "/home/a%20b/%C3%A8%25~_-.txt");
     CHECK(escape_path("a/b\nc", false) == "a%2Fb%0Ac");
     CHECK(trash_name("P1.ORF", 1) == "P1.ORF");
@@ -106,7 +106,7 @@ TEST_CASE("trash: names and paths are written as GLib writes them") {
     CHECK(trash_name("P1.ORF.xmp", 3) == "P1.3.ORF.xmp");
     CHECK(trash_name("Trip", 2) == "Trip.2");
 
-    const std::string info = nordend::fs::trash_info("/home/me/a b.txt", 0);
+    const std::string info = rummage::fs::trash_info("/home/me/a b.txt", 0);
     CHECK(info.starts_with("[Trash Info]\nPath=/home/me/a%20b.txt\nDeletionDate="));
     const std::string date = info.substr(info.find("DeletionDate=") + 13);
     CHECK(date.size() == 20);  // 1970-01-01T01:00:00 and the newline, in local time
@@ -138,9 +138,9 @@ TEST_CASE("trash: into the home trash, sidecars along, folders in directorysizes
           Names{"P1.ORF", "P1.ORF.xmp", "P1_01.ORF.xmp", "Trip", "a b.txt"});
     CHECK(read_file(home / "files" / "Trip" / "x.txt") == "Trip/x.txt");
     CHECK(info_path(home / "info" / "a b.txt.trashinfo") ==
-          nordend::fs::escape_path((photos / "a b.txt").string(), true));
+          rummage::fs::escape_path((photos / "a b.txt").string(), true));
     CHECK(info_path(home / "info" / "P1.ORF.xmp.trashinfo") ==
-          nordend::fs::escape_path((photos / "P1.ORF.xmp").string(), true));
+          rummage::fs::escape_path((photos / "P1.ORF.xmp").string(), true));
     struct stat home_info{};
     REQUIRE(stat(home.c_str(), &home_info) == 0);
     CHECK((home_info.st_mode & 0777) == 0700);
@@ -227,27 +227,27 @@ TEST_CASE("trash: on another disk, the top directory's trash with relative paths
     std::error_code error;
     // .Trash without the sticky bit, or a link: not used.
     fs::create_directories(top / ".Trash");
-    CHECK(nordend::fs::top_trash(top, uid, error).value_or(nordend::fs::TrashDir{}).path == mine);
+    CHECK(rummage::fs::top_trash(top, uid, error).value_or(rummage::fs::TrashDir{}).path == mine);
     fs::remove(top / ".Trash");
     fs::create_directories(dir.path / "elsewhere");
     chmod((dir.path / "elsewhere").c_str(), 01777);
     fs::create_directory_symlink(dir.path / "elsewhere", top / ".Trash");
-    CHECK(nordend::fs::top_trash(top, uid, error).value_or(nordend::fs::TrashDir{}).path == mine);
+    CHECK(rummage::fs::top_trash(top, uid, error).value_or(rummage::fs::TrashDir{}).path == mine);
     fs::remove(top / ".Trash");
 
     // A real .Trash with the sticky bit: its uid folder.
     fs::create_directories(top / ".Trash");
     chmod((top / ".Trash").c_str(), 01777);
-    const std::optional<nordend::fs::TrashDir> shared = nordend::fs::top_trash(top, uid, error);
+    const std::optional<rummage::fs::TrashDir> shared = rummage::fs::top_trash(top, uid, error);
     REQUIRE(shared.has_value());
-    CHECK(shared.value_or(nordend::fs::TrashDir{}).path == top / ".Trash" / std::to_string(uid));
+    CHECK(shared.value_or(rummage::fs::TrashDir{}).path == top / ".Trash" / std::to_string(uid));
     CHECK(fs::is_directory(top / ".Trash" / std::to_string(uid) / "files"));
-    CHECK(shared.value_or(nordend::fs::TrashDir{}).relative_to == top);
+    CHECK(shared.value_or(rummage::fs::TrashDir{}).relative_to == top);
 }
 
 TEST_CASE("trash: the top directory is the mount point") {
     const TempDir dir;
-    const fs::path top = nordend::fs::mount_top(dir.path);
+    const fs::path top = rummage::fs::mount_top(dir.path);
     struct stat here{};
     struct stat at_top{};
     REQUIRE(stat(dir.path.c_str(), &here) == 0);
@@ -270,19 +270,19 @@ TEST_CASE("trash: Delete moves the selection to the trash, the cursor goes on") 
         std::ofstream{photos / name} << name;
     }
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     browser.set_home_trash(dir.path / "Trash");
     browser.open(photos);
     browser.set_mode(Browser::Mode::details);
     REQUIRE(run_until(loop, [&] { return !browser.loading(); }));
-    const std::shared_ptr<nordend::views::Folder> folder = browser.details().folder();
+    const std::shared_ptr<rummage::views::Folder> folder = browser.details().folder();
     folder->select_name("P2.ORF");
 
-    nordend::ui::KeyEvent del;
+    rummage::ui::KeyEvent del;
     del.keysym = XKB_KEY_Delete;
     CHECK(browser.key(del, Browser::Clock::now()));
     REQUIRE(run_until(loop, [&] { return browser.transfers_pending() == 0; }));

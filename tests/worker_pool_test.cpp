@@ -1,4 +1,4 @@
-#include "nordend/core/worker_pool.hpp"
+#include "rummage/core/worker_pool.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -12,12 +12,12 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
+#include "rummage/core/event_loop.hpp"
 
-using nordend::core::CancelToken;
-using nordend::core::EventLoop;
-using nordend::core::Priority;
-using nordend::core::WorkerPool;
+using rummage::core::CancelToken;
+using rummage::core::EventLoop;
+using rummage::core::Priority;
+using rummage::core::WorkerPool;
 using namespace std::chrono_literals;
 
 namespace {

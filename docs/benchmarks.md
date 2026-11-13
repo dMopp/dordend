@@ -1,3 +1,6 @@
+> Historical notes from Nordend development, retained with their original names and measurements.
+> Upstream: https://github.com/pankaspe/nordend-fm. Current application: rummage.
+
 # Benchmarks
 
 Nordend's performance targets (the design's performance goals, summed up in "DESIGN targets"

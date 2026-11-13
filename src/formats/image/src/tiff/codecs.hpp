@@ -1,6 +1,6 @@
 #pragma once
 
-// The compressions and predictors of TIFF that Nordend reads (ROADMAP 2c). Each decompressor is
+// The compressions and predictors of TIFF that rummage reads (ROADMAP 2c). Each decompressor is
 // told how many bytes the strip or tile holds and never writes more: data that ends early is
 // padded with zeros (as libtiff does, with a warning), data that is broken gives nullopt.
 
@@ -10,7 +10,7 @@
 #include <span>
 #include <vector>
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 
 inline constexpr std::uint16_t kNone = 1;
 inline constexpr std::uint16_t kLzw = 5;
@@ -37,4 +37,4 @@ void undo_horizontal(std::span<std::uint8_t> data, std::size_t row_samples, std:
 void undo_floating_point(std::span<std::uint8_t> data, std::size_t row_samples, std::size_t stride,
                          std::size_t bytes_per_sample);
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

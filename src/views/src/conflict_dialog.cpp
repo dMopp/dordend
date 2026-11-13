@@ -1,5 +1,5 @@
-#include "nordend/views/conflict_dialog.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/views/conflict_dialog.hpp"
+#include "rummage/core/i18n.hpp"
 
 #include <algorithm>
 #include <format>
@@ -7,7 +7,7 @@
 #include <utility>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kCardWidth = 480.0F;
@@ -140,7 +140,7 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     const ui::Rect card{bounds.x + ((bounds.width - width) / 2.0F),
                         bounds.y + ((bounds.height - height) / 2.0F), width, height};
     renderer.draw_box(card, {.fill = palette.surface_container_high,
-                             .radius = ui::Corners::all(14.0F),
+                             .radius = {},
                              .border_width = 1.0F,
                              .border = palette.outline_variant});
     renderer.push_clip(card);
@@ -165,7 +165,7 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     checkbox_ = {left, y + 1.0F, kBox, kBox};
     renderer.draw_box(checkbox_,
                       {.fill = for_the_rest_ ? palette.primary : palette.surface_container_high,
-                       .radius = ui::Corners::all(4.0F),
+                       .radius = {},
                        .border_width = for_the_rest_ ? 0.0F : 1.5F,
                        .border = palette.outline});
     if (for_the_rest_) {
@@ -202,7 +202,7 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
         if (hovered_ == i && usable) {
             fill = main ? palette.primary_container : palette.surface_bright;
         }
-        renderer.draw_box(button, {.fill = fill, .radius = ui::Corners::all(8.0F)});
+        renderer.draw_box(button, {.fill = fill, .radius = {}});
         ui::Color text = main ? palette.on_primary : palette.on_surface;
         if (!usable) {
             text = palette.outline;
@@ -214,4 +214,4 @@ void ConflictDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     renderer.pop_clip();
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

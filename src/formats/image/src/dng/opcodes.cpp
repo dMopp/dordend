@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstddef>
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 namespace {
 
 constexpr std::uint32_t kWarpRectilinear = 1;
@@ -260,7 +260,7 @@ bool read_list(std::span<const std::uint8_t> bytes, int number, Opcodes& opcodes
         }
         if (!may_skip) {
             return fail(error, "a DNG asking for " + name_of(id) + " in opcode list " +
-                                   std::to_string(number) + ", which Nordend does not apply");
+                                   std::to_string(number) + ", which rummage does not apply");
         }
     }
     return true;
@@ -287,4 +287,4 @@ std::optional<Opcodes> read_opcodes(const tiff::Ifd& ifd, std::string& error) {
     return opcodes;
 }
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

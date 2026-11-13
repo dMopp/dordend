@@ -1,4 +1,4 @@
-#include "nordend/platform/notifications.hpp"
+#include "rummage/platform/notifications.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "bus_loop.hpp"
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 
 struct Notifications::Impl {
     std::unique_ptr<sdbus::IConnection> connection;
@@ -33,12 +33,12 @@ void Notifications::send(const std::string& summary, const std::string& body, bo
             impl_ = std::make_unique<Impl>(loop_);
         }
         const std::map<std::string, sdbus::Variant> hints{
-            {"desktop-entry", sdbus::Variant{std::string{"nordend"}}},
+            {"desktop-entry", sdbus::Variant{std::string{"rummage"}}},
             {"urgency", sdbus::Variant{static_cast<std::uint8_t>(error ? 2 : 1)}}};
         impl_->proxy->callMethodAsync("Notify")
             .onInterface("org.freedesktop.Notifications")
             .withTimeout(std::chrono::seconds{2})
-            .withArguments(std::string{"Nordend"}, std::uint32_t{0}, std::string{"nordend"},
+            .withArguments(std::string{"rummage"}, std::uint32_t{0}, std::string{"rummage"},
                            summary, body, std::vector<std::string>{}, hints, std::int32_t{-1})
             .uponReplyInvoke([](std::optional<sdbus::Error> failure, std::uint32_t) {
                 if (failure) {
@@ -51,4 +51,4 @@ void Notifications::send(const std::string& summary, const std::string& body, bo
     }
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

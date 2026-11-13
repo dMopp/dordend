@@ -1,5 +1,5 @@
-#include "nordend/fs/operations.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/fs/operations.hpp"
+#include "rummage/core/i18n.hpp"
 
 #include <algorithm>
 #include <array>
@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 std::error_code last_error() { return {errno, std::generic_category()}; }
@@ -287,4 +287,4 @@ Renamed rename_entry(const std::filesystem::path& directory, const std::string& 
     return result;
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

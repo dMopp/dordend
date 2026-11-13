@@ -1,15 +1,15 @@
 // Copy and move engine from the command line (ROADMAP 6.3). Not installed.
 //
-//   nordend-transfer [--move] [--force-copy] SOURCE_DIR DESTINATION_DIR [NAME...]
-//   nordend-transfer --trash SOURCE_DIR NAME...
-//   nordend-transfer --erase SOURCE_DIR NAME...
+//   rummage-transfer [--move] [--force-copy] SOURCE_DIR DESTINATION_DIR [NAME...]
+//   rummage-transfer --trash SOURCE_DIR NAME...
+//   rummage-transfer --erase SOURCE_DIR NAME...
 //
 // Copies (or moves) NAMEs (default: everything in SOURCE_DIR) as Ctrl+V does, conflicts
 // skipped, and prints files, bytes, time and rate. Compare with: time cp -a SOURCE_DIR/. DEST.
 // --trash moves NAMEs to the trash as Delete does (ROADMAP 6.4): the real one, from
 // $XDG_DATA_HOME or $HOME. --erase deletes NAMEs for good as Shift+Delete does (ROADMAP 6.4d),
 // sidecars along: compare with time rm -rf.
-#include "nordend/fs/transfer.hpp"
+#include "rummage/fs/transfer.hpp"
 
 #include <chrono>
 #include <cstdio>
@@ -20,11 +20,11 @@
 #include <string_view>
 #include <vector>
 
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/erase.hpp"
-#include "nordend/fs/trash.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/erase.hpp"
+#include "rummage/fs/trash.hpp"
 
-namespace fs = nordend::fs;
+namespace fs = rummage::fs;
 
 int main(int argc, char** argv) {
     const std::span args{argv + 1, static_cast<std::size_t>(argc > 0 ? argc - 1 : 0)};
@@ -48,10 +48,10 @@ int main(int argc, char** argv) {
     const bool erase = request.kind == fs::TransferKind::erase;
     if (positional.size() < 2) {
         std::fputs(
-            "usage: nordend-transfer [--move] [--force-copy] SOURCE_DIR DESTINATION_DIR "
+            "usage: rummage-transfer [--move] [--force-copy] SOURCE_DIR DESTINATION_DIR "
             "[NAME...]\n"
-            "       nordend-transfer --trash SOURCE_DIR NAME...\n"
-            "       nordend-transfer --erase SOURCE_DIR NAME...\n",
+            "       rummage-transfer --trash SOURCE_DIR NAME...\n"
+            "       rummage-transfer --erase SOURCE_DIR NAME...\n",
             stderr);
         return 2;
     }
@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
         const fs::TransferCallbacks callbacks{
             .progress = nullptr,
             .resolve = [](const fs::Conflict&) { return fs::Resolution::skip; }};
-        const nordend::core::CancelToken token;
+        const rummage::core::CancelToken token;
         fs::TransferResult result;
         if (trash) {
             result = fs::run_trash(request, token, callbacks);
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
                     static_cast<double>(result.bytes_done) / 1e6 / seconds);
         return result.errors.empty() ? 0 : 1;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "nordend-transfer: %s\n", e.what());
+        std::fprintf(stderr, "rummage-transfer: %s\n", e.what());
         return 1;
     }
 }

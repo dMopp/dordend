@@ -1,4 +1,4 @@
-#include "nordend/views/title_bar.hpp"
+#include "rummage/views/title_bar.hpp"
 
 #include <optional>
 #include <string>
@@ -6,17 +6,17 @@
 
 #include <doctest/doctest.h>
 
-using nordend::ui::CursorShape;
-using nordend::ui::Edge;
-using nordend::ui::PointerButton;
-using nordend::ui::PointerEvent;
-using nordend::views::TitleBar;
+using rummage::ui::CursorShape;
+using rummage::ui::Edge;
+using rummage::ui::PointerButton;
+using rummage::ui::PointerEvent;
+using rummage::views::TitleBar;
 using Part = TitleBar::Part;
 using Kind = PointerEvent::Kind;
 
 namespace {
 
-constexpr nordend::ui::Rect kWindow{0.0F, 0.0F, 800.0F, 600.0F};
+constexpr rummage::ui::Rect kWindow{0.0F, 0.0F, 800.0F, 600.0F};
 
 // A title bar on an 800x600 window whose actions are written down.
 struct Fixture {

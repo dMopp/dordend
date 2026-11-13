@@ -4,7 +4,7 @@
 #include <cstring>
 #include <set>
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 namespace {
 
 // An IFD with more entries than this is not one (TIFF files have tens).
@@ -364,4 +364,4 @@ std::optional<std::uint64_t> Ifd::number(std::uint16_t tag) const {
     return integer_of(container_, static_cast<Type>(entry->type), first);
 }
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

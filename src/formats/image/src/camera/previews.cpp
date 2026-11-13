@@ -9,7 +9,7 @@
 
 #include "../jpeg_segments.hpp"
 
-namespace nordend::formats::image::camera {
+namespace rummage::formats::image::camera {
 namespace {
 
 // Bytes read for a JPEG's EXIF (at most 64 KB, after the few segments before it).
@@ -442,4 +442,4 @@ std::optional<CameraFile> read(const detail::FdFile& file, bool previews) {
     return read_tiff(file, head, previews);
 }
 
-}  // namespace nordend::formats::image::camera
+}  // namespace rummage::formats::image::camera

@@ -1,9 +1,9 @@
-#include "nordend/views/undo.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/views/undo.hpp"
+#include "rummage/core/i18n.hpp"
 
 #include <format>
 
-namespace nordend::views {
+namespace rummage::views {
 
 std::string describe(const FileOperation& operation) {
     const std::size_t count = operation.items.size();
@@ -41,4 +41,4 @@ std::string describe(const FileOperation& operation) {
     return what;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

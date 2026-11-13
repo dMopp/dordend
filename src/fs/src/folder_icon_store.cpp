@@ -5,10 +5,10 @@
 #include <system_error>
 #include <unistd.h>
 
-#include "nordend/core/file.hpp"
-#include "nordend/fs/folder_icon.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/fs/folder_icon.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 struct Read {
@@ -150,4 +150,4 @@ std::string save_folder_icon(const std::filesystem::path& folder, std::string_vi
     return error;
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

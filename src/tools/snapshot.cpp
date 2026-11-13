@@ -1,11 +1,11 @@
-// nordend-snapshot: renders the test scene (or the column view, or the grid) offscreen and writes
+// rummage-snapshot: renders the test scene (or the column view, or the grid) offscreen and writes
 // it as a binary PPM.
 //
-//   nordend-snapshot [--columns DIR [--reveal PATH] [--keys KEYS] [--thumbnails CACHE]
+//   rummage-snapshot [--columns DIR [--reveal PATH] [--keys KEYS] [--thumbnails CACHE]
 //                    [--sort FIELDS] [--info-expanded] [--info-width W] [--bench FRAMES]
 //                    [--walk FRAMES] [--message TEXT] [--transfer TEXT] [--conflict NAME]
 //                    [--memory [--trim] [--default-malloc]]] [--csd STATE] [--desktop LOOK]
-//                    <out.ppm>
+//                    [--font FAMILY] [--status-text-size SIZE] <out.ppm>
 //                    [logical-width logical-height scale [colors.toml]]
 //
 // KEYS are pressed in the column view before the snapshot: comma-separated xkb key names with
@@ -28,11 +28,12 @@
 // paste would. --memory prints the memory report (ROADMAP 6.3b) at the end, once the workers'
 // results are in; with --trim, after malloc_trim(0) and the time it took. --default-malloc leaves
 // glibc's mmap threshold as it is (the app sets it: core::give_back_large_blocks), to compare.
-// --csd draws Nordend's own title bar above, as where the compositor draws none; STATE is
+// --csd draws rummage's own title bar above, as where the compositor draws none; STATE is
 // comma-separated words: "normal", "maximized", "inactive", "no-minimize", and "hover-close",
 // "hover-maximize", "press-close" for the pointer over a button.
 // --desktop draws with the palette made from a desktop's look, as without colors.toml under GNOME
 // or Plasma: LOOK is "dark" or "light", with an accent after a comma: "dark,#3584e4".
+// --font FAMILY and --status-text-size SIZE exercise UI font and status bar sizing.
 //
 // Uses a surfaceless EGL context (EGL_MESA_platform_surfaceless) and a framebuffer object, so
 // it never talks to the compositor and never opens a window: it is how rendering is checked
@@ -62,41 +63,41 @@
 #include <vector>
 #include <xkbcommon/xkbcommon.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/log.hpp"
-#include "nordend/core/memory.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/engines/engines.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/places.hpp"
-#include "nordend/isolate/helpers.hpp"
-#include "nordend/platform/opener.hpp"
-#include "nordend/preview/preview.hpp"
-#include "nordend/theme/desktop.hpp"
-#include "nordend/theme/palette.hpp"
-#include "nordend/thumbs/cache.hpp"
-#include "nordend/ui/clipboard.hpp"
-#include "nordend/ui/color.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/offscreen.hpp"
-#include "nordend/ui/renderer.hpp"
-#include "nordend/ui/seat.hpp"
-#include "nordend/ui/text.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/file_picker.hpp"
-#include "nordend/views/title_bar.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/core/memory.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/engines/engines.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/places.hpp"
+#include "rummage/isolate/helpers.hpp"
+#include "rummage/platform/opener.hpp"
+#include "rummage/preview/preview.hpp"
+#include "rummage/theme/desktop.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/thumbs/cache.hpp"
+#include "rummage/ui/clipboard.hpp"
+#include "rummage/ui/color.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/ui/renderer.hpp"
+#include "rummage/ui/seat.hpp"
+#include "rummage/ui/text.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/file_picker.hpp"
+#include "rummage/views/title_bar.hpp"
 #include "test_scene.hpp"
 
 namespace {
 
-namespace log = nordend::log;
-namespace core = nordend::core;
-namespace engines = nordend::engines;
-namespace isolate = nordend::isolate;
-namespace preview = nordend::preview;
-namespace ui = nordend::ui;
-namespace views = nordend::views;
+namespace log = rummage::log;
+namespace core = rummage::core;
+namespace engines = rummage::engines;
+namespace isolate = rummage::isolate;
+namespace preview = rummage::preview;
+namespace ui = rummage::ui;
+namespace views = rummage::views;
 
 void write_ppm(const std::string& path, std::int32_t width, std::int32_t height,
                std::span<const std::uint8_t> rgba) {
@@ -213,7 +214,7 @@ std::vector<ui::KeyEvent> parse_keys(std::string_view keys) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    log::init_from_env();  // NORDEND_LOG=debug: Quick Look timings, among others
+    log::init_from_env();  // RUMMAGE_LOG=debug: Quick Look timings, among others
     std::span args{argv, static_cast<std::size_t>(argc)};
     // --columns DIR: the column view instead of the test scene; --reveal PATH: with the columns
     // opened down to PATH (inside DIR); --bench N: then scroll the last column (or the grid) over N
@@ -221,6 +222,8 @@ int main(int argc, char** argv) {
     std::filesystem::path columns_dir;
     std::filesystem::path reveal;
     std::string keys;
+    std::string split_folder;
+    bool stacked_panes = false;
     std::filesystem::path thumbnails;
     std::string sort;
     int bench_frames = 0;
@@ -240,12 +243,19 @@ int main(int argc, char** argv) {
     std::optional<std::string> csd;
     std::optional<std::string> desktop;
     std::string icon_theme{"builtin"};
+    std::string font_family{"sans-serif"};
+    float status_text_size = 12.0F;
     std::optional<std::string> picker_mode;
     while (args.size() >= 2) {
         const std::string_view option{args[1]};
         if (option == "--icon-theme" && args.size() >= 3) {
             icon_theme = args[2];
             args = args.subspan(2);
+            continue;
+        }
+        if (option == "--stacked") {
+            stacked_panes = true;
+            args = args.subspan(1);
             continue;
         }
         if (option == "--info-expanded") {  // the info pane with "More details" open
@@ -276,12 +286,18 @@ int main(int argc, char** argv) {
         if (args.size() < 3) {
             break;
         }
-        if (option == "--picker") {
+        if (option == "--font") {
+            font_family = args[2];
+        } else if (option == "--status-text-size") {
+            status_text_size = std::stof(args[2]);
+        } else if (option == "--picker") {
             picker_mode = args[2];
         } else if (option == "--columns") {
             columns_dir = args[2];
         } else if (option == "--reveal") {
             reveal = args[2];
+        } else if (option == "--split") {
+            split_folder = args[2];
         } else if (option == "--keys") {
             keys = args[2];
         } else if (option == "--thumbnails") {
@@ -330,18 +346,19 @@ int main(int argc, char** argv) {
     }
     if (args.size() != 2 && args.size() != 5 && args.size() != 6) {
         log::error(
-            "usage: nordend-snapshot [--columns DIR [--reveal PATH] [--keys KEYS] [--thumbnails "
+            "usage: rummage-snapshot [--columns DIR [--reveal PATH] [--keys KEYS] [--thumbnails "
             "CACHE] [--icon-theme NAME] [--sort FIELDS] [--info-expanded] [--info-width W] "
+            "[--split DIR] [--stacked] "
             "[--bench FRAMES] [--walk "
             "FRAMES] [--message TEXT] [--transfer TEXT] [--conflict NAME] [--drag NAME] "
             "[--drop-over X,Y] [--band X1,Y1,X2,Y2] [--fake-disks] [--memory [--trim] "
             "[--default-malloc]]] [--csd STATE] [--desktop LOOK] "
-            "<out.ppm> "
+            "[--font FAMILY] [--status-text-size SIZE] <out.ppm> "
             "[logical-width logical-height scale [colors.toml]]");
         return 2;
     }
     if (!default_malloc) {
-        nordend::core::give_back_large_blocks();  // as the app does; before any thread starts
+        rummage::core::give_back_large_blocks();  // as the app does; before any thread starts
     }
     try {
         const std::string out{args[1]};
@@ -350,20 +367,20 @@ int main(int argc, char** argv) {
         const float height = sized ? std::stof(args[3]) : 640.0F;
         const float scale = sized ? std::stof(args[4]) : 1.0F;
         // The default palette unless a colors.toml is given: snapshots stay reproducible.
-        nordend::theme::PaletteResult palette = args.size() == 6
-                                                    ? nordend::theme::load_palette(args[5])
-                                                    : nordend::theme::PaletteResult{};
+        rummage::theme::PaletteResult palette = args.size() == 6
+                                                    ? rummage::theme::load_palette(args[5])
+                                                    : rummage::theme::PaletteResult{};
         if (desktop) {
             const std::string_view look{*desktop};
             const std::size_t comma = look.find(',');
-            nordend::theme::Desktop wanted{.dark = look.substr(0, comma) == "dark",
+            rummage::theme::Desktop wanted{.dark = look.substr(0, comma) == "dark",
                                            .accent = std::nullopt};
             if (comma != std::string_view::npos) {
                 const std::string hex{look.substr(comma + 1)};
-                wanted.accent = nordend::ui::Color::rgb(static_cast<std::uint32_t>(
+                wanted.accent = rummage::ui::Color::rgb(static_cast<std::uint32_t>(
                     std::stoul(hex.substr(hex.starts_with('#') ? 1 : 0), nullptr, 16)));
             }
-            palette.palette = nordend::theme::desktop_palette(wanted);
+            palette.palette = rummage::theme::desktop_palette(wanted);
         }
         for (const std::string& problem : palette.problems) {
             log::warn("{}", problem);
@@ -375,7 +392,7 @@ int main(int argc, char** argv) {
         std::vector<std::uint8_t> pixels(static_cast<std::size_t>(buffer_width) *
                                          static_cast<std::size_t>(buffer_height) * 4);
         {
-            ui::FontSystem fonts;
+            ui::FontSystem fonts{font_family};
             ui::Renderer renderer{fonts};
             ui::IconSet icons{fonts};
             icons.set_theme(icon_theme);
@@ -383,13 +400,13 @@ int main(int argc, char** argv) {
             core::WorkerPool pool{loop};
             // Pictures are made by the engines in their cages (ROADMAP 2b, 3a), never here.
             {
-                auto registry = std::make_shared<const engines::Registry>(
-                    engines::Registry::load(engines::default_directory(), engines::locate_program));
+                auto registry =
+                    std::make_shared<const engines::Registry>(engines::Registry::load_installed());
                 isolate::use_engines(*registry);
                 engines::set_installed(std::move(registry));
             }
-            nordend::fs::DirectoryWatcher watcher{loop};
-            std::unique_ptr<nordend::platform::Opener> opener;  // "Open With" lists, no launches
+            rummage::fs::DirectoryWatcher watcher{loop};
+            std::unique_ptr<rummage::platform::Opener> opener;  // "Open With" lists, no launches
             std::unique_ptr<views::Browser> columns;
             std::unique_ptr<views::FilePicker> picker;
             const ui::Rect window_bounds{0.0F, 0.0F, width, height};
@@ -432,7 +449,7 @@ int main(int argc, char** argv) {
             const auto frame = [&] {
                 renderer.begin_frame(buffer_width, buffer_height, scale, palette.palette.surface);
                 if (csd) {
-                    title_bar.draw(renderer, window_bounds, palette.palette, icons, "Nordend");
+                    title_bar.draw(renderer, window_bounds, palette.palette, icons, "rummage");
                 }
                 if (columns) {
                     if (picker) {
@@ -449,46 +466,47 @@ int main(int argc, char** argv) {
                             palette.palette, icons);
                     }
                 } else {
-                    nordend::app::draw_test_scene(renderer, bounds, palette.palette);
+                    rummage::app::draw_test_scene(renderer, bounds, palette.palette);
                 }
                 renderer.end_frame();
             };
             if (!columns_dir.empty()) {
-                const auto mime = nordend::fs::MimeDatabase::load();
+                const auto mime = rummage::fs::MimeDatabase::load();
                 columns = std::make_unique<views::Browser>(
                     loop, pool, watcher, mime, [] {}, [](ui::CursorShape /*shape*/) {},
                     thumbnails.empty()
                         ? nullptr
-                        : std::make_shared<nordend::thumbs::Cache>(thumbnails, "nordend-dev"));
-                std::vector<nordend::fs::Place> places =
-                    nordend::fs::load_places(nordend::fs::PlaceSources::from_environment());
+                        : std::make_shared<rummage::thumbs::Cache>(thumbnails, "rummage-dev"));
+                std::vector<rummage::fs::Place> places =
+                    rummage::fs::load_places(rummage::fs::PlaceSources::from_environment());
                 if (fake_disks) {
                     places.push_back(
-                        {.section = nordend::fs::Place::Section::devices,
+                        {.section = rummage::fs::Place::Section::devices,
                          .label = "kinetic",
                          .path = {},
                          .icon = "usb",
                          .disk = {.volume = "sdb1", .mounted = false, .ejectable = true}});
                     places.push_back(
-                        {.section = nordend::fs::Place::Section::devices,
+                        {.section = rummage::fs::Place::Section::devices,
                          .label = "SD card",
                          .path = columns_dir,
                          .icon = "usb",
                          .disk = {.volume = "sdc1", .mounted = true, .ejectable = true}});
                 }
+                columns->status_bar().set_text_size(status_text_size);
                 columns->set_places(std::move(places));
-                opener = std::make_unique<nordend::platform::Opener>(
-                    loop, pool, mime, nordend::platform::Environment::from_environment(),
+                opener = std::make_unique<rummage::platform::Opener>(
+                    loop, pool, mime, rummage::platform::Environment::from_environment(),
                     [](const std::string& /*message*/, bool /*error*/) {});
                 columns->set_open_with_handlers(
-                    [&opener](const std::filesystem::path& directory, nordend::fs::Entry entry,
+                    [&opener](const std::filesystem::path& directory, rummage::fs::Entry entry,
                               std::function<void(std::vector<views::Browser::AppChoice>)> done) {
                         opener->choices(directory, std::move(entry),
                                         [done = std::move(done)](
-                                            std::vector<nordend::platform::AppChoice> found) {
+                                            std::vector<rummage::platform::AppChoice> found) {
                                             std::vector<views::Browser::AppChoice> apps;
                                             apps.reserve(found.size());
-                                            for (nordend::platform::AppChoice& app : found) {
+                                            for (rummage::platform::AppChoice& app : found) {
                                                 apps.push_back({.id = std::move(app.id),
                                                                 .name = std::move(app.name),
                                                                 .is_default = app.is_default});
@@ -497,7 +515,7 @@ int main(int argc, char** argv) {
                                         });
                     },
                     [](const std::filesystem::path& /*directory*/,
-                       const std::vector<nordend::fs::Entry>& /*files*/,
+                       const std::vector<rummage::fs::Entry>& /*files*/,
                        const std::string& /*app_id*/) {});
                 columns->set_terminal_handler([](const std::filesystem::path& /*directory*/) {});
                 if (reveal.empty()) {
@@ -534,7 +552,13 @@ int main(int argc, char** argv) {
                 if (!conflict.empty()) {
                     columns->conflict_dialog().open({.name = conflict, .destination = columns_dir},
                                                     columns_dir.filename(),
-                                                    [](nordend::fs::Resolution, bool) {});
+                                                    [](rummage::fs::Resolution, bool) {});
+                }
+                if (!split_folder.empty() && !picker) {
+                    columns->toggle_split();
+                    columns->open(split_folder);
+                    columns->set_stacked(stacked_panes);
+                    columns->focus_pane(0);
                 }
                 frame();  // lays out: keys need the viewport
                 // Each key finds what the one before loaded (Space, then Ctrl+A on the text).
@@ -735,7 +759,7 @@ int main(int argc, char** argv) {
                                     .count());
                 }
                 for (const std::string& line :
-                     nordend::core::describe(nordend::core::read_memory_report())) {
+                     rummage::core::describe(rummage::core::read_memory_report())) {
                     std::printf("memory: %s\n", line.c_str());
                 }
                 for (const std::string& line :

@@ -1,4 +1,4 @@
-#include "nordend/fs/walk.hpp"
+#include "rummage/fs/walk.hpp"
 
 #include <cstring>
 #include <deque>
@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <utility>
 
-namespace nordend::fs {
+namespace rummage::fs {
 
 void PathBatch::add(std::string_view relative, bool directory) {
     text_.append(relative);
@@ -133,4 +133,4 @@ WalkResult walk(const std::filesystem::path& root, const WalkOptions& options,
     return result;
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

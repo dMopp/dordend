@@ -1,4 +1,4 @@
-#include "nordend/ui/window.hpp"
+#include "rummage/ui/window.hpp"
 
 #include <GLES3/gl3.h>
 #include <algorithm>
@@ -7,9 +7,9 @@
 #include <stdexcept>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 // fractional-scale-v1 sends scales as numerator over 120.
@@ -118,7 +118,7 @@ Window::Window(Display& display, EglContext& egl, FontSystem& fonts, const Windo
                                                  ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE
                                                  : ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
         if (options.force_client_decorations) {
-            log::info("decorations: client-side asked for (NORDEND_FORCE_CSD)");
+            log::info("decorations: client-side asked for (RUMMAGE_FORCE_CSD)");
         }
     }
 
@@ -405,4 +405,4 @@ void Window::on_frame_done(void* data, wl_callback* /*callback*/, std::uint32_t 
     }
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

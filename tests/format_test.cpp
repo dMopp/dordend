@@ -1,9 +1,9 @@
-#include "nordend/views/format.hpp"
+#include "rummage/views/format.hpp"
 
 #include <doctest/doctest.h>
 
-using nordend::views::format_size;
-using nordend::views::visible_rows;
+using rummage::views::format_size;
+using rummage::views::visible_rows;
 
 TEST_CASE("format_size: SI units, one decimal") {
     CHECK(format_size(0) == "0 bytes");

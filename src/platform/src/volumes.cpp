@@ -1,11 +1,11 @@
-#include "nordend/platform/volumes.hpp"
+#include "rummage/platform/volumes.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <format>
 #include <utility>
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 constexpr double kGigabyte = 1e9;
@@ -103,4 +103,4 @@ std::vector<const Volume*> on_same_drive(const std::vector<Volume>& volumes,
     return found;
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

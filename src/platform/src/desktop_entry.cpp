@@ -1,4 +1,4 @@
-#include "nordend/platform/desktop_entry.hpp"
+#include "rummage/platform/desktop_entry.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 std::string_view trim(std::string_view text) {
@@ -290,4 +290,4 @@ std::optional<std::filesystem::path> find_program(std::string_view program, std:
     return std::nullopt;
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

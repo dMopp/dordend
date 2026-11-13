@@ -3,11 +3,11 @@
 	dh $@ --buildsystem=cmake+ninja
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DBUILD_SHARED_LIBS=OFF -DNORDEND_BUILD_TESTS=OFF -DNORDEND_WERROR=OFF
+	dh_auto_configure -- -DRUMMAGE_MEDIA=ON -DBUILD_SHARED_LIBS=OFF -DRUMMAGE_BUILD_TESTS=OFF -DRUMMAGE_WERROR=OFF
 
 # Build only the installed application and helper, not developer benchmarks.
 override_dh_auto_build:
-	dh_auto_build -- nordend nordend-preview
+	dh_auto_build -- rummage rummage-preview rummage-media
 
 override_dh_auto_test:
 	# The complete unit suite runs in the separate Nix CI job.

@@ -1,0 +1,5 @@
+#pragma once
+#include <string_view>
+namespace rummage::theme {
+inline constexpr std::string_view kAppIconSvg = R"RUMMAGE_SVG(@RUMMAGE_APP_ICON_SVG@)RUMMAGE_SVG";
+}

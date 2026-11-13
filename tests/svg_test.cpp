@@ -1,4 +1,4 @@
-#include "nordend/svg/svg.hpp"
+#include "rummage/svg/svg.hpp"
 
 #include <cstdint>
 #include <fstream>
@@ -9,12 +9,12 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/picture/wuffs.hpp"
+#include "rummage/picture/wuffs.hpp"
 #include "svg_compare.hpp"
 
 namespace {
-nordend::picture::Image render(std::string_view source, int pixels = 64) {
-    return nordend::svg::render(
+rummage::picture::Image render(std::string_view source, int pixels = 64) {
+    return rummage::svg::render(
         {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, pixels);
 }
 }  // namespace
@@ -91,24 +91,24 @@ TEST_CASE("svg: large coordinates and raster work fail cleanly") {
 
 TEST_CASE("svg: solid rectangle matches its captured reference") {
     const auto read = [](std::string_view suffix) {
-        std::ifstream input{std::string{NORDEND_TEST_DATA} + "/svg/solid." + std::string{suffix},
+        std::ifstream input{std::string{RUMMAGE_TEST_DATA} + "/svg/solid." + std::string{suffix},
                             std::ios::binary};
         REQUIRE(input.good());
         return std::vector<std::uint8_t>{std::istreambuf_iterator<char>{input},
                                          std::istreambuf_iterator<char>{}};
     };
-    const auto image = nordend::svg::render(read("svg"), 64);
-    const auto reference = nordend::picture::decode_wuffs(read("png"), 4096);
+    const auto image = rummage::svg::render(read("svg"), 64);
+    const auto reference = rummage::picture::decode_wuffs(read("png"), 4096);
     REQUIRE_FALSE(reference.image.empty());
-    CHECK(nordend::test::svg_difference(image, reference.image).passes());
+    CHECK(rummage::test::svg_difference(image, reference.image).passes());
 }
 
 TEST_CASE("svg: reference comparison tolerates transparent edges but catches opaque errors") {
-    const nordend::picture::Image transparent{.width = 1, .height = 1, .rgba = {0, 0, 0, 0}};
-    const nordend::picture::Image edge{.width = 1, .height = 1, .rgba = {255, 255, 0, 1}};
-    const nordend::picture::Image opaque{.width = 1, .height = 1, .rgba = {255, 255, 0, 255}};
-    CHECK(nordend::test::svg_difference(edge, transparent).passes());
-    CHECK_FALSE(nordend::test::svg_difference(opaque, transparent).passes());
+    const rummage::picture::Image transparent{.width = 1, .height = 1, .rgba = {0, 0, 0, 0}};
+    const rummage::picture::Image edge{.width = 1, .height = 1, .rgba = {255, 255, 0, 1}};
+    const rummage::picture::Image opaque{.width = 1, .height = 1, .rgba = {255, 255, 0, 255}};
+    CHECK(rummage::test::svg_difference(edge, transparent).passes());
+    CHECK_FALSE(rummage::test::svg_difference(opaque, transparent).passes());
 }
 
 TEST_CASE("svg hardening: the input cap includes otherwise ignored content") {
@@ -125,7 +125,7 @@ TEST_CASE("svg hardening: exceptions from warning callbacks cannot escape render
         "<svg width='1' height='1'><filter id='f'><feOffset/></filter>"
         "<rect width='1' height='1' filter='url(#f)'/></svg>";
     CHECK(
-        nordend::svg::render({reinterpret_cast<const std::uint8_t*>(source.data()), source.size()},
+        rummage::svg::render({reinterpret_cast<const std::uint8_t*>(source.data()), source.size()},
                              1, {[](void*, std::string_view) { throw 1; }, nullptr})
             .empty());
     CHECK_FALSE(render("<svg width='1' height='1'/>", 1).empty());

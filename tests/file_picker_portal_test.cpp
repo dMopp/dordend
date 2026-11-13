@@ -1,4 +1,4 @@
-#include "nordend/platform/file_picker_portal.hpp"
+#include "rummage/platform/file_picker_portal.hpp"
 
 #include <chrono>
 #include <future>
@@ -8,13 +8,13 @@
 #include <thread>
 #include <unistd.h>
 
-#include "nordend/core/file_picker.hpp"
+#include "rummage/core/file_picker.hpp"
 
 namespace {
 using namespace std::chrono_literals;
 using Values = std::map<std::string, sdbus::Variant>;
 using Response = std::pair<std::uint32_t, Values>;
-const sdbus::ServiceName service{"org.freedesktop.impl.portal.desktop.nordend"};
+const sdbus::ServiceName service{"org.freedesktop.impl.portal.desktop.rummage"};
 const sdbus::ObjectPath path{"/org/freedesktop/portal/desktop"};
 constexpr auto iface = "org.freedesktop.impl.portal.FileChooser";
 
@@ -25,7 +25,7 @@ void require(bool value, const char* message) {
 }
 
 int child() {
-    auto request = nordend::core::read_picker_request(3);
+    auto request = rummage::core::read_picker_request(3);
     if (request.title == "crash") {
         return 1;
     }
@@ -37,11 +37,11 @@ int child() {
     if (request.title == "malformed") {
         return 0;
     }
-    nordend::core::PickerResult result;
+    rummage::core::PickerResult result;
     if (request.title != "cancel") {
         result.response = 0;
         result.paths = {"/tmp/picker space#\n.txt"};
-        if (request.multiple || request.mode == nordend::core::PickerRequest::Mode::save_files) {
+        if (request.multiple || request.mode == rummage::core::PickerRequest::Mode::save_files) {
             result.paths.push_back("/tmp/second.txt");
         }
         result.filter = request.filter;
@@ -49,7 +49,7 @@ int child() {
             result.choices.push_back(c.selected);
         }
     }
-    nordend::core::write_picker_result(4, result);
+    rummage::core::write_picker_result(4, result);
     return 0;
 }
 
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     if (argc == 2 && std::string_view{argv[1]} == "--picker-channel") {
         return child();
     }
-    nordend::core::EventLoop loop;
+    rummage::core::EventLoop loop;
     std::exception_ptr error;
     std::exception_ptr backend_error;
     std::thread caller{[&] {
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
         loop.post([&] { loop.quit(); });
     }};
     try {
-        nordend::platform::run_file_picker_portal(loop,
+        rummage::platform::run_file_picker_portal(loop,
                                                   std::filesystem::read_symlink("/proc/self/exe"));
     } catch (...) {
         backend_error = std::current_exception();

@@ -47,7 +47,7 @@ renderer constraints; do not restart a custom pixel-matching loop.
 
 ## Reproduction
 
-Inside `nix develop`, after building `nordend-svg-render`:
+Inside `nix develop`, after building `rummage-svg-render`:
 
 ```sh
 python3 scripts/svg_review.py --output build/svg-review

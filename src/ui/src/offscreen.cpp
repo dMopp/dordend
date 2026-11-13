@@ -1,10 +1,10 @@
-#include "nordend/ui/offscreen.hpp"
+#include "rummage/ui/offscreen.hpp"
 
 #include <EGL/eglext.h>
 #include <array>
 #include <stdexcept>
 
-namespace nordend::ui {
+namespace rummage::ui {
 
 Offscreen::Offscreen(std::int32_t width, std::int32_t height)
     : display_{eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, nullptr)} {
@@ -48,4 +48,4 @@ Offscreen::~Offscreen() {
     eglTerminate(display_);
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

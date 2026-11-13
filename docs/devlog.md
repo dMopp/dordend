@@ -1,3 +1,6 @@
+> Historical notes from Nordend development, retained with their original names and measurements.
+> Upstream: https://github.com/pankaspe/nordend-fm. Current application: rummage.
+
 # Devlog
 
 Work log, newest first. Each entry: what was done, decisions, measurements, open points.

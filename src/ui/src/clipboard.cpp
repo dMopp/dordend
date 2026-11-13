@@ -1,4 +1,4 @@
-#include "nordend/ui/clipboard.hpp"
+#include "rummage/ui/clipboard.hpp"
 
 #include <algorithm>
 #include <array>
@@ -8,13 +8,13 @@
 #include <string_view>
 #include <unistd.h>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 
 Clipboard::Clipboard(Display& display, core::EventLoop& loop) : display_{display}, loop_{loop} {
     if (display.data_device_manager() == nullptr || display.seat() == nullptr) {
-        log::warn("compositor offers no clipboard: copy and paste stay inside Nordend");
+        log::warn("compositor offers no clipboard: copy and paste stay inside rummage");
         return;
     }
     static constexpr wl_data_device_listener kDeviceListener{
@@ -410,4 +410,4 @@ void Clipboard::on_source_cancelled(void* data, wl_data_source* source) {
     }
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

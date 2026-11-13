@@ -17,7 +17,7 @@
 
 #include "../fd_file.hpp"
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 
 // Where the bytes come from: a file read piece by piece, or a block in memory.
 class Source {
@@ -222,4 +222,4 @@ inline constexpr std::uint16_t kOpcodeList3 = 51022;
 inline constexpr std::uint16_t kBaselineExposureOffset = 51109;
 }  // namespace tag
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

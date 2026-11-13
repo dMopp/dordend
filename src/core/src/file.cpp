@@ -1,4 +1,4 @@
-#include "nordend/core/file.hpp"
+#include "rummage/core/file.hpp"
 
 #include <cerrno>
 #include <cstddef>
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <utility>
 
-namespace nordend::core {
+namespace rummage::core {
 namespace {
 
 constexpr std::string_view kHex = "0123456789ABCDEF";
@@ -131,4 +131,22 @@ TextFile read_text_file(const std::filesystem::path& path) {
     return result;
 }
 
-}  // namespace nordend::core
+std::string migrate_nordend_file(const std::filesystem::path& destination) {
+    if (destination.empty() || destination.parent_path().filename() != "rummage")
+        return {};
+    std::error_code error;
+    const auto status = std::filesystem::symlink_status(destination, error);
+    if (status.type() != std::filesystem::file_type::not_found)
+        return error ? error.message() : std::string{};
+    const auto source =
+        destination.parent_path().parent_path() / "nordend" / destination.filename();
+    const auto legacy = read_text_file(source);
+    if (!legacy.exists)
+        return {};
+    if (!legacy.error.empty())
+        return source.string() + ": " + legacy.error;
+    error = write_file_atomically(destination, legacy.text, false);
+    return error ? error.message() : std::string{};
+}
+
+}  // namespace rummage::core

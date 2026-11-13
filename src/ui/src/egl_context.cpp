@@ -1,13 +1,13 @@
-#include "nordend/ui/egl_context.hpp"
+#include "rummage/ui/egl_context.hpp"
 
 #include <EGL/eglext.h>
 #include <array>
 #include <format>
 #include <stdexcept>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 [[noreturn]] void throw_egl(const char* what) {
@@ -71,4 +71,4 @@ EglContext::~EglContext() {
     eglReleaseThread();
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

@@ -1,13 +1,13 @@
-#include "nordend/core/i18n.hpp"
+#include "rummage/core/i18n.hpp"
 
 #include <doctest/doctest.h>
 #include <set>
 #include <string>
 #include <string_view>
 
-#include "nordend/views/format.hpp"
+#include "rummage/views/format.hpp"
 
-namespace i18n = nordend::i18n;
+namespace i18n = rummage::i18n;
 using i18n::Language;
 
 namespace {
@@ -73,7 +73,7 @@ TEST_CASE("i18n: English stays English") {
     CHECK(i18n::tr("Empty folder") == "Empty folder");
     CHECK(i18n::trf("{} of {} selected", 2, 5) == "2 of 5 selected");
     CHECK(i18n::keys("Ctrl+Shift+Z") == "Ctrl+Shift+Z");
-    CHECK(nordend::views::format_size(1234) == "1.2 kB");
+    CHECK(rummage::views::format_size(1234) == "1.2 kB");
 }
 
 TEST_CASE("i18n: German") {
@@ -88,7 +88,7 @@ TEST_CASE("i18n: German") {
     CHECK(i18n::keys("Space  Escape") == "Leertaste  Esc");
     CHECK(i18n::decimal("1.2 kB · 3.4 MB") == "1,2 kB · 3,4 MB");
     CHECK(i18n::decimal("v1.") == "v1.");
-    CHECK(nordend::views::format_size(1) == "1 Byte");
-    CHECK(nordend::views::format_size(999) == "999 Bytes");
-    CHECK(nordend::views::format_size(18'100'000) == "18,1 MB");
+    CHECK(rummage::views::format_size(1) == "1 Byte");
+    CHECK(rummage::views::format_size(999) == "999 Bytes");
+    CHECK(rummage::views::format_size(18'100'000) == "18,1 MB");
 }

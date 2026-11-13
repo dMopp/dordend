@@ -6,7 +6,7 @@
 #include <cstring>
 #include <zlib.h>
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 namespace {
 
 static_assert(std::endian::native == std::endian::little,
@@ -257,4 +257,4 @@ void undo_floating_point(std::span<std::uint8_t> data, std::size_t row_samples, 
     }
 }
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

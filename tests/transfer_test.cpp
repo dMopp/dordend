@@ -1,4 +1,4 @@
-#include "nordend/fs/transfer.hpp"
+#include "rummage/fs/transfer.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,22 +17,22 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/transfer_queue.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/transfer_queue.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::CancelToken;
-using nordend::core::EventLoop;
-using nordend::fs::Conflict;
-using nordend::fs::Resolution;
-using nordend::fs::TransferCallbacks;
-using nordend::fs::TransferKind;
-using nordend::fs::TransferProgress;
-using nordend::fs::TransferQueue;
-using nordend::fs::TransferRequest;
-using nordend::fs::TransferResult;
-using nordend::test::TempDir;
+using rummage::core::CancelToken;
+using rummage::core::EventLoop;
+using rummage::fs::Conflict;
+using rummage::fs::Resolution;
+using rummage::fs::TransferCallbacks;
+using rummage::fs::TransferKind;
+using rummage::fs::TransferProgress;
+using rummage::fs::TransferQueue;
+using rummage::fs::TransferRequest;
+using rummage::fs::TransferResult;
+using rummage::test::TempDir;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -115,7 +115,7 @@ struct Tree {
 
     TransferResult run(TransferKind kind, Names names, const TransferCallbacks& callbacks = {},
                        bool force_copy = false, const CancelToken& token = {}) {
-        return nordend::fs::run_transfer({.kind = kind,
+        return rummage::fs::run_transfer({.kind = kind,
                                           .source = from,
                                           .names = std::move(names),
                                           .destination = to,
@@ -177,7 +177,7 @@ TEST_CASE("transfer: a move on one disk renames; between disks it copies, then d
     CHECK(listing(u.from) == Names{"notes.txt"});
 
     // Into the folder it is in: nothing to do.
-    result = nordend::fs::run_transfer({.kind = TransferKind::move,
+    result = rummage::fs::run_transfer({.kind = TransferKind::move,
                                         .source = u.from,
                                         .names = {"notes.txt"},
                                         .destination = u.from},
@@ -235,7 +235,7 @@ TEST_CASE("transfer: folders merge on replace; a file never replaces a folder") 
 TEST_CASE("transfer: a copy into its own folder keeps both by itself") {
     Tree t;
     Answer never{.resolution = Resolution::cancel};
-    const TransferResult result = nordend::fs::run_transfer({.kind = TransferKind::copy,
+    const TransferResult result = rummage::fs::run_transfer({.kind = TransferKind::copy,
                                                              .source = t.from,
                                                              .names = {"P1.ORF", "Trip"},
                                                              .destination = t.from},
@@ -248,7 +248,7 @@ TEST_CASE("transfer: a copy into its own folder keeps both by itself") {
 
 TEST_CASE("transfer: refused before anything moves") {
     Tree t;
-    TransferResult result = nordend::fs::run_transfer({.kind = TransferKind::copy,
+    TransferResult result = rummage::fs::run_transfer({.kind = TransferKind::copy,
                                                        .source = t.from,
                                                        .names = {"Trip"},
                                                        .destination = t.from / "Trip" / "deep"},

@@ -1,38 +1,38 @@
 # File picker
 
-Nordend can provide Open, Save and folder-selection dialogs for applications using the
+rummage can provide Open, Save and folder-selection dialogs for applications using the
 XDG FileChooser portal. Its backend runs alongside other portal backends: Umbriel can keep
-handling screenshots and screen sharing, with Nordend handling file selection.
+handling screenshots and screen sharing, with rummage handling file selection.
 
 The picker supports single and multiple files or folders, SaveFile and SaveFiles, initial
 folders and filenames, glob and MIME filters, application-provided options, overwrite
-confirmation and cancellation. It uses the usual Nordend views, sidebar and previews.
+confirmation and cancellation. It uses the usual rummage views, sidebar and previews.
 Picker windows do not restore or overwrite your file-manager tabs and window state.
 
 ## Enable on NixOS with Umbriel
 
-Add Nordend to your system flake's inputs (use this checkout's path while developing):
+Add rummage to your system flake's inputs (use this checkout's path while developing):
 
 ```nix
-inputs.nordend.url = "path:/absolute/path/to/nordend-fm";
+inputs.rummage.url = "path:/absolute/path/to/rummage-fm";
 ```
 
 Import its NixOS module and enable the application and picker. In a NixOS module where
-`inputs.nordend` refers to this flake (pass `inputs` through `specialArgs`):
+`inputs.rummage` refers to this flake (pass `inputs` through `specialArgs`):
 
 ```nix
 { inputs, ... }: {
-  imports = [ inputs.nordend.nixosModules.default ];
+  imports = [ inputs.rummage.nixosModules.default ];
 
-  programs.nordend.enable = true;
-  programs.nordend.filePicker.enable = true;
+  programs.rummage.enable = true;
+  programs.rummage.filePicker.enable = true;
 }
 ```
 
-This installs Nordend, enables the portal frontend, registers Nordend's backend and selects
-it for FileChooser requests in Umbriel. D-Bus starts `nordend --portal` on demand; there is
-no separate picker package or service to enable. Enabling only `programs.nordend.enable`
-installs the file manager without changing portal preferences. `programs.nordend.package`
+This installs rummage, enables the portal frontend, registers rummage's backend and selects
+it for FileChooser requests in Umbriel. D-Bus starts `rummage --portal` on demand; there is
+no separate picker package or service to enable. Enabling only `programs.rummage.enable`
+installs the file manager without changing portal preferences. `programs.rummage.package`
 can override the package used for both the application and backend.
 
 Keep your existing Umbriel and GTK portal packages and
@@ -40,7 +40,7 @@ Keep your existing Umbriel and GTK portal packages and
 and FileChooser preference into those settings. Remove any previous FileChooser preference
 for a different backend in that desktop's configuration.
 
-For another desktop, set `programs.nordend.filePicker.desktops = [ "niri" ];` (using the
+For another desktop, set `programs.rummage.filePicker.desktops = [ "niri" ];` (using the
 lowercase name from `XDG_CURRENT_DESKTOP`), or list several desktops. Use `[ "common" ]`
 for the desktop-independent `portals.conf`. Keep the other backend preferences in
 `xdg.portal.config.<desktop>`: a desktop-specific file takes precedence over common or
@@ -53,18 +53,18 @@ Without importing the module, the equivalent picker configuration is:
 ```nix
 { inputs, pkgs, ... }:
 let
-  nordend = inputs.nordend.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  rummage = inputs.rummage.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in {
   xdg.portal.enable = true;
-  xdg.portal.extraPortals = [ nordend ];
-  xdg.portal.config.umbriel."org.freedesktop.impl.portal.FileChooser" = [ "nordend" ];
+  xdg.portal.extraPortals = [ rummage ];
+  xdg.portal.config.umbriel."org.freedesktop.impl.portal.FileChooser" = [ "rummage" ];
 }
 ```
 
 Keep your existing Umbriel and GTK entries in `extraPortals`, and the existing
 `xdg.portal.config.umbriel.default = [ "umbriel" "gtk" ];`. NixOS module lists merge;
-if editing a single existing list, append Nordend to it. The portal package includes Nordend
-itself, its D-Bus activation service and `nordend.portal`.
+if editing a single existing list, append rummage to it. The portal package includes rummage
+itself, its D-Bus activation service and `rummage.portal`.
 
 After rebuilding the NixOS configuration, log out and back in, or restart the frontend
 when no portal dialog or screen-sharing session is active:
@@ -75,7 +75,7 @@ systemctl --user restart xdg-desktop-portal.service
 
 ## Enable on other systems
 
-Configure the intended install prefix, build and install Nordend:
+Configure the intended install prefix, build and install rummage:
 
 ```sh
 cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX="$HOME/.local"
@@ -85,8 +85,8 @@ cmake --install build
 
 The install includes:
 
-- `share/xdg-desktop-portal/portals/nordend.portal`
-- `share/dbus-1/services/org.freedesktop.impl.portal.desktop.nordend.service`
+- `share/xdg-desktop-portal/portals/rummage.portal`
+- `share/dbus-1/services/org.freedesktop.impl.portal.desktop.rummage.service`
 
 Both the portal frontend and the session bus must discover that installation's `share`
 directory. For a user install this is normally `~/.local/share`. On distributions which
@@ -98,12 +98,12 @@ In `~/.config/xdg-desktop-portal/umbriel-portals.conf`, preserve your other pref
 ```ini
 [preferred]
 default=umbriel;gtk
-org.freedesktop.impl.portal.FileChooser=nordend
+org.freedesktop.impl.portal.FileChooser=rummage
 ```
 
 For another desktop use its lowercase desktop name, or `portals.conf` for a common override.
 Restart the frontend or log in again. Restart applications which cached their portal choice.
-Only applications that use the file-chooser portal will use Nordend; an application's own
+Only applications that use the file-chooser portal will use rummage; an application's own
 built-in dialog remains its own.
 
 ## Try without changing desktop defaults
@@ -111,10 +111,10 @@ built-in dialog remains its own.
 Run in a Wayland session:
 
 ```sh
-./build/nordend --pick ~/Pictures
-./build/nordend --pick --multiple ~/Pictures
-./build/nordend --pick-directory ~
-./build/nordend --save-file --name Untitled.txt ~/Documents
+./build/rummage --pick ~/Pictures
+./build/rummage --pick --multiple ~/Pictures
+./build/rummage --pick-directory ~
+./build/rummage --save-file --name Untitled.txt ~/Documents
 ```
 
 These commands return absolute paths, separated by NUL bytes, on stdout. Exit status is 0
@@ -131,16 +131,16 @@ confirmation; the picker returns the destination and does not write the applicat
 
 Wayland parent handles use xdg-foreign-v2, with modal hints when xdg-dialog-v1 is available.
 A missing/unsupported parent handle (including an X11 parent) opens an independent window.
-MIME filtering uses Nordend's directory-entry MIME classification and filename rules;
+MIME filtering uses rummage's directory-entry MIME classification and filename rules;
 files whose type is only recognizable by inspecting their contents may require the
 application's All Files filter.
 
 ## Verification
 
 ```sh
-./build/tests/nordend-tests --test-case='picker:*'
-dbus-run-session -- ./build/tests/nordend-portal-tests
-./build/nordend-snapshot --columns ~/Documents --picker save /tmp/picker.ppm 960 640 1
+./build/tests/rummage-tests --test-case='picker:*'
+dbus-run-session -- ./build/tests/rummage-portal-tests
+./build/rummage-snapshot --columns ~/Documents --picker save /tmp/picker.ppm 960 640 1
 ```
 
 The integration test runs on a private bus with a fake picker child. It checks the real backend's

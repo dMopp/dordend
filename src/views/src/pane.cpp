@@ -1,6 +1,6 @@
-#include "nordend/views/pane.hpp"
+#include "rummage/views/pane.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 
 Pane::Pane(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWatcher& watcher,
            const std::shared_ptr<const fs::MimeDatabase>& mime, const std::function<void()>& redraw,
@@ -10,4 +10,4 @@ Pane::Pane(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWatcher& 
       grid{loop, pool, watcher, mime, redraw, set_cursor, thumbnails, info_pane},
       details{loop, pool, watcher, mime, redraw, set_cursor, info_pane} {}
 
-}  // namespace nordend::views
+}  // namespace rummage::views

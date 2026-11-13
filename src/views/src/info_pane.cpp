@@ -1,4 +1,4 @@
-#include "nordend/views/info_pane.hpp"
+#include "rummage/views/info_pane.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -8,11 +8,11 @@
 #include <vector>
 
 #include "draw_helpers.hpp"
-#include "nordend/fs/icon.hpp"
-#include "nordend/views/format.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/fs/icon.hpp"
+#include "rummage/views/format.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kPadding = 20.0F;     // either side of the content
@@ -20,7 +20,6 @@ constexpr float kMaxColumn = 360.0F;  // the content is at most this wide, cente
 constexpr float kTop = 24.0F;
 constexpr float kIconSize = 64.0F;
 constexpr float kMaxPreview = 0.5F;  // of the pane's height, for a thumbnail
-constexpr float kRadius = 6.0F;
 constexpr float kRowHeight = 22.0F;
 constexpr float kTextSize = 13.0F;
 constexpr float kSmallSize = 12.0F;
@@ -285,7 +284,8 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
         if (thumbnails_ != nullptr) {
             thumbnail = thumbnails_->get(
                 path, single->modified_ns,
-                thumbs::size_for(static_cast<std::uint32_t>(std::lround(box * renderer.scale()))));
+                thumbs::size_for(static_cast<std::uint32_t>(std::lround(box * renderer.scale()))),
+                mime.name(typed.mime));
         }
         if (thumbnail != nullptr) {
             const float fit =
@@ -294,9 +294,9 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
             const float h = static_cast<float>(thumbnail->height()) * fit;
             const ui::Rect rect{preview_left + ((preview_width - w) / 2.0F),
                                 out.y() + ((box - h) / 2.0F), w, h};
-            renderer.draw_shadow({rect.x, rect.y + 4.0F, rect.width, rect.height},
-                                 ui::Corners::all(kRadius), 12.0F, palette.shadow.with_alpha(0.5F));
-            renderer.draw_image(*thumbnail, rect, ui::Corners::all(kRadius));
+            renderer.draw_shadow({rect.x, rect.y + 4.0F, rect.width, rect.height}, {}, 12.0F,
+                                 palette.shadow.with_alpha(0.5F));
+            renderer.draw_image(*thumbnail, rect, {});
         } else {
             icons.draw_file(renderer, (mime).name(typed.mime), fs::icon_name(mime, typed),
                             out.left() + ((out.width() - kIconSize) / 2.0F),
@@ -312,8 +312,7 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
         const std::size_t count = std::min(lines.size(), kPageLines);
         const float height = (static_cast<float>(count) * kLineHeight) + (2.0F * kPagePadding);
         const ui::Rect page{preview_left, out.y(), preview_width, height};
-        renderer.draw_box(page,
-                          {.fill = palette.surface_container, .radius = ui::Corners::all(kRadius)});
+        renderer.draw_box(page, {.fill = palette.surface_container, .radius = {}});
         for (std::size_t i = 0; i < count; ++i) {
             const std::vector<ui::ColorRun> runs = i < spans.size()
                                                        ? colour_runs(spans[i], colours, 1.0F)
@@ -427,4 +426,4 @@ void InfoPane::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme:
     finish();
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

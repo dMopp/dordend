@@ -1,4 +1,4 @@
-#include "nordend/text/text.hpp"
+#include "rummage/text/text.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -11,13 +11,13 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/formats/text/read.hpp"
+#include "rummage/formats/text/read.hpp"
 #include "temp_dir.hpp"
 
 namespace fs = std::filesystem;
-namespace text = nordend::text;
-namespace family = nordend::formats::text;
-using nordend::test::TempDir;
+namespace text = rummage::text;
+namespace family = rummage::formats::text;
+using rummage::test::TempDir;
 using Lines = std::vector<std::string>;
 
 namespace {

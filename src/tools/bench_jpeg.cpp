@@ -1,8 +1,8 @@
 // JPEG decoding comparison for the thumbnails (ROADMAP 5.2). Not installed.
 //
-//   nordend-bench-jpeg [--runs N] FILE...
+//   rummage-bench-jpeg [--runs N] FILE...
 //
-// Decodes each JPEG from memory with wuffs (full size, as nordend::image does) and with
+// Decodes each JPEG from memory with wuffs (full size, as rummage::image does) and with
 // TurboJPEG at scales 1, 1/2, 1/4, 1/8 (DCT scaling: the smaller sizes are decoded, not
 // resized), to RGBA, without the EXIF turn. Prints the median over N runs (default 5, the first
 // not counted) per file, then the median over all files.
@@ -20,7 +20,7 @@
 #include <turbojpeg.h>
 #include <vector>
 
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 
 namespace {
 
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
         args = args.subspan(2);
     }
     if (args.empty()) {
-        std::fprintf(stderr, "usage: nordend-bench-jpeg [--runs N] FILE...\n");
+        std::fprintf(stderr, "usage: rummage-bench-jpeg [--runs N] FILE...\n");
         return 2;
     }
     tjhandle turbo = tj3Init(TJINIT_DECOMPRESS);
@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
                   static_cast<std::streamsize>(data.size()));
 
         const double wuffs = time_runs(runs, [&] {
-            return nordend::formats::image::decode(data, {.apply_orientation = false})
+            return rummage::formats::image::decode(data, {.apply_orientation = false})
                 .error.empty();
         });
         std::printf("%s\n  wuffs 1/1: %.1f ms\n", arg, wuffs);

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace nordend::theme {
+namespace rummage::theme {
 namespace {
 
 double from_linear(double v) {
@@ -72,4 +72,4 @@ Color from_lch(Lch lch) {
     return {channel(rgb.r), channel(rgb.g), channel(rgb.b), 1.0F};
 }
 
-}  // namespace nordend::theme
+}  // namespace rummage::theme

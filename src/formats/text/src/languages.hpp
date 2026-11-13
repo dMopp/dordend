@@ -5,12 +5,12 @@
 #include <span>
 #include <string_view>
 
-#include "nordend/formats/text/syntax.hpp"
-#include "nordend/text/text.hpp"
+#include "rummage/formats/text/syntax.hpp"
+#include "rummage/text/text.hpp"
 
 // The languages the text family colours, and how each one's code is written (private to the
 // text family: the lexer in syntax.cpp reads these tables).
-namespace nordend::formats::text {
+namespace rummage::formats::text {
 
 // $variables, as each language writes them.
 enum class Variables : std::uint8_t {
@@ -90,7 +90,7 @@ struct Syntax {
     std::span<const std::string_view> functions{};   // builtins: echo, printf, cd
     bool camel_case_types{false};                    // Registry, TextLayout: types
     bool suffix_t_types{false};                      // size_t, uint32_t: types
-    std::optional<nordend::text::Style> capitals{};  // NORDEND_VERSION: a macro (C), a constant
+    std::optional<rummage::text::Style> capitals{};  // RUMMAGE_VERSION: a macro (C), a constant
     Dedicated dedicated{Dedicated::none};
 };
 
@@ -111,4 +111,4 @@ struct Language {
 // The language a Markdown code fence names (```rust, ```Python, ```{.sh}); nullptr when none.
 [[nodiscard]] const Language* language_for_fence(std::string_view name);
 
-}  // namespace nordend::formats::text
+}  // namespace rummage::formats::text

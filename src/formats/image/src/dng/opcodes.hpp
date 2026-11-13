@@ -2,7 +2,7 @@
 
 // A DNG's opcodes (ROADMAP 2d-4): the corrections a camera leaves for the reader to apply, in
 // three lists (1 on the data as stored, 2 on the linear values before demosaic, 3 after it).
-// Nordend applies the two its cameras use: GainMap (vignetting and colour shading) and
+// rummage applies the two its cameras use: GainMap (vignetting and colour shading) and
 // WarpRectilinear (lens distortion). Opcodes marked optional, or as skippable for previews, are
 // skipped; bad pixel fixes are skipped too (at half size or less a site is averaged with three
 // others at least). Any other opcode the file requires stops the development: the previews are
@@ -19,7 +19,7 @@
 
 #include "../tiff/container.hpp"
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 
 // Gains over a grid of points, multiplying the planes of an area of the image (every
 // row_pitch-th row and column_pitch-th column from its top left).
@@ -61,7 +61,7 @@ struct GainMap {
 };
 
 // WarpRectilinear, with one plane's coefficients (green's when there are three: the planes
-// differ by under half a pixel at the sizes Nordend develops to).
+// differ by under half a pixel at the sizes rummage develops to).
 struct Warp {
     std::array<double, 4> radial{1.0, 0.0, 0.0, 0.0};
     std::array<double, 2> tangential{};
@@ -103,4 +103,4 @@ struct Opcodes {
 // The three lists of the raw image's IFD.
 [[nodiscard]] std::optional<Opcodes> read_opcodes(const tiff::Ifd& ifd, std::string& error);
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

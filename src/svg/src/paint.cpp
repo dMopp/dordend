@@ -1,6 +1,6 @@
 #include "internal.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 Colour Paint::sample(double x, double y) const {
     if (texture) {
         Point p = inverse.apply({x, y});
@@ -279,4 +279,4 @@ Paint Document::paint(std::string_view value, Colour current, const Box& box, co
     }
     return out;
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

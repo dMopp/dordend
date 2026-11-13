@@ -1,4 +1,4 @@
-#include "nordend/theme/palette.hpp"
+#include "rummage/theme/palette.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,10 +12,10 @@
 #include <utility>
 #include <vector>
 
-#include "nordend/core/config.hpp"
-#include "nordend/core/file.hpp"
+#include "rummage/core/config.hpp"
+#include "rummage/core/file.hpp"
 
-namespace nordend::theme {
+namespace rummage::theme {
 namespace {
 
 struct Role {
@@ -133,7 +133,7 @@ void read_colors(const toml::node& node, Problems& problems, Palette& palette) {
         }
         palette.*role.member = *color;
     }
-    // Other keys are fine: the template writes every Noctalia token, Nordend uses some.
+    // Other keys are fine: the template writes every Noctalia token, rummage uses some.
     if (!missing.empty()) {
         problems.report(node.source(),
                         std::format("missing colors, defaults used for: {}", missing));
@@ -194,4 +194,4 @@ PaletteResult load_palette(const std::filesystem::path& path) {
     return parse_palette(file.text, path.string());
 }
 
-}  // namespace nordend::theme
+}  // namespace rummage::theme

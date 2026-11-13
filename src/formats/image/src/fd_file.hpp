@@ -1,7 +1,7 @@
 #pragma once
 
 // A file read through a descriptor it was opened as, with pread: the isolated helper gets files
-// this way (it may not open any), and the same code serves Nordend's own reads.
+// this way (it may not open any), and the same code serves rummage's own reads.
 
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include <span>
 #include <vector>
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 
 class FdFile {
 public:
@@ -39,4 +39,4 @@ private:
     std::uint64_t size_;
 };
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

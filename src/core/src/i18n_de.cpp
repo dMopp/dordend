@@ -3,9 +3,9 @@
 #include <array>
 #include <span>
 
-#include "nordend/core/i18n.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::i18n {
+namespace rummage::i18n {
 namespace {
 
 constexpr std::array kGerman = std::to_array<Entry>({
@@ -47,7 +47,7 @@ constexpr std::array kGerman = std::to_array<Entry>({
     {"BOOKMARKS", "LESEZEICHEN"},
     {"DEVICES", "GERÄTE"},
     {"Folder", "Ordner"},
-    {"Select a file — Nordend", "Datei auswählen — Nordend"},
+    {"Select a file — rummage", "Datei auswählen — rummage"},
 
     // Info pane and Quick Look
     {"INFORMATION", "INFORMATIONEN"},
@@ -412,8 +412,8 @@ constexpr std::array kGerman = std::to_array<Entry>({
     {"Opening {} files with {}…", "{} Dateien werden mit {} geöffnet…"},
     {"No application opens {}", "Kein Programm öffnet {}"},
     {"{} is not installed", "{} ist nicht installiert"},
-    {"{} has an Exec line Nordend cannot read",
-     "{} hat eine Exec-Zeile, die Nordend nicht lesen kann"},
+    {"{} has an Exec line rummage cannot read",
+     "{} hat eine Exec-Zeile, die rummage nicht lesen kann"},
     {"No terminal to run {} in: set $TERMINAL", "Kein Terminal für {}: $TERMINAL setzen"},
     {"No terminal found: set $TERMINAL", "Kein Terminal gefunden: $TERMINAL setzen"},
     {"Nothing to open", "Nichts zu öffnen"},
@@ -459,8 +459,8 @@ constexpr std::array kGerman = std::to_array<Entry>({
     {"gvfs is not running (it mounts network folders)",
      "gvfs läuft nicht (es hängt Netzwerkordner ein)"},
     {"there is no session bus", "es gibt keinen Sitzungsbus"},
-    {"it is not a network folder Nordend can mount",
-     "das ist kein Netzwerkordner, den Nordend einhängen kann"},
+    {"it is not a network folder rummage can mount",
+     "das ist kein Netzwerkordner, den rummage einhängen kann"},
     {"it is not mounted", "es ist nicht eingehängt"},
     {"gvfs does not list it as mounted", "gvfs führt es nicht als eingehängt"},
     {"gvfs has no local folder for it (gvfsd-fuse is not running)",
@@ -594,4 +594,4 @@ constexpr std::array kGerman = std::to_array<Entry>({
 
 std::span<const Entry> german_table() { return kGerman; }
 
-}  // namespace nordend::i18n
+}  // namespace rummage::i18n

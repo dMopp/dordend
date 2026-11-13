@@ -6,17 +6,20 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include <doctest/doctest.h>
 
-#include "nordend/ui/color.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/offscreen.hpp"
-#include "nordend/ui/renderer.hpp"
-#include "nordend/ui/text.hpp"
+#include "rummage/ui/color.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/ui/renderer.hpp"
+#include "rummage/ui/text.hpp"
+#include "rummage/views/confirm_dialog.hpp"
+#include "rummage/views/error_dialog.hpp"
 #include "temp_dir.hpp"
 
-namespace ui = nordend::ui;
+namespace ui = rummage::ui;
 
 namespace {
 
@@ -172,7 +175,7 @@ TEST_CASE("folder icons: rendered override, missing or broken artwork, and built
     const auto gl = offscreen(32, 32);
     if (!gl)
         return;
-    nordend::test::TempDir dir;
+    rummage::test::TempDir dir;
     const auto custom = dir.write("custom.svg",
                                   "<svg width='32' height='32'>"
                                   "<rect width='32' height='32' fill='red'/></svg>");
@@ -180,7 +183,7 @@ TEST_CASE("folder icons: rendered override, missing or broken artwork, and built
     ui::FontSystem fonts;
     ui::Renderer renderer{fonts};
     ui::IconSet icons{fonts};
-    icons.set_theme("nordend-nonexistent-test-theme");
+    icons.set_theme("rummage-nonexistent-test-theme");
     const auto draw = [&](std::string_view preferred) {
         renderer.begin_frame(32, 32, 1.0F, ui::Color::rgb(0x000000));
         icons.draw_file(renderer, "inode/directory", "folder", 0, 0, 32, ui::Color::rgb(0xFFFFFF),
@@ -198,8 +201,68 @@ TEST_CASE("folder icons: rendered override, missing or broken artwork, and built
     CHECK(override[middle + 1] == 0);
     CHECK(draw(broken.string()) == normal);
     CHECK(draw((dir.path / "missing.svg").string()) == normal);
-    CHECK(draw("nordend-nonexistent-folder-icon") == normal);
+    CHECK(draw("rummage-nonexistent-folder-icon") == normal);
     icons.set_theme("builtin");
     const auto builtin = draw({});
     CHECK(draw(custom.string()) == builtin);
+}
+
+TEST_CASE("renderer: password dialogs mask Unicode characters and retain editing geometry") {
+    const auto gl = offscreen(600, 300);
+    if (!gl)
+        return;
+    ui::FontSystem fonts;
+    ui::Renderer renderer{fonts};
+    rummage::views::ConfirmDialog dialog{[] {}};
+    const auto render = [&](const std::string& password) {
+        dialog.open_password("secret.7z", false, [](auto) {});
+        dialog.paste(password);
+        renderer.begin_frame(600, 300, 1.0F, ui::Color::rgb(0xFFFFFF));
+        dialog.draw(renderer, {0, 0, 600, 300}, {});
+        renderer.end_frame();
+        std::vector<std::uint8_t> pixels(600 * 300 * 4);
+        glReadPixels(0, 0, 600, 300, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        return pixels;
+    };
+    const auto ascii = render("abc");
+    CHECK(ascii == render("é🔒字"));  // three bullets, not one per byte
+    CHECK(ascii != render("ab"));
+    CHECK(ascii != render(""));
+}
+
+TEST_CASE(
+    "renderer: action errors wrap scroll and copy all details without losing queued failures") {
+    const auto gl = offscreen(600, 300);
+    if (!gl)
+        return;
+    ui::FontSystem fonts;
+    ui::Renderer renderer{fonts};
+    std::string copied;
+    rummage::views::ErrorDialog dialog{[] {}, [&](std::string text) { copied = std::move(text); }};
+    std::string detail = "Could not extract archive. Install unrar and try again.\n";
+    for (unsigned i = 0; i < 60; ++i)
+        detail += "Archive: /photos/é🔒/" + std::string(100, 'a') + ".rar\n";
+    dialog.push(detail);
+    dialog.push("Another archive failed");
+    const auto render = [&] {
+        renderer.begin_frame(600, 300, 1.0F, ui::Color::rgb(0xFFFFFF));
+        dialog.draw(renderer, {0, 0, 600, 300}, {});
+        renderer.end_frame();
+        std::vector<std::uint8_t> pixels(600 * 300 * 4);
+        glReadPixels(0, 0, 600, 300, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        return pixels;
+    };
+    const auto top = render();
+    dialog.key({.keysym = XKB_KEY_End, .text = {}});
+    CHECK(top != render());
+    dialog.key({.keysym = XKB_KEY_c, .text = {}, .modifiers = {.ctrl = true}});
+    CHECK(copied == detail);
+    CHECK(dialog.pending() == 2);
+    dialog.key({.keysym = XKB_KEY_Home, .text = {}});
+    CHECK(top == render());
+    dialog.key({.keysym = XKB_KEY_Return, .text = {}});
+    CHECK(dialog.detail() == "Another archive failed");
+    CHECK(top != render());
+    dialog.key({.keysym = XKB_KEY_Escape, .text = {}});
+    CHECK_FALSE(dialog.is_open());
 }

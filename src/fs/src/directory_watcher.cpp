@@ -1,4 +1,4 @@
-#include "nordend/fs/directory_watcher.hpp"
+#include "rummage/fs/directory_watcher.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,9 +10,9 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 constexpr std::uint32_t kWatchMask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO |
@@ -140,4 +140,4 @@ void DirectoryWatcher::on_readable() {
     }
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

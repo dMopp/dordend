@@ -1,4 +1,4 @@
-#include "nordend/ui/xcursor.hpp"
+#include "rummage/ui/xcursor.hpp"
 
 #include <array>
 #include <charconv>
@@ -7,9 +7,9 @@
 #include <string_view>
 #include <wayland-cursor.h>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 constexpr int kDefaultSize = 24;
@@ -170,4 +170,4 @@ void XcursorFallback::show(wl_pointer* pointer, std::uint32_t serial, CursorShap
                           static_cast<std::int32_t>(image->hotspot_y) / divisor);
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

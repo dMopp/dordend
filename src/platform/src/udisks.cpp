@@ -1,4 +1,4 @@
-#include "nordend/platform/udisks.hpp"
+#include "rummage/platform/udisks.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -10,9 +10,9 @@
 #include <utility>
 
 #include "bus_loop.hpp"
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 constexpr std::string_view kService = "org.freedesktop.UDisks2";
@@ -198,7 +198,7 @@ Udisks::Udisks(core::EventLoop& loop, std::function<void()> changed)
             sdbus::return_slot);
         impl_->read_objects();
     } catch (const sdbus::Error& error) {
-        log::warn("udisks: no system bus or udisks2 ({}): disks are not mounted from Nordend",
+        log::warn("udisks: no system bus or udisks2 ({}): disks are not mounted from rummage",
                   error.getMessage());
         impl_->manager.reset();
         impl_->bus.reset();
@@ -298,4 +298,4 @@ void Udisks::eject(const std::string& volume, const Done& done) {
     (*next)(0);
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

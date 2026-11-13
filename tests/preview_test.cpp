@@ -1,4 +1,4 @@
-#include "nordend/preview/preview.hpp"
+#include "rummage/preview/preview.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -12,14 +12,14 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/mime.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/mime.hpp"
 #include "temp_dir.hpp"
 
-namespace preview = nordend::preview;
+namespace preview = rummage::preview;
 namespace fs = std::filesystem;
-using nordend::fs::MimeDatabase;
-using nordend::test::TempDir;
+using rummage::fs::MimeDatabase;
+using rummage::test::TempDir;
 
 namespace {
 
@@ -32,7 +32,7 @@ fs::path write(const fs::path& path, const std::string& bytes) {
 
 TEST_CASE("preview: information on files, directories and links") {
     const TempDir dir;
-    const nordend::core::CancelToken token;
+    const rummage::core::CancelToken token;
     const fs::path file = write(dir.path / "a.txt", "a");
     fs::permissions(file, fs::perms::owner_read | fs::perms::owner_write | fs::perms::group_read);
     const preview::Info info = preview::read_info(file, token);
@@ -67,7 +67,7 @@ TEST_CASE("preview: information on files, directories and links") {
 TEST_CASE("preview: the provider for a type") {
     const auto mime = MimeDatabase::load();
     const TempDir dir;
-    const nordend::core::CancelToken token;
+    const rummage::core::CancelToken token;
     const auto content_of = [&](const char* type, const fs::path& path) {
         return preview::provider_for(*mime, mime->find(type))
             .load({.path = path, .mime = type, .width = 0, .height = 0}, token);
@@ -85,22 +85,22 @@ TEST_CASE("preview: the provider for a type") {
     CHECK_FALSE(std::get<preview::Info>(missing).error.empty());
     CHECK(std::holds_alternative<preview::Info>(content_of("application/zip", json)));
     CHECK(std::holds_alternative<preview::Info>(content_of("inode/directory", dir.path)));
-    CHECK(std::holds_alternative<nordend::picture::Loaded>(
-        content_of("image/png", fs::path{NORDEND_TEST_DATA} / "image" / "blocks.png")));
+    CHECK(std::holds_alternative<rummage::picture::Loaded>(
+        content_of("image/png", fs::path{RUMMAGE_TEST_DATA} / "image" / "blocks.png")));
     // A type not known yet gets the card until it is.
     CHECK(std::holds_alternative<preview::Info>(
-        preview::provider_for(*mime, nordend::fs::kUnknownMime)
+        preview::provider_for(*mime, rummage::fs::kUnknownMime)
             .load({.path = json, .mime = {}, .width = 0, .height = 0}, token)));
 }
 
 TEST_CASE("preview: the info pane's summary of a photo, a text file and a folder") {
     const TempDir dir;
-    const nordend::core::CancelToken token;
+    const rummage::core::CancelToken token;
     const preview::Summary photo =
-        preview::summarize(fs::path{NORDEND_TEST_DATA} / "image" / "shot.jpg", "image/jpeg",
+        preview::summarize(fs::path{RUMMAGE_TEST_DATA} / "image" / "shot.jpg", "image/jpeg",
                            preview::Kind::image, token);
     REQUIRE(photo.photo.has_value());
-    CHECK(photo.photo.value_or(nordend::picture::PhotoInfo{}).camera == "OM-1");
+    CHECK(photo.photo.value_or(rummage::picture::PhotoInfo{}).camera == "OM-1");
     CHECK_FALSE(photo.text);
     CHECK_FALSE(photo.info.permissions.empty());
 

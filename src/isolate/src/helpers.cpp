@@ -1,4 +1,4 @@
-#include "nordend/isolate/helpers.hpp"
+#include "rummage/isolate/helpers.hpp"
 
 #include <algorithm>
 #include <array>
@@ -24,12 +24,13 @@
 #include <utility>
 #include <vector>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/core/worker_pool.hpp"
 #include "protocol.hpp"
 
 extern char** environ;  // NOLINT(readability-redundant-declaration): POSIX, not in a header
 
-namespace nordend::isolate {
+namespace rummage::isolate {
 namespace {
 
 picture::Loaded failed(picture::Failure failure, std::string detail) {
@@ -180,6 +181,7 @@ std::size_t Helpers::running() const {
 
 std::optional<Helpers::Helper> Helpers::spawn() const {
     if (options_.program.empty()) {
+        errno = ENOENT;
         return std::nullopt;
     }
     std::array<int, 2> ends{-1, -1};
@@ -201,7 +203,7 @@ std::optional<Helpers::Helper> Helpers::spawn() const {
     posix_spawnattr_setsigmask(&attr, &none);
     posix_spawnattr_setsigdefault(&attr, &all);
     posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
-    // Nordend closes idle helpers itself; a helper's own idle time, longer, is only a fallback.
+    // rummage closes idle helpers itself; a helper's own idle time, longer, is only a fallback.
     std::vector<std::string> args{options_.program.string(), "--idle-ms",
                                   std::to_string((options_.idle.count() * 2) + 1000)};
     args.insert(args.end(), options_.args.begin(), options_.args.end());
@@ -219,14 +221,18 @@ std::optional<Helpers::Helper> Helpers::spawn() const {
     ::close(ends[1]);
     if (spawned != 0) {
         ::close(ends[0]);
+        errno = spawned;
         return std::nullopt;
     }
     return Helper{.pid = pid, .socket = ends[0], .idle_since = {}};
 }
 
-std::optional<Helpers::Helper> Helpers::take() {
+std::optional<Helpers::Helper> Helpers::take(const core::CancelToken* cancel) {
     std::unique_lock lock{mutex_};
     while (true) {
+        if (unavailable_ || (cancel != nullptr && cancel->cancelled())) {
+            return std::nullopt;
+        }
         // Idle ones that left meanwhile (their idle time) are let go of here.
         std::erase_if(idle_, [this](const Helper& helper) {
             int status = 0;
@@ -247,13 +253,16 @@ std::optional<Helpers::Helper> Helpers::take() {
             lock.unlock();
             std::optional<Helper> started = spawn();
             if (!started) {
+                const int error = errno;
                 lock.lock();
                 --count_;
-                freed_.notify_one();
+                unavailable_ =
+                    error == ENOENT || error == ENOTDIR || error == EACCES || error == ENOEXEC;
+                freed_.notify_all();
             }
             return started;
         }
-        freed_.wait(lock);
+        freed_.wait_for(lock, std::chrono::milliseconds{50});
     }
 }
 
@@ -272,14 +281,18 @@ int Helpers::discard(Helper helper) {
     {
         const std::scoped_lock lock{mutex_};
         --count_;
+        if (WIFEXITED(status) &&
+            (WEXITSTATUS(status) == 127 || WEXITSTATUS(status) == protocol::kSandboxFailedExit)) {
+            unavailable_ = true;
+        }
     }
-    freed_.notify_one();
+    freed_.notify_all();
     return status;
 }
 
 Helpers::Outcome Helpers::exchange(Helper helper, std::span<const std::byte> request,
                                    std::span<const int> fds, protocol::Packet& reply,
-                                   std::string& why) const {
+                                   std::string& why, const core::CancelToken* cancel) const {
     if (!protocol::send_packet(helper.socket, request, fds)) {
         return Outcome::again;  // it had already left
     }
@@ -289,7 +302,15 @@ Helpers::Outcome Helpers::exchange(Helper helper, std::span<const std::byte> req
     while (true) {
         const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
             deadline - std::chrono::steady_clock::now());
-        ready = ::poll(&watched, 1, static_cast<int>(std::max<std::int64_t>(left.count(), 0)));
+        if (cancel != nullptr && cancel->cancelled()) {
+            why = "preview cancelled";
+            return Outcome::failed;
+        }
+        ready =
+            ::poll(&watched, 1, static_cast<int>(std::clamp<std::int64_t>(left.count(), 0, 50)));
+        if (ready == 0 && std::chrono::steady_clock::now() < deadline) {
+            continue;
+        }
         if (ready < 0 && errno == EINTR) {
             continue;
         }
@@ -319,19 +340,19 @@ Helpers::Outcome Helpers::exchange(Helper helper, std::span<const std::byte> req
 
 bool Helpers::run(std::span<const std::byte> request, std::span<const int> fds,
                   const std::function<bool(protocol::Packet&, std::string&)>& accept,
-                  std::string& why) {
+                  std::string& why, const core::CancelToken* cancel) {
     why = "the preview helper could not start";
     // Twice at most: a helper that had just left gets the request again in a new one.
     for (int attempt = 0; attempt < 2; ++attempt) {
-        const std::optional<Helper> helper = take();
+        const std::optional<Helper> helper = take(cancel);
         if (!helper) {
             why = options_.program.empty()
-                      ? "nordend-preview not found"
+                      ? "rummage-preview not found"
                       : "the preview helper could not start: " + options_.program.string();
             return false;
         }
         protocol::Packet reply;
-        Outcome outcome = exchange(*helper, request, fds, reply, why);
+        Outcome outcome = exchange(*helper, request, fds, reply, why, cancel);
         if (outcome == Outcome::done) {
             const bool accepted = accept(reply, why);
             reply.close_fds();
@@ -398,7 +419,7 @@ picture::Loaded Helpers::load(const picture::LoadRequest& request) {
     };
     std::string why;
     const std::array<int, 1> fds{file};
-    const bool done = run(std::as_bytes(std::span{&message, 1}), fds, accept, why);
+    const bool done = run(std::as_bytes(std::span{&message, 1}), fds, accept, why, request.cancel);
     ::close(file);
     return done ? result : failed(picture::Failure::unavailable, std::move(why));
 }
@@ -503,6 +524,10 @@ void use_engines(const engines::Registry& registry, HelperOptions options) {
         }
         HelperOptions own = options;
         own.program = engine.program;
+        if (engine.manifest.name == "media") {
+            own.timeout = std::chrono::seconds{8};
+            own.max_helpers = std::min<std::size_t>(own.max_helpers, 2);
+        }
         started.emplace_back(&engine, std::make_shared<Helpers>(std::move(own)));
         return started.back().second;
     };
@@ -517,16 +542,42 @@ void use_engines(const engines::Registry& registry, HelperOptions options) {
         return nullptr;
     };
 
-    if (const engines::Engine* engine = first_showing(engines::Shows::picture)) {
-        std::shared_ptr<Helpers> helpers = helpers_of(*engine);
-        picture::set_loader(
-            [helpers](const picture::LoadRequest& request) { return helpers->load(request); });
-        if (std::ranges::any_of(engine->manifest.families, &engines::Family::info)) {
-            picture::set_info_loader(
-                [helpers](const std::filesystem::path& path) { return helpers->photo_info(path); });
+    // Route by the caller's MIME type; empty requests retain the base image loader.
+    auto routes = std::make_shared<const engines::Registry>(registry);
+    const auto mime = fs::MimeDatabase::load();
+    std::vector<std::shared_ptr<Helpers>> pools;
+    for (const auto& engine : registry.engines()) {
+        pools.push_back(helpers_of(engine));
+    }
+    picture::set_loader([routes, mime, pools](const picture::LoadRequest& request) {
+        const engines::Engine* selected = nullptr;
+        if (!request.mime.empty()) {
+            if (const auto* family = routes->find(*mime, mime->find(request.mime));
+                family != nullptr && family->shows == engines::Shows::picture) {
+                selected = routes->engine_of(*family);
+            }
+        } else {
+            for (const auto& engine : routes->engines()) {
+                if (std::ranges::any_of(engine.manifest.families, [](const auto& family) {
+                        return family.shows == engines::Shows::picture;
+                    })) {
+                    selected = &engine;
+                    break;
+                }
+            }
         }
-    } else {
-        log::warn("no engine makes pictures: no previews of pictures");
+        if (selected != nullptr) {
+            const auto index = static_cast<std::size_t>(selected - routes->engines().data());
+            return pools[index]->load(request);
+        }
+        return failed(picture::Failure::unavailable, "no installed engine for this media type");
+    });
+    if (const engines::Engine* engine = first_showing(engines::Shows::picture)) {
+        if (std::ranges::any_of(engine->manifest.families, &engines::Family::info)) {
+            auto helpers = helpers_of(*engine);
+            picture::set_info_loader(
+                [helpers](const auto& path) { return helpers->photo_info(path); });
+        }
     }
     if (const engines::Engine* engine = first_showing(engines::Shows::text)) {
         std::shared_ptr<Helpers> helpers = helpers_of(*engine);
@@ -537,4 +588,4 @@ void use_engines(const engines::Registry& registry, HelperOptions options) {
     }
 }
 
-}  // namespace nordend::isolate
+}  // namespace rummage::isolate

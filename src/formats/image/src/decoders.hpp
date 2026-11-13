@@ -5,9 +5,9 @@
 
 #include <span>
 
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 
 using picture::kTooLarge;
 
@@ -24,4 +24,4 @@ void decode_pnm(std::span<const std::uint8_t> data, const DecodeOptions& options
 // JPEG XL, with libjxl (which applies the orientation itself).
 void decode_jxl(std::span<const std::uint8_t> data, const DecodeOptions& options, Decoded& result);
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

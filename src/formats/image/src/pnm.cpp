@@ -6,7 +6,7 @@
 
 #include "decoders.hpp"
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 namespace {
 
 bool is_space(std::uint8_t c) {
@@ -119,4 +119,4 @@ void decode_pnm(std::span<const std::uint8_t> data, const DecodeOptions& options
     }
 }
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

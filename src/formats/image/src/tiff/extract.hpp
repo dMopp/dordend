@@ -11,11 +11,11 @@
 
 #include "container.hpp"
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 
 // ifd's image as a classic TIFF in the source's byte order; empty when it cannot be copied (no
 // strips or tiles, a chunk out of the data, more than max_bytes in all, a BigTIFF source).
 [[nodiscard]] std::vector<std::uint8_t> extract(const Ifd& ifd,
                                                 std::size_t max_bytes = std::size_t{64} << 20);
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

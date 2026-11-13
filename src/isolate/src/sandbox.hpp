@@ -2,13 +2,13 @@
 
 // The preview helper's cage (ROADMAP 2b-2), our own code, no library: resource limits, landlock
 // (no file system, no network, no signals or abstract sockets towards other processes), and a
-// seccomp filter that lets through only what decoding a picture and talking to Nordend need.
+// seccomp filter that lets through only what decoding a picture and talking to rummage need.
 // Opening a file fails with EACCES; any other system call kills the process.
 
 #include <cstdint>
 #include <string>
 
-namespace nordend::isolate {
+namespace rummage::isolate {
 
 struct SandboxStatus {
     bool limited{false};  // resource limits set
@@ -20,7 +20,7 @@ struct SandboxStatus {
 // What the filter does with a system call it does not allow.
 enum class Unexpected : std::uint8_t {
     kill,    // the process dies (SIGSYS): the normal case
-    report,  // NORDEND_SANDBOX_REPORT=1: its number goes to stderr and it fails with ENOSYS
+    report,  // RUMMAGE_SANDBOX_REPORT=1: its number goes to stderr and it fails with ENOSYS
 };
 
 // Landlock alone (tests): no file system, no TCP, no abstract sockets or signals outward. The
@@ -31,4 +31,4 @@ enum class Unexpected : std::uint8_t {
 // caller must not go on (the helper exits).
 [[nodiscard]] SandboxStatus enter_sandbox(Unexpected unexpected);
 
-}  // namespace nordend::isolate
+}  // namespace rummage::isolate

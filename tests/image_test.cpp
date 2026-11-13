@@ -10,22 +10,22 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/formats/image/decode.hpp"
-#include "nordend/formats/image/load.hpp"
-#include "nordend/formats/image/photo.hpp"
-#include "nordend/formats/image/preview.hpp"
-#include "nordend/picture/load.hpp"
-#include "nordend/picture/png.hpp"
-#include "nordend/picture/scale.hpp"
+#include "rummage/formats/image/decode.hpp"
+#include "rummage/formats/image/load.hpp"
+#include "rummage/formats/image/photo.hpp"
+#include "rummage/formats/image/preview.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/picture/png.hpp"
+#include "rummage/picture/scale.hpp"
 
-namespace image = nordend::formats::image;
-namespace picture = nordend::picture;
+namespace image = rummage::formats::image;
+namespace picture = rummage::picture;
 using image::Format;
 using picture::Image;
 
 namespace {
 
-const std::filesystem::path kData = std::filesystem::path{NORDEND_TEST_DATA} / "image";
+const std::filesystem::path kData = std::filesystem::path{RUMMAGE_TEST_DATA} / "image";
 
 struct Rgba {
     int r, g, b, a;
@@ -321,7 +321,7 @@ TEST_CASE("image: a photo's shot from EXIF and its upright size; no sidecar rati
     CHECK(shot.focal_length == "25.0 mm");
     CHECK(shot.taken == "2026-08-31 16:34");
     // shot.jpg.xmp next to it rates it 3: not read since 2e-4 (editors' sidecars are a
-    // plugin's; Nordend's own rating comes with ROADMAP 5).
+    // plugin's; rummage's own rating comes with ROADMAP 5).
     CHECK_FALSE(shot.rating);
 
     const picture::PhotoInfo plain = image::read_photo_info(kData / "blocks.png");
@@ -362,14 +362,14 @@ TEST_CASE("image: PGM and PPM") {
 }
 
 // Raw files of many cameras (rawsamples.ch and others; not in the repository): the folder named
-// by NORDEND_RAW_SAMPLES, when it is set. The checks name the files they need.
+// by RUMMAGE_RAW_SAMPLES, when it is set. The checks name the files they need.
 namespace {
 const std::filesystem::path kRawSamples = [] {
-    const char* folder = std::getenv("NORDEND_RAW_SAMPLES");
+    const char* folder = std::getenv("RUMMAGE_RAW_SAMPLES");
     return std::filesystem::path{folder != nullptr ? folder : ""};
 }();
 
-// The samples that carry a preview Nordend reads.
+// The samples that carry a preview rummage reads.
 constexpr std::array<const char*, 23> kWithPreview{
     "_AUS2917.NEF",
     "_DSC5410.nef",

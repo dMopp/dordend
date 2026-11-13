@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Rummage — Pocket chaos">
+  <title>Rummage — Pocket chaos</title>
+  <g stroke="#303343" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M30 110V78Q30 64 44 64H83Q90 64 95 71L105 83H211Q226 83 226 98V206Q226 223 209 223H47Q30 223 30 206Z" fill="#CF954B"/>
+    <g transform="rotate(-13 77.5 103.5)"><rect x="43" y="48" width="69" height="111" rx="7" fill="#EF897B"/><path d="M58 72H91M58 88H82" fill="none"/></g>
+    <g transform="rotate(8 145.5 95.0)"><rect x="108" y="31" width="75" height="128" rx="7" fill="#FFF5DE"/><path d="M125 55H162M125 72H162M125 89H146" fill="none"/></g>
+    <g transform="rotate(14 193.5 121.5)"><rect x="163" y="80" width="61" height="83" rx="7" fill="#91CDB9"/><circle cx="202" cy="99" r="5" fill="#303343" stroke="none"/><path d="M171 139L186 116L198 129L207 120L217 139Z" fill="#4F9282" stroke="none"/></g>
+    <path d="M25 124Q22 110 37 110H88Q97 110 103 117L113 128H218Q234 128 231 144L218 209Q215 224 199 224H51Q36 224 33 210Z" fill="#F7C65B"/>
+    <path d="M97 166H153" fill="none" stroke-width="9"/>
+    <path d="M44 193L46 205Q47 212 55 212H72" fill="none" stroke="#FFE4A2" stroke-width="5"/>
+    <path d="M215 31V47M207 39H223" fill="none" stroke="#EF897B" stroke-width="5"/>
+
+  </g>
+</svg>

@@ -1,4 +1,4 @@
-#include "nordend/ui/text.hpp"
+#include "rummage/ui/text.hpp"
 
 #include <fontconfig/fontconfig.h>
 #include <ft2build.h>
@@ -16,9 +16,9 @@
 #include <unordered_map>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 constexpr char32_t kReplacement = 0xFFFD;
@@ -707,4 +707,4 @@ GlyphBitmap FontSystem::rasterize(std::uint32_t font_id, std::uint32_t glyph, fl
     return bitmap;
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

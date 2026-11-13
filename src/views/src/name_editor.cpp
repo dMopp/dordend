@@ -1,11 +1,11 @@
-#include "nordend/views/name_editor.hpp"
+#include "rummage/views/name_editor.hpp"
 
 #include <utility>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-#include "nordend/fs/operations.hpp"
+#include "rummage/fs/operations.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 
 NameEditor::NameEditor(std::function<void()> redraw, Rename rename,
                        std::function<void(std::string problem)> problem)
@@ -136,4 +136,4 @@ void NameEditor::draw(ui::Renderer& renderer, const theme::Palette& palette) {
                  .caret = busy_ ? palette.surface_container_highest : palette.on_surface});
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

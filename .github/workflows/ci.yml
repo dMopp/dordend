@@ -99,7 +99,8 @@ jobs:
           path: |
             ${{ runner.temp }}/native-package/packages/
             ${{ runner.temp }}/native-package/recipe/
-            ${{ runner.temp }}/native-package/nordend.spec
+            ${{ runner.temp }}/native-package/debian-source/
+            ${{ runner.temp }}/native-package/rummage.spec
             ${{ runner.temp }}/native-package/input/
             ${{ runner.temp }}/native-package.log
           retention-days: 14

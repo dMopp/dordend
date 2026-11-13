@@ -1,7 +1,7 @@
 #pragma once
 
-// What Nordend and its preview helper say to each other, on a private SOCK_SEQPACKET socket
-// (one message per packet). Nordend sends a request with the file's descriptor; the helper
+// What rummage and its preview helper say to each other, on a private SOCK_SEQPACKET socket
+// (one message per packet). rummage sends a request with the file's descriptor; the helper
 // answers a picture with the result and a sealed memfd holding its pixels, a text with the result
 // and a sealed memfd holding its lines, or the information as text fields. A helper leaving after
 // its idle time first sends a goodbye, so that a request racing with its exit is sent again to a
@@ -17,10 +17,10 @@
 #include <string_view>
 #include <vector>
 
-#include "nordend/picture/photo_info.hpp"
-#include "nordend/text/text.hpp"
+#include "rummage/picture/photo_info.hpp"
+#include "rummage/text/text.hpp"
 
-namespace nordend::isolate::protocol {
+namespace rummage::isolate::protocol {
 
 // The descriptor the helper finds its socket on.
 inline constexpr int kSocketFd = 3;
@@ -37,7 +37,7 @@ inline constexpr std::size_t kMaxField = 255;  // bytes of one information field
 // The helper's exit status when it could not build its cage: it never works without one.
 inline constexpr int kSandboxFailedExit = 3;
 
-// What Nordend asks for.
+// What rummage asks for.
 // Four bytes, for a request laid out without padding.
 enum class Kind : std::uint32_t {  // NOLINT(performance-enum-size)
     picture = 0,                   // the file's picture, max_width x max_height at most
@@ -158,4 +158,4 @@ struct Packet {
 [[nodiscard]] std::vector<std::byte> encode_info(const picture::PhotoInfo& info);
 [[nodiscard]] std::optional<picture::PhotoInfo> decode_info(std::span<const std::byte> bytes);
 
-}  // namespace nordend::isolate::protocol
+}  // namespace rummage::isolate::protocol

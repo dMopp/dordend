@@ -1,11 +1,11 @@
 // MIME detection check (ROADMAP 3.2). Not installed.
 //
-//   nordend-mime PATH...
+//   rummage-mime PATH...
 //
 // Prints "<type>\t<name>" for each file, or for each entry of a directory, using the full
 // detection (kind, name, content when needed); timings go to stderr. Compare with GLib:
 //   gio info -a standard::content-type FILE
-#include "nordend/fs/mime.hpp"
+#include "rummage/fs/mime.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -16,14 +16,14 @@
 #include <string>
 #include <vector>
 
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory.hpp"
-#include "nordend/fs/entry.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory.hpp"
+#include "rummage/fs/entry.hpp"
 
 namespace {
 
-namespace core = nordend::core;
-namespace fs = nordend::fs;
+namespace core = rummage::core;
+namespace fs = rummage::fs;
 using Clock = std::chrono::steady_clock;
 
 double ms_since(Clock::time_point start) {
@@ -35,7 +35,7 @@ double ms_since(Clock::time_point start) {
 int main(int argc, char** argv) {
     const std::span args{argv, static_cast<std::size_t>(argc)};
     if (args.size() < 2) {
-        std::fprintf(stderr, "usage: nordend-mime PATH...\n");
+        std::fprintf(stderr, "usage: rummage-mime PATH...\n");
         return 2;
     }
     try {
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         }
         return 0;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "nordend-mime: %s\n", e.what());
+        std::fprintf(stderr, "rummage-mime: %s\n", e.what());
         return 1;
     }
 }

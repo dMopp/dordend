@@ -13,25 +13,25 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/thumbs/cache.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/file_clipboard.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/thumbs/cache.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/file_clipboard.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::views::Browser;
-using nordend::views::ClipboardFiles;
-using nordend::views::SystemClipboard;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::views::Browser;
+using rummage::views::ClipboardFiles;
+using rummage::views::SystemClipboard;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
-namespace views = nordend::views;
+namespace views = rummage::views;
 
 namespace {
 
@@ -69,7 +69,7 @@ Names listing(const fs::path& directory) {
     return names;
 }
 
-// The system clipboard as a program would see it: what Nordend offered, or another program's.
+// The system clipboard as a program would see it: what rummage offered, or another program's.
 struct FakeClipboard {
     EventLoop* loop{nullptr};
     std::vector<SystemClipboard::Format> formats;
@@ -137,11 +137,11 @@ struct Fixture {
     TempDir dir;
     fs::path root = dir.path / "root";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     FakeClipboard clipboard{
         .loop = &loop, .formats = {}, .ours = false, .cleared = 0, .generation = 0};
 
@@ -217,8 +217,8 @@ TEST_CASE("clipboard: Ctrl+C and Ctrl+X offer the files to other programs") {
     CHECK(f.press(key(XKB_KEY_c, {.ctrl = true})));
     const fs::path p1 = f.root / "photos" / "P1.ORF";
     CHECK(f.clipboard.ours);
-    CHECK(f.clipboard.data(views::kGnomeFiles) == "copy\n" + nordend::thumbs::file_uri(p1));
-    CHECK(f.clipboard.data(views::kUriList) == nordend::thumbs::file_uri(p1) + "\r\n");
+    CHECK(f.clipboard.data(views::kGnomeFiles) == "copy\n" + rummage::thumbs::file_uri(p1));
+    CHECK(f.clipboard.data(views::kUriList) == rummage::thumbs::file_uri(p1) + "\r\n");
     CHECK(f.clipboard.data(views::kText) == p1.string());
     CHECK(f.clipboard.data(views::kKdeCut).empty());
 
@@ -226,14 +226,14 @@ TEST_CASE("clipboard: Ctrl+C and Ctrl+X offer the files to other programs") {
     CHECK(f.clipboard.data(views::kGnomeFiles).starts_with("cut\n"));
     CHECK(f.clipboard.data(views::kKdeCut) == "1");
 
-    // Nordend's own: Ctrl+V moves them once, then the clipboard is emptied.
+    // rummage's own: Ctrl+V moves them once, then the clipboard is emptied.
     f.show(f.root / "album", "");
     CHECK(f.press(key(XKB_KEY_v, {.ctrl = true})));
     REQUIRE(f.settle());
     CHECK(listing(f.root / "album") == Names{"P1.ORF", "P1.ORF.xmp"});
     CHECK(f.clipboard.cleared == 1);
 
-    // Another program copies: what Nordend took is forgotten, the cut marks go.
+    // Another program copies: what rummage took is forgotten, the cut marks go.
     f.show(f.root / "photos", "P2.ORF");
     CHECK(f.press(key(XKB_KEY_x, {.ctrl = true})));
     CHECK_FALSE(f.browser.cut_marks().names.empty());

@@ -1,12 +1,12 @@
-#include "nordend/theme/syntax.hpp"
+#include "rummage/theme/syntax.hpp"
 
 #include <cmath>
 #include <numbers>
 
-#include "nordend/theme/desktop.hpp"
+#include "rummage/theme/desktop.hpp"
 #include "oklch.hpp"
 
-namespace nordend::theme {
+namespace rummage::theme {
 namespace {
 
 // WCAG AA for normal text.
@@ -60,4 +60,4 @@ SyntaxColors syntax_colors(const Palette& palette) {
     };
 }
 
-}  // namespace nordend::theme
+}  // namespace rummage::theme

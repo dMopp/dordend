@@ -13,9 +13,9 @@
 #include <string>
 
 #include "../tiff/container.hpp"
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 
 struct DevelopOptions {
     // The look (exposure and tone curve); false gives plain sRGB of the scene's colours (the
@@ -44,4 +44,4 @@ struct Developed {
                                                const DevelopOptions& options, std::string& error,
                                                Problem& problem);
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

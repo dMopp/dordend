@@ -16,11 +16,11 @@ version = metadata["version"] + "." + metadata["timestamp"]
 archive = source / "source.tar.gz"
 checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
 assert checksum == metadata["sha256"], "Source archive differs from recorded checkout"
-name = f"nordend-{version}.tar.gz"
-cache = packages / "hostdir" / "sources" / f"nordend-{version}"
+name = f"rummage-{version}.tar.gz"
+cache = packages / "hostdir" / "sources" / f"rummage-{version}"
 cache.mkdir(parents=True)
 shutil.copyfile(archive, cache / name)
-path = packages / "srcpkgs" / "nordend" / "template"
+path = packages / "srcpkgs" / "rummage" / "template"
 text = path.read_text()
 replacements = {
     "version": version,
@@ -32,6 +32,6 @@ replacements = {
 for key, value in replacements.items():
     text, count = re.subn(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
     assert count == 1, f"Missing or duplicate {key} in template"
-text += '\nwrksrc="nordend-checkout"\n'
+text += '\nwrksrc="rummage-checkout"\n'
 path.write_text(text)
-print(f"Packaging checkout {metadata['commit']} as nordend-{version}_1", flush=True)
+print(f"Packaging checkout {metadata['commit']} as rummage-{version}_1", flush=True)

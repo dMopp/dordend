@@ -23,14 +23,14 @@
 #include "dng/ljpeg.hpp"
 #include "dng/opcodes.hpp"
 #include "dng/raw.hpp"
-#include "nordend/formats/image/load.hpp"
+#include "rummage/formats/image/load.hpp"
 #include "temp_dir.hpp"
 #include "tiff/container.hpp"
 
 namespace fs = std::filesystem;
-namespace image = nordend::formats::image;
-namespace dng = nordend::formats::image::dng;
-namespace tiff = nordend::formats::image::tiff;
+namespace image = rummage::formats::image;
+namespace dng = rummage::formats::image::dng;
+namespace tiff = rummage::formats::image::tiff;
 
 namespace {
 
@@ -41,7 +41,7 @@ const T& got(const std::optional<T>& value) {
     return *value;  // NOLINT(bugprone-unchecked-optional-access): REQUIRE above
 }
 
-const fs::path kFixtures = fs::path{NORDEND_TEST_DATA} / "image" / "dng";
+const fs::path kFixtures = fs::path{RUMMAGE_TEST_DATA} / "image" / "dng";
 
 std::vector<std::uint8_t> read_bytes(const fs::path& path) {
     std::ifstream in{path, std::ios::binary};
@@ -400,7 +400,7 @@ TEST_CASE("dng: broken lossless JPEGs are refused or decode to something, never 
     CHECK(error == "a lossless JPEG too short for its frame");
     // A JPEG that is not lossless.
     const std::vector<std::uint8_t> baseline =
-        read_bytes(fs::path{NORDEND_TEST_DATA} / "image" / "shot.jpg");
+        read_bytes(fs::path{RUMMAGE_TEST_DATA} / "image" / "shot.jpg");
     CHECK_FALSE(dng::lossless_frame(baseline, error));
     CHECK(error == "a JPEG that is not lossless");
 }
@@ -782,7 +782,7 @@ std::optional<dng::Developed> develop_file(const std::vector<std::uint8_t>& file
 }
 
 // Whether every pixel of picture is (r, g, b), give or take one.
-bool all_of(const nordend::picture::Image& picture, int r, int g, int b) {
+bool all_of(const rummage::picture::Image& picture, int r, int g, int b) {
     for (std::size_t i = 0; i < picture.rgba.size(); i += 4) {
         if (std::abs(picture.rgba[i] - r) > 1 || std::abs(picture.rgba[i + 1] - g) > 1 ||
             std::abs(picture.rgba[i + 2] - b) > 1 || picture.rgba[i + 3] != 255) {
@@ -908,7 +908,7 @@ TEST_CASE("dng: developed at half size, levels, balance and crop") {
 }
 
 TEST_CASE("dng: load() develops a DNG whose previews are too small") {
-    const nordend::test::TempDir dir;
+    const rummage::test::TempDir dir;
     const auto grey = [](std::size_t colour, std::uint32_t) {
         const std::array<double, 3> neutral{0.5, 1.0, 0.25};
         return kBlack + (0.18 * (kWhite - kBlack) * neutral.at(colour));
@@ -1046,7 +1046,7 @@ std::vector<std::uint8_t> grey_sensor(std::uint32_t first_bright = 30) {
 }
 
 // Whether the pixels of columns [x0, x1) and rows [y0, y1) are (r, g, b), give or take one.
-bool region_is(const nordend::picture::Image& picture, std::uint32_t x0, std::uint32_t x1,
+bool region_is(const rummage::picture::Image& picture, std::uint32_t x0, std::uint32_t x1,
                std::uint32_t y0, std::uint32_t y1, int r, int g, int b) {
     for (std::uint32_t y = y0; y < y1; ++y) {
         for (std::uint32_t x = x0; x < x1; ++x) {
@@ -1097,9 +1097,9 @@ TEST_CASE("dng: opcode lists") {
         };
         CHECK(refused(ListWriter{}.add(2, 0, std::vector<std::uint8_t>(8)), 3));
         CHECK(error ==
-              "a DNG asking for WarpFisheye in opcode list 3, which Nordend does not apply");
+              "a DNG asking for WarpFisheye in opcode list 3, which rummage does not apply");
         CHECK(refused(ListWriter{}.add(kGainMapId, 0, gain_map({})), 1));
-        CHECK(error == "a DNG asking for GainMap in opcode list 1, which Nordend does not apply");
+        CHECK(error == "a DNG asking for GainMap in opcode list 1, which rummage does not apply");
         CHECK(refused(ListWriter{}.add(kWarpId, 0, warp({{1, 0, 0, 0, 0, 0}})), 2));
         CHECK(refused(ListWriter{}
                           .add(kWarpId, 0, warp({{1, 0, 0, 0, 0, 0}}))
@@ -1176,7 +1176,7 @@ TEST_CASE("dng: developed with the file's opcodes") {
             return kBlack + (0.18 * gains.at(colour) * (kWhite - kBlack) * neutral.at(colour));
         });
     };
-    const auto same = [](const nordend::picture::Image& a, const nordend::picture::Image& b) {
+    const auto same = [](const rummage::picture::Image& a, const rummage::picture::Image& b) {
         if (a.width != b.width || a.height != b.height || a.rgba.size() != b.rgba.size()) {
             return false;
         }
@@ -1235,7 +1235,7 @@ TEST_CASE("dng: developed with the file's opcodes") {
         CHECK(developed.image.width == 20);
         CHECK(developed.image.height == 15);
     }
-    SUBCASE("an opcode Nordend does not apply: not developed (the previews are shown)") {
+    SUBCASE("an opcode rummage does not apply: not developed (the previews are shown)") {
         ListWriter list;
         list.add(2, 0, std::vector<std::uint8_t>(8));  // WarpFisheye
         const std::vector<std::uint8_t> file =
@@ -1243,9 +1243,9 @@ TEST_CASE("dng: developed with the file's opcodes") {
                      camera_fields(0.5, 0.25));
         CHECK_FALSE(develop_file(file, {}, error));
         CHECK(error ==
-              "a DNG asking for WarpFisheye in opcode list 3, which Nordend does not apply");
+              "a DNG asking for WarpFisheye in opcode list 3, which rummage does not apply");
         CHECK(develop_file(file, {.opcodes = false}, error));
-        const nordend::test::TempDir dir;
+        const rummage::test::TempDir dir;
         const fs::path path = dir.path / "fisheye.dng";
         {
             std::ofstream out{path, std::ios::binary};

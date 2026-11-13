@@ -6,13 +6,13 @@
 #include <string_view>
 #include <vector>
 
-#include "nordend/text/text.hpp"
-#include "nordend/theme/palette.hpp"
-#include "nordend/theme/syntax.hpp"
-#include "nordend/ui/geometry.hpp"
-#include "nordend/ui/renderer.hpp"
+#include "rummage/text/text.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/theme/syntax.hpp"
+#include "rummage/ui/geometry.hpp"
+#include "rummage/ui/renderer.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 
 // Height of the bar above the views (the breadcrumb).
 inline constexpr float kTitleHeight = 40.0F;
@@ -31,4 +31,4 @@ void draw_right_aligned(ui::Renderer& renderer, std::string_view text, float rig
 std::vector<ui::ColorRun> colour_runs(std::span<const text::Span> spans,
                                       const theme::SyntaxColors& colours, float alpha);
 
-}  // namespace nordend::views
+}  // namespace rummage::views

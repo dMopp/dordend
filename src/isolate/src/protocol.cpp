@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace nordend::isolate::protocol {
+namespace rummage::isolate::protocol {
 
 void Packet::close_fds() {
     for (int& fd : fds) {
@@ -305,4 +305,4 @@ std::optional<TextAsk> decode_text_request(std::span<const std::byte> bytes) {
     return ask;
 }
 
-}  // namespace nordend::isolate::protocol
+}  // namespace rummage::isolate::protocol

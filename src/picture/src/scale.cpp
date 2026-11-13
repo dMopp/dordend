@@ -1,4 +1,4 @@
-#include "nordend/picture/scale.hpp"
+#include "rummage/picture/scale.hpp"
 
 #include <algorithm>
 #include <array>
@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace nordend::picture {
+namespace rummage::picture {
 namespace {
 
 // The input pixels one output pixel covers, with how much of each.
@@ -182,4 +182,4 @@ Image scale_to_fit(const Image& image, std::uint32_t max_width, std::uint32_t ma
     return area_scale(image, out_width, out_height);
 }
 
-}  // namespace nordend::picture
+}  // namespace rummage::picture

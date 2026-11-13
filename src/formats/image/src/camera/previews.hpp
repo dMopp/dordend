@@ -1,6 +1,6 @@
 #pragma once
 
-// Where a camera file keeps its previews, read by Nordend's own code (ROADMAP 2e-2, in place of
+// Where a camera file keeps its previews, read by rummage's own code (ROADMAP 2e-2, in place of
 // exiv2's PreviewManager): the JPEGs and small TIFF images in a TIFF structure's IFDs and
 // SubIFDs (NEF, CR2, ARW, ORF, RW2, SRW, DNG, 3FR, ERF, plain TIFF), in the maker notes that
 // hold some (Olympus / OM System, Nikon, Samsung), in RW2's own JPEG and in RAF's; plus the size
@@ -14,7 +14,7 @@
 #include "../fd_file.hpp"
 #include "../tiff/container.hpp"
 
-namespace nordend::formats::image::camera {
+namespace rummage::formats::image::camera {
 
 // The files told apart where the reading differs.
 enum class Type : std::uint8_t {
@@ -49,4 +49,4 @@ struct CameraFile {
 // size and orientation (fewer reads: the photo's information needs no more).
 [[nodiscard]] std::optional<CameraFile> read(const detail::FdFile& file, bool previews = true);
 
-}  // namespace nordend::formats::image::camera
+}  // namespace rummage::formats::image::camera

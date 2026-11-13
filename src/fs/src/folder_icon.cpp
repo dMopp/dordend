@@ -1,4 +1,4 @@
-#include "nordend/fs/folder_icon.hpp"
+#include "rummage/fs/folder_icon.hpp"
 
 #include <algorithm>
 #include <array>
@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 std::string_view trim(std::string_view text) {
@@ -166,4 +166,4 @@ std::string FolderIcons::default_for_folder(const std::filesystem::path& folder)
     return {};
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

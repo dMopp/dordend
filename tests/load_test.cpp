@@ -1,4 +1,4 @@
-#include "nordend/formats/image/load.hpp"
+#include "rummage/formats/image/load.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -9,20 +9,20 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/picture/load.hpp"
-#include "nordend/thumbs/cache.hpp"
+#include "rummage/picture/load.hpp"
+#include "rummage/thumbs/cache.hpp"
 #include "temp_dir.hpp"
 
 namespace fs = std::filesystem;
-namespace image = nordend::formats::image;
-namespace picture = nordend::picture;
-namespace thumbs = nordend::thumbs;
-using nordend::test::TempDir;
+namespace image = rummage::formats::image;
+namespace picture = rummage::picture;
+namespace thumbs = rummage::thumbs;
+using rummage::test::TempDir;
 using picture::Failure;
 
 namespace {
 
-const fs::path kData = fs::path{NORDEND_TEST_DATA} / "image";
+const fs::path kData = fs::path{RUMMAGE_TEST_DATA} / "image";
 
 void write_bytes(const fs::path& path, std::string_view bytes) {
     std::ofstream out{path, std::ios::binary};
@@ -38,7 +38,7 @@ picture::Loaded load(const fs::path& path, std::uint32_t side) {
 TEST_CASE("load: every format through the one path, the same for thumbnails") {
     const TempDir dir;
     write_bytes(dir.path / "blocks.ppm", std::string{"P6\n2 1\n255\n\xff\x00\x00\x00\x80\xff", 17});
-    const thumbs::Cache cache{dir.path / "thumbnails", "nordend-test"};
+    const thumbs::Cache cache{dir.path / "thumbnails", "rummage-test"};
     for (const fs::path& file :
          {kData / "blocks.png", kData / "blocks.jpg", kData / "blocks.gif", kData / "blocks.webp",
           kData / "blocks.jxl", kData / "blocks-orient6.jpg", kData / "shot.jpg",
@@ -55,7 +55,7 @@ TEST_CASE("load: every format through the one path, the same for thumbnails") {
         CHECK(thumbnail.image.rgba == loaded.image.rgba);
         CHECK((thumbnail.source == thumbs::Source::preview) == loaded.from_preview);
     }
-    // A plain TIFF (here one reduced-resolution image only) is decoded by Nordend's own TIFF
+    // A plain TIFF (here one reduced-resolution image only) is decoded by rummage's own TIFF
     // reader, not taken as a camera's preview.
     CHECK_FALSE(load(kData / "tiff-preview.tif", 1024).from_preview);
     // Turned upright, and the full size says so.
@@ -92,7 +92,7 @@ TEST_CASE("load: each failure has its own plain reason") {
     CHECK(load(dir.path / "missing.jpg", 128).failure == Failure::unreadable);
     const picture::Loaded x3f = load(dir.path / "fake.x3f", 128);
     CHECK(x3f.failure == Failure::no_readable_preview);
-    CHECK(x3f.error() == "No preview Nordend can show in this file");
+    CHECK(x3f.error() == "No preview rummage can show in this file");
     CHECK_FALSE(x3f.detail.empty());  // the technical reason, for the log
     // One sentence each, all different; none has none.
     std::set<std::string_view> sentences;

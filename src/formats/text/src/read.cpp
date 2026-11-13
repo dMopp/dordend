@@ -1,4 +1,4 @@
-#include "nordend/formats/text/read.hpp"
+#include "rummage/formats/text/read.hpp"
 
 #include <algorithm>
 #include <array>
@@ -18,16 +18,16 @@
 #include <utility>
 #include <vector>
 
-#include "nordend/formats/text/syntax.hpp"
+#include "rummage/formats/text/syntax.hpp"
 
-namespace nordend::formats::text {
+namespace rummage::formats::text {
 namespace {
 
-using nordend::text::Encoding;
-using nordend::text::Failure;
-using nordend::text::Limits;
-using nordend::text::Loaded;
-using nordend::text::Text;
+using rummage::text::Encoding;
+using rummage::text::Failure;
+using rummage::text::Limits;
+using rummage::text::Loaded;
+using rummage::text::Text;
 
 constexpr char32_t kReplacement = 0xFFFD;
 
@@ -357,7 +357,7 @@ Loaded read(int fd, const Limits& limits) {
     return decode(std::span{data}.first(std::min(got, limits.max_bytes)), more, limits);
 }
 
-Loaded load(const nordend::text::LoadRequest& request) {
+Loaded load(const rummage::text::LoadRequest& request) {
     const int fd = ::open(request.path.c_str(), O_RDONLY | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         return unreadable(errno);
@@ -375,4 +375,4 @@ Loaded load(const nordend::text::LoadRequest& request) {
     return loaded;
 }
 
-}  // namespace nordend::formats::text
+}  // namespace rummage::formats::text

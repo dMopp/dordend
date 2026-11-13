@@ -1,4 +1,4 @@
-#include "nordend/engines/engines.hpp"
+#include "rummage/engines/engines.hpp"
 
 #include <array>
 #include <filesystem>
@@ -11,20 +11,20 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/fs/mime.hpp"
+#include "rummage/fs/mime.hpp"
 #include "temp_dir.hpp"
 
 namespace {
 
-namespace engines = nordend::engines;
-using nordend::fs::MimeDatabase;
+namespace engines = rummage::engines;
+using rummage::fs::MimeDatabase;
 
 // Every program is "installed".
 std::filesystem::path anywhere(std::string_view program) { return std::filesystem::path{program}; }
 
 constexpr std::string_view kEngine = R"([engine]
 name = "test"
-program = "nordend-test-engine"
+program = "rummage-test-engine"
 protocol = 4
 )";
 
@@ -74,9 +74,9 @@ constexpr std::array<std::string_view, 30> kBefore{"image/png",
 
 engines::Engine engine(std::string name, std::vector<engines::Family> families) {
     return {.manifest = {.name = std::move(name),
-                         .program = "nordend-test-engine",
+                         .program = "rummage-test-engine",
                          .families = std::move(families)},
-            .program = "nordend-test-engine",
+            .program = "rummage-test-engine",
             .manifest_path = {}};
 }
 
@@ -87,7 +87,7 @@ TEST_CASE("engines: the base engine shows what may_show listed before, and text"
     REQUIRE(registry->engines().size() == 1);
     const engines::Engine& base = registry->engines().front();
     CHECK(base.manifest.name == "base");
-    CHECK(base.manifest.program == "nordend-preview");
+    CHECK(base.manifest.program == "rummage-preview");
     REQUIRE(base.manifest.families.size() == 2);
     const engines::Family& family = base.manifest.families.front();
     CHECK(family.name == "image");
@@ -100,8 +100,8 @@ TEST_CASE("engines: the base engine shows what may_show listed before, and text"
     const std::shared_ptr<const MimeDatabase> mime = MimeDatabase::load();
     for (const std::string_view type : kBefore) {
         CAPTURE(type);
-        const nordend::fs::MimeId id = mime->find(type);
-        REQUIRE(id != nordend::fs::kUnknownMime);
+        const rummage::fs::MimeId id = mime->find(type);
+        REQUIRE(id != rummage::fs::kUnknownMime);
         CHECK(registry->find(*mime, id) == &family);
     }
     CHECK(registry->engine_of(family) == &base);
@@ -121,8 +121,8 @@ TEST_CASE("engines: the base engine shows what may_show listed before, and text"
          {"text/plain", "text/x-csrc", "text/x-python", "application/json", "application/toml",
           "text/markdown", "image/svg+xml", "application/x-shellscript"}) {
         CAPTURE(type);
-        const nordend::fs::MimeId id = mime->find(type);
-        REQUIRE(id != nordend::fs::kUnknownMime);
+        const rummage::fs::MimeId id = mime->find(type);
+        REQUIRE(id != rummage::fs::kUnknownMime);
         CHECK(mime->is_a(id, MimeDatabase::kTextPlain));
         CHECK(registry->find(*mime, id) == &text);
     }
@@ -149,7 +149,7 @@ mime = ["text/plain"]
     REQUIRE_MESSAGE(parsed.has_value(), why);
     const engines::Manifest read = parsed.value_or(engines::Manifest{});
     CHECK(read.name == "test");
-    CHECK(read.program == "nordend-test-engine");
+    CHECK(read.program == "rummage-test-engine");
     REQUIRE(read.families.size() == 2);
     CHECK(read.families[0].name == "pictures");
     CHECK(read.families[0].thumbnails);
@@ -162,7 +162,7 @@ mime = ["text/plain"]
     CHECK(read.families[1].subclasses);
 }
 
-TEST_CASE("engines: a manifest Nordend cannot trust is refused, saying where") {
+TEST_CASE("engines: a manifest rummage cannot trust is refused, saying where") {
     const std::string family =
         "\n[[family]]\nname = \"f\"\nshows = \"picture\"\nmime = [\"a/b\"]\n";
     CHECK(refused("[engine\n").starts_with("test.toml:1: "));
@@ -173,7 +173,7 @@ TEST_CASE("engines: a manifest Nordend cannot trust is refused, saying where") {
           std::string::npos);
     // Another protocol, a path for a program, a name that is not one.
     CHECK(refused("[engine]\nname = \"x\"\nprogram = \"p\"\nprotocol = 1\n" + family)
-              .find("protocol 1, Nordend speaks 4") != std::string::npos);
+              .find("protocol 1, rummage speaks 4") != std::string::npos);
     CHECK(refused("[engine]\nname = \"x\"\nprotocol = 4\nprogram = \"../../bin/sh\"\n" + family)
               .find("must be a file name") != std::string::npos);
     CHECK(refused("[engine]\nname = \"x\"\nprotocol = 4\nprogram = \"..\"\n" + family)
@@ -207,9 +207,9 @@ TEST_CASE("engines: a manifest Nordend cannot trust is refused, saying where") {
 
 TEST_CASE("engines: exactly the types listed, or their subtypes too") {
     const std::shared_ptr<const MimeDatabase> mime = MimeDatabase::load();
-    const nordend::fs::MimeId c_source = mime->find("text/x-csrc");
-    const nordend::fs::MimeId plain = mime->find("text/plain");
-    REQUIRE(c_source != nordend::fs::kUnknownMime);
+    const rummage::fs::MimeId c_source = mime->find("text/x-csrc");
+    const rummage::fs::MimeId plain = mime->find("text/plain");
+    REQUIRE(c_source != rummage::fs::kUnknownMime);
 
     engines::Registry exact;
     REQUIRE(exact.add(engine("a", {{.name = "plain", .mime = {"text/plain"}}})));
@@ -239,7 +239,7 @@ TEST_CASE("engines: a type stays with the first engine that shows it") {
 }
 
 TEST_CASE("engines: a directory of manifests, the broken ones skipped") {
-    const nordend::test::TempDir dir;
+    const rummage::test::TempDir dir;
     const std::string png =
         "\n[[family]]\nname = \"f\"\nshows = \"picture\"\nmime = [\"image/png\"]\n";
     dir.write("b-second.toml", "[engine]\nname = \"second\"\nprogram = \"two\"\nprotocol = 4\n" +
@@ -276,7 +276,7 @@ TEST_CASE("engines: a program is a file name, never a path") {
     CHECK(engines::locate_program("..").empty());
     CHECK(engines::locate_program("../../bin/sh").empty());
     CHECK(engines::locate_program("/bin/sh").empty());
-    CHECK(engines::locate_program("nordend-no-such-engine").empty());
+    CHECK(engines::locate_program("rummage-no-such-engine").empty());
     // The tests run from build*/tests: the preview helper is one directory up, not next to them.
-    CHECK(engines::locate_program("nordend-preview").empty());
+    CHECK(engines::locate_program("rummage-preview").empty());
 }

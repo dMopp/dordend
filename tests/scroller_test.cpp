@@ -1,11 +1,11 @@
-#include "nordend/ui/scroller.hpp"
+#include "rummage/ui/scroller.hpp"
 
 #include <chrono>
 #include <cmath>
 
 #include <doctest/doctest.h>
 
-using nordend::ui::Scroller;
+using rummage::ui::Scroller;
 using namespace std::chrono_literals;
 
 namespace {

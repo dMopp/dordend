@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 
 std::optional<FdFile> FdFile::of(int fd) {
     struct stat info{};
@@ -62,4 +62,4 @@ std::vector<std::uint8_t> FdFile::read_exactly(std::uint64_t offset, std::size_t
     return data;
 }
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

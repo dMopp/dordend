@@ -12,7 +12,7 @@
 #include <span>
 #include <string>
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 
 struct LosslessFrame {
     std::uint32_t width{0};   // samples per line, of each component
@@ -34,4 +34,4 @@ struct LosslessFrame {
     const std::function<bool(std::uint32_t y, std::span<const std::uint16_t> samples)>& line,
     std::string& error);
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

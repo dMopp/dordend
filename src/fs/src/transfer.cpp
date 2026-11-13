@@ -1,4 +1,4 @@
-#include "nordend/fs/transfer.hpp"
+#include "rummage/fs/transfer.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,15 +12,15 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/fs/operations.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/fs/operations.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 constexpr std::size_t kChunk = std::size_t{8} << 20U;      // bytes per copy_file_range call
 constexpr std::size_t kBuffer = std::size_t{1} << 20U;     // read/write fallback
-constexpr std::string_view kTemporary = ".nordend-part-";  // hidden, recognisable
+constexpr std::string_view kTemporary = ".rummage-part-";  // hidden, recognisable
 
 std::error_code last_error() { return {errno, std::generic_category()}; }
 
@@ -640,4 +640,4 @@ TransferResult run_transfer(const TransferRequest& request, const core::CancelTo
     return Engine{request, token, callbacks}.run();
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

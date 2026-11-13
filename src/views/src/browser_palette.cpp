@@ -13,14 +13,14 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "nordend/ui/seat.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/command_palette.hpp"
-#include "nordend/views/file_clipboard.hpp"
-#include "nordend/views/shortcuts.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/ui/seat.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/command_palette.hpp"
+#include "rummage/views/file_clipboard.hpp"
+#include "rummage/views/shortcuts.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 // The keys shown for a command: its shortcut line's first chord ("Alt+←" of "Alt+←  Alt+→").
@@ -175,6 +175,10 @@ std::vector<PaletteItem> Browser::palette_items() {
         }
     }
 
+    for (auto& item : pane_items()) {
+        add("command:" + item.id, item.label, item.keys, std::move(item.action));
+    }
+
     // Views.
     if (pane().mode != Mode::columns) {
         command(Command::columns_view, "columns_view", "Show Columns");
@@ -189,7 +193,7 @@ std::vector<PaletteItem> Browser::palette_items() {
         command(Command::quick_look, "quick_look",
                 quick_look_.is_open() ? "Close Quick Look" : "Quick Look");
     }
-    if (pane().mode != Mode::columns) {  // the columns always show it
+    if (split_visible_ || pane().mode != Mode::columns) {  // shared preview in a split
         command(Command::toggle_info, "toggle_info",
                 info_visible_ ? "Hide Info Pane" : "Show Info Pane");
     }
@@ -198,7 +202,7 @@ std::vector<PaletteItem> Browser::palette_items() {
     command(Command::focus_sidebar, "focus_sidebar",
             sidebar_.focused() ? "Back to the View" : "Move to the Sidebar");
     command(Command::toggle_hidden, "toggle_hidden",
-            show_hidden_ ? "Hide Hidden Files" : "Show Hidden Files");
+            pane().show_hidden ? "Hide Hidden Files" : "Show Hidden Files");
     const fs::SortOrder& order = sort_order();
 
     struct SortChoice {
@@ -232,13 +236,13 @@ std::vector<PaletteItem> Browser::palette_items() {
 
     // Tabs.
     command(Command::new_tab, "new_tab", "New Tab");
-    if (panes_.size() > 1) {
+    if (area().tabs.size() > 1) {
         command(Command::close_tab, "close_tab", "Close Tab");
         command(Command::next_tab, "next_tab", "Next Tab");
         command(Command::previous_tab, "previous_tab", "Previous Tab");
         const std::vector<std::string> titles = tab_titles();
-        for (std::size_t i = 0; i < panes_.size(); ++i) {
-            if (i == active_) {
+        for (std::size_t i = 0; i < area().tabs.size(); ++i) {
+            if (i == area().active) {
                 continue;
             }
             add(
@@ -267,7 +271,7 @@ std::vector<PaletteItem> Browser::palette_items() {
         }
     }
 
-    // Nordend.
+    // rummage.
     if (folder && !in_trash) {
         command(Command::filter_names, "filter_names", "Filter Names…");
         command(Command::find_files, "find_files", "Find Files…");
@@ -354,7 +358,7 @@ void Browser::open_finder() {
             finder_->set_query(query);
         }
     });
-    finder_->start(root, show_hidden_);
+    finder_->start(root, pane().show_hidden);
     refresh_found();
 }
 
@@ -436,4 +440,4 @@ void Browser::settle_found(Clock::time_point now) {
     redraw_();
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

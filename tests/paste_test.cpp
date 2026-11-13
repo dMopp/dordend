@@ -11,24 +11,24 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/shortcuts.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/shortcuts.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::views::Browser;
-using nordend::views::Folder;
-using nordend::views::Shortcut;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::views::Browser;
+using rummage::views::Folder;
+using rummage::views::Shortcut;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
-namespace scope = nordend::views::scope;
+namespace scope = rummage::views::scope;
 
 namespace {
 
@@ -77,11 +77,11 @@ struct Fixture {
     TempDir dir;
     fs::path root = dir.path / "root";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
 
     Fixture() {
         fs::create_directories(root / "photos");
@@ -111,10 +111,10 @@ struct Fixture {
         folder()->select_name(selected.front());
         for (std::size_t i = 1; i < selected.size(); ++i) {
             const auto& entries = folder()->entries();
-            const auto it = std::ranges::find(entries, selected[i], &nordend::fs::Entry::name);
+            const auto it = std::ranges::find(entries, selected[i], &rummage::fs::Entry::name);
             REQUIRE(it != entries.end());
             folder()->set_cursor(static_cast<std::size_t>(it - entries.begin()),
-                                 nordend::views::SelectMode::toggle);
+                                 rummage::views::SelectMode::toggle);
         }
     }
 };
@@ -170,7 +170,7 @@ TEST_CASE("paste: Ctrl+X fades, Escape keeps them, Ctrl+V moves once") {
 
 TEST_CASE("paste: a taken name asks; skip, replace, both for the rest, stop") {
     Fixture f;
-    nordend::views::ConflictDialog& dialog = f.browser.conflict_dialog();
+    rummage::views::ConflictDialog& dialog = f.browser.conflict_dialog();
     const auto paste_into_album = [&](const Names& names) {
         f.show(f.root / "photos", names);
         CHECK(f.press(key(XKB_KEY_c, {.ctrl = true})));
@@ -210,8 +210,8 @@ TEST_CASE("paste: a taken name asks; skip, replace, both for the rest, stop") {
 
 TEST_CASE("paste: every key listed for the question works on it") {
     Fixture f;
-    nordend::views::ConflictDialog& dialog = f.browser.conflict_dialog();
-    for (const Shortcut& shortcut : nordend::views::shortcuts()) {
+    rummage::views::ConflictDialog& dialog = f.browser.conflict_dialog();
+    for (const Shortcut& shortcut : rummage::views::shortcuts()) {
         if ((shortcut.scope & scope::kConflict) == 0) {
             continue;
         }

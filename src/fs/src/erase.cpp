@@ -1,4 +1,4 @@
-#include "nordend/fs/erase.hpp"
+#include "rummage/fs/erase.hpp"
 
 #include <algorithm>
 #include <cerrno>
@@ -16,11 +16,11 @@
 #include <utility>
 #include <vector>
 
-#include "nordend/fs/operations.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/fs/operations.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 std::string error_text(int code) {
@@ -379,4 +379,4 @@ TransferResult run_erase(const TransferRequest& request, const core::CancelToken
     return Eraser{request, token, callbacks}.run();
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

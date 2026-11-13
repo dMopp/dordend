@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=rummage
+GenericName=File Manager
+Comment=Browse and manage your files
+Exec=rummage %f
+Icon=rummage
+Terminal=false
+Categories=System;FileTools;FileManager;
+Keywords=files;folders;explorer;browser;
+MimeType=inode/directory;
+StartupWMClass=rummage

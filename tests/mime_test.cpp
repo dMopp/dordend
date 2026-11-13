@@ -1,5 +1,6 @@
-#include "nordend/fs/mime.hpp"
+#include "rummage/fs/mime.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <filesystem>
 #include <memory>
@@ -10,16 +11,17 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory.hpp"
-#include "nordend/fs/entry.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory.hpp"
+#include "rummage/fs/entry.hpp"
+#include "rummage/fs/sort.hpp"
 #include "temp_dir.hpp"
 
-using nordend::fs::Entry;
-using nordend::fs::kUnknownMime;
-using nordend::fs::MimeDatabase;
-using nordend::fs::MimeId;
-using nordend::test::TempDir;
+using rummage::fs::Entry;
+using rummage::fs::kUnknownMime;
+using rummage::fs::MimeDatabase;
+using rummage::fs::MimeId;
+using rummage::test::TempDir;
 
 namespace {
 
@@ -196,7 +198,7 @@ TEST_CASE("mime: detect() on entries, and the loader's name-only types") {
     std::filesystem::create_directory(files.path / "sub");
 
     std::vector<Entry> entries;
-    nordend::fs::read_directory(files.path, nordend::core::CancelToken{}, {.mime = f.db},
+    rummage::fs::read_directory(files.path, rummage::core::CancelToken{}, {.mime = f.db},
                                 [&](std::vector<Entry> chunk) {
                                     for (Entry& e : chunk) {
                                         entries.push_back(std::move(e));
@@ -218,6 +220,42 @@ TEST_CASE("mime: detect() on entries, and the loader's name-only types") {
             CHECK(detected == "image/png");
         }
     }
+}
+
+TEST_CASE("mime: a name with several types sorts by type with its best one, sniffed or not") {
+    const Fixture f;
+    const TempDir files;
+    files.write("script.py", "print(1)\n");  // text/x-python (60) or text/x-python3 (50)
+    files.write("main.c", "int x;\n");
+    files.write("photo.jpg", "jpeg");
+    files.write("noext", "data");
+
+    std::vector<Entry> entries;
+    rummage::fs::read_directory(files.path, rummage::core::CancelToken{}, {.mime = f.db},
+                                [&](std::vector<Entry> chunk) {
+                                    for (Entry& e : chunk) {
+                                        entries.push_back(std::move(e));
+                                    }
+                                });
+    REQUIRE(entries.size() == 4);
+    for (const Entry& entry : entries) {
+        INFO(entry.name);
+        if (entry.name == "script.py") {
+            CHECK(entry.mime == kUnknownMime);  // still sniffed for its icon and to open it
+            CHECK(f.db->name(entry.name_guess) == "text/x-python");
+        } else {
+            CHECK(entry.name_guess == kUnknownMime);
+        }
+    }
+    std::ranges::sort(
+        entries, rummage::fs::SortOrder{.key = rummage::fs::SortKey::type, .mime = f.db.get()});
+    std::vector<std::string> names;
+    names.reserve(entries.size());
+    for (const Entry& entry : entries) {
+        names.push_back(entry.name);
+    }
+    // Not after the unknown ones: among the text types, by its best guess.
+    CHECK(names == std::vector<std::string>{"photo.jpg", "main.c", "script.py", "noext"});
 }
 
 TEST_CASE("mime: the system database loads") {

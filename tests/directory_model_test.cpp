@@ -1,4 +1,4 @@
-#include "nordend/fs/directory_model.hpp"
+#include "rummage/fs/directory_model.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -9,19 +9,19 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::core::WorkerPool;
-using nordend::fs::DirectoryModel;
-using nordend::fs::DirectoryWatcher;
-using nordend::fs::Entry;
-using nordend::fs::ModelChange;
-using nordend::test::TempDir;
+using rummage::core::EventLoop;
+using rummage::core::WorkerPool;
+using rummage::fs::DirectoryModel;
+using rummage::fs::DirectoryWatcher;
+using rummage::fs::Entry;
+using rummage::fs::ModelChange;
+using rummage::test::TempDir;
 using namespace std::chrono_literals;
 
 namespace {
@@ -67,7 +67,7 @@ struct Fixture {
     EventLoop loop;
     WorkerPool pool{loop, 2};
     DirectoryWatcher watcher{loop};
-    DirectoryModel model{loop, pool, watcher, nordend::fs::MimeDatabase::load(), 10ms};
+    DirectoryModel model{loop, pool, watcher, rummage::fs::MimeDatabase::load(), 10ms};
     std::vector<ModelChange> changes;
     bool loaded = false;
 
@@ -116,7 +116,7 @@ TEST_CASE("model: initial load, sorted, then loaded") {
     CHECK_FALSE(f.model.error());
     CHECK(f.changes.front().reset);
     CHECK(names(f.model) == std::vector<std::string>{"sub", "a9.txt", "a10.txt", "b.txt"});
-    CHECK(f.model.listing().entries().front().mime == nordend::fs::MimeDatabase::kDirectory);
+    CHECK(f.model.listing().entries().front().mime == rummage::fs::MimeDatabase::kDirectory);
 }
 
 TEST_CASE("model: create, write, delete, mkdir") {

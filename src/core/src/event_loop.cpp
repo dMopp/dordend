@@ -1,4 +1,4 @@
-#include "nordend/core/event_loop.hpp"
+#include "rummage/core/event_loop.hpp"
 
 #include <algorithm>
 #include <cerrno>
@@ -11,9 +11,9 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::core {
+namespace rummage::core {
 namespace {
 
 [[noreturn]] void throw_errno(const char* what) {
@@ -198,4 +198,4 @@ void EventLoop::quit(int code) {
     running_ = false;
 }
 
-}  // namespace nordend::core
+}  // namespace rummage::core

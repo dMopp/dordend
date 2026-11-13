@@ -10,21 +10,21 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::core::WorkerPool;
-using nordend::fs::DirectoryWatcher;
-using nordend::fs::SortKey;
-using nordend::test::TempDir;
-using nordend::views::Browser;
-using nordend::views::DetailsView;
-using nordend::views::Folder;
+using rummage::core::EventLoop;
+using rummage::core::WorkerPool;
+using rummage::fs::DirectoryWatcher;
+using rummage::fs::SortKey;
+using rummage::test::TempDir;
+using rummage::views::Browser;
+using rummage::views::DetailsView;
+using rummage::views::Folder;
 using Field = DetailsView::Field;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
@@ -51,19 +51,19 @@ void write(const fs::path& file, std::size_t bytes) {
 }
 
 std::string cursor_name(const Folder& folder) {
-    const nordend::fs::Entry* entry = folder.cursor_entry();
+    const rummage::fs::Entry* entry = folder.cursor_entry();
     return entry == nullptr ? std::string{} : entry->name;
 }
 
 std::vector<std::string> names(const Folder& folder) {
     std::vector<std::string> out;
-    for (const nordend::fs::Entry& entry : folder.entries()) {
+    for (const rummage::fs::Entry& entry : folder.entries()) {
         out.push_back(entry.name);
     }
     return out;
 }
 
-// root/{alpha/{inner.txt}, gamma/, a.markdown (10 bytes), b.txt (100), c.txt (1)}
+// root/{alpha/{inner.txt}, gamma/, a.md (10 bytes), b.txt (100), c.txt (1)}
 struct Fixture {
     TempDir dir;
     fs::path root = dir.path / "root";
@@ -71,15 +71,15 @@ struct Fixture {
     WorkerPool pool{loop, 2};
     DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     DetailsView& details = browser.details();
 
     Fixture() {
         fs::create_directories(root / "alpha");
         fs::create_directories(root / "gamma");
         write(root / "alpha" / "inner.txt", 1);
-        write(root / "a.markdown", 10);
+        write(root / "a.md", 10);
         write(root / "b.txt", 100);
         write(root / "c.txt", 1);
         browser.open(root);
@@ -89,8 +89,8 @@ struct Fixture {
         return run_until(loop, [this] { return !browser.loading(); });
     }
 
-    void press(xkb_keysym_t key, nordend::ui::Modifiers modifiers = {}) {
-        nordend::ui::KeyEvent event;
+    void press(xkb_keysym_t key, rummage::ui::Modifiers modifiers = {}) {
+        rummage::ui::KeyEvent event;
         event.keysym = key;
         event.modifiers = modifiers;
         browser.key(event, Browser::Clock::now());
@@ -112,14 +112,14 @@ TEST_CASE("details: Ctrl+3 shows the same folder, cursor and selection; every vi
     CHECK(cursor_name(*folder) == "gamma");
     CHECK(folder->selected_names() == std::vector<std::string>{"alpha", "gamma"});
 
-    f.press(XKB_KEY_Down);  // a.markdown, alone
-    CHECK(folder->selected_names() == std::vector<std::string>{"a.markdown"});
+    f.press(XKB_KEY_Down);  // a.md, alone
+    CHECK(folder->selected_names() == std::vector<std::string>{"a.md"});
     f.press(XKB_KEY_2, {.ctrl = true});  // straight to the grid
     REQUIRE(f.browser.mode() == Browser::Mode::grid);
     CHECK(f.browser.grid().folder() == folder);
     f.press(XKB_KEY_3, {.ctrl = true});  // and back
     CHECK(f.details.folder() == folder);
-    CHECK(cursor_name(*folder) == "a.markdown");
+    CHECK(cursor_name(*folder) == "a.md");
     f.press(XKB_KEY_1, {.ctrl = true});
     REQUIRE(f.browser.mode() == Browser::Mode::columns);
     CHECK(f.browser.columns().focused_folder() == folder);
@@ -131,28 +131,24 @@ TEST_CASE("details: sorting by a column, again reversed; the cursor stays on its
     f.press(XKB_KEY_3, {.ctrl = true});
     const std::shared_ptr<Folder> folder = f.details.folder();
     REQUIRE(folder != nullptr);
-    CHECK(names(*folder) ==
-          std::vector<std::string>{"alpha", "gamma", "a.markdown", "b.txt", "c.txt"});
+    CHECK(names(*folder) == std::vector<std::string>{"alpha", "gamma", "a.md", "b.txt", "c.txt"});
     f.press(XKB_KEY_End);  // c.txt
 
     f.details.sort_by(Field::size);
     CHECK(folder->order().key == SortKey::size);
     CHECK_FALSE(folder->order().descending);
     // Folders first, then 1, 10 and 100 bytes.
-    CHECK(names(*folder) ==
-          std::vector<std::string>{"alpha", "gamma", "c.txt", "a.markdown", "b.txt"});
+    CHECK(names(*folder) == std::vector<std::string>{"alpha", "gamma", "c.txt", "a.md", "b.txt"});
     CHECK(cursor_name(*folder) == "c.txt");
     CHECK(folder->cursor() == 2);
 
     f.details.sort_by(Field::size);  // the same title again: largest first
     CHECK(folder->order().descending);
-    CHECK(names(*folder) ==
-          std::vector<std::string>{"gamma", "alpha", "b.txt", "a.markdown", "c.txt"});
+    CHECK(names(*folder) == std::vector<std::string>{"gamma", "alpha", "b.txt", "a.md", "c.txt"});
     CHECK(cursor_name(*folder) == "c.txt");
 
     f.details.sort_by(Field::type);  // text/markdown before text/plain
-    CHECK(names(*folder) ==
-          std::vector<std::string>{"alpha", "gamma", "a.markdown", "b.txt", "c.txt"});
+    CHECK(names(*folder) == std::vector<std::string>{"alpha", "gamma", "a.md", "b.txt", "c.txt"});
 
     // The columns show the folder as sorted; a folder the details open is sorted the same way.
     f.details.sort_by(Field::modified);
@@ -252,8 +248,8 @@ TEST_CASE("info pane: Ctrl+I hides and shows it in the grid and the details; not
 
 TEST_CASE("info pane: its width stays within limits and leaves the view room") {
     Fixture f;
-    nordend::views::InfoPane& pane = f.browser.info_pane();
-    using nordend::views::InfoPane;
+    rummage::views::InfoPane& pane = f.browser.info_pane();
+    using rummage::views::InfoPane;
     CHECK(pane.width() == InfoPane::kWidth);
     pane.set_width(5000.0F);
     CHECK(pane.width() == InfoPane::kMaxWidth);

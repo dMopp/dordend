@@ -1,4 +1,4 @@
-#include "nordend/core/i18n.hpp"
+#include "rummage/core/i18n.hpp"
 
 #include <algorithm>
 #include <array>
@@ -7,7 +7,7 @@
 #include <string_view>
 #include <unordered_map>
 
-namespace nordend::i18n {
+namespace rummage::i18n {
 
 std::span<const Entry> german_table();  // i18n_de.cpp
 
@@ -139,4 +139,4 @@ std::string decimal(std::string text) {
     return text;
 }
 
-}  // namespace nordend::i18n
+}  // namespace rummage::i18n

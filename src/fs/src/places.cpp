@@ -1,4 +1,4 @@
-#include "nordend/fs/places.hpp"
+#include "rummage/fs/places.hpp"
 
 #include <algorithm>
 #include <array>
@@ -16,33 +16,34 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/core/file.hpp"
-#include "nordend/core/log.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 struct UserDirKind {
     std::string_view key;
     std::string_view name;  // its usual name in the home, without user-dirs.dirs
     std::string_view icon;
+    std::string_view icon_key;
 };
 
 // The user dirs the sidebar shows, in its order (templates and public share are left out).
 constexpr std::array<UserDirKind, 6> kUserDirs{{
-    {.key = "DESKTOP", .name = "Desktop", .icon = "device-desktop"},
-    {.key = "DOCUMENTS", .name = "Documents", .icon = "file-text"},
-    {.key = "DOWNLOAD", .name = "Downloads", .icon = "download"},
-    {.key = "MUSIC", .name = "Music", .icon = "music"},
-    {.key = "PICTURES", .name = "Pictures", .icon = "photo"},
-    {.key = "VIDEOS", .name = "Videos", .icon = "movie"},
+    {.key = "DESKTOP", .name = "Desktop", .icon = "device-desktop", .icon_key = "desktop"},
+    {.key = "DOCUMENTS", .name = "Documents", .icon = "file-text", .icon_key = "documents"},
+    {.key = "DOWNLOAD", .name = "Downloads", .icon = "download", .icon_key = "downloads"},
+    {.key = "MUSIC", .name = "Music", .icon = "music", .icon_key = "music"},
+    {.key = "PICTURES", .name = "Pictures", .icon = "photo", .icon_key = "pictures"},
+    {.key = "VIDEOS", .name = "Videos", .icon = "movie", .icon_key = "videos"},
 }};
 
 constexpr std::array<std::string_view, 3> kMountRoots{"/run/media/", "/media/", "/mnt/"};
 
-// The remote bookmarks the sidebar lists: the schemes gvfs mounts that Nordend maps to a mount.
+// The remote bookmarks the sidebar lists: the schemes gvfs mounts that rummage maps to a mount.
 constexpr std::array<std::string_view, 2> kRemoteSchemes{"smb", "sftp"};
 
 std::string_view trim(std::string_view text) {
@@ -504,7 +505,8 @@ std::vector<Place> load_places(const PlaceSources& sources) {
                       .label = std::string{i18n::tr("Home")},
                       .path = sources.home,
                       .icon = "home",
-                      .disk = {}});
+                      .disk = {},
+                      .icon_key = "home"});
 
     const core::TextFile user_dirs = core::read_text_file(sources.config_home / "user-dirs.dirs");
     const std::vector<UserDir> dirs = parse_user_dirs(user_dirs.text, sources.home);
@@ -524,19 +526,22 @@ std::vector<Place> load_places(const PlaceSources& sources) {
                               .label = label_of(path),
                               .path = path,
                               .icon = kind.icon,
-                              .disk = {}});
+                              .disk = {},
+                              .icon_key = kind.icon_key});
         }
     }
     places.push_back({.section = Place::Section::places,
                       .label = std::string{i18n::tr("File system")},
                       .path = "/",
                       .icon = "server",
-                      .disk = {}});
+                      .disk = {},
+                      .icon_key = "filesystem"});
     places.push_back({.section = Place::Section::places,
                       .label = std::string{i18n::tr("Trash")},
                       .path = trash_path(),
                       .icon = "trash",
-                      .disk = {}});
+                      .disk = {},
+                      .icon_key = "trash"});
 
     std::ranges::move(
         parse_bookmarks(core::read_text_file(sources.config_home / "gtk-3.0" / "bookmarks").text),
@@ -594,4 +599,4 @@ void PlacesWatcher::reload() {
     }
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

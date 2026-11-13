@@ -25,58 +25,59 @@
 #include <utility>
 #include <vector>
 
-#include "nordend/core/config.hpp"
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/file_picker.hpp"
-#include "nordend/core/file_watcher.hpp"
-#include "nordend/core/log.hpp"
-#include "nordend/core/memory.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/engines/engines.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/places.hpp"
-#include "nordend/isolate/helpers.hpp"
-#include "nordend/platform/about.hpp"
-#include "nordend/platform/action_handoff.hpp"
-#include "nordend/platform/desktop_entry.hpp"
-#include "nordend/platform/file_picker_portal.hpp"
-#include "nordend/platform/gvfs.hpp"
-#include "nordend/platform/opener.hpp"
-#include "nordend/platform/portal.hpp"
-#include "nordend/platform/udisks.hpp"
-#include "nordend/theme/app_icon.hpp"
-#include "nordend/theme/theme.hpp"
-#include "nordend/thumbs/cache.hpp"
-#include "nordend/ui/activation.hpp"
-#include "nordend/ui/clipboard.hpp"
-#include "nordend/ui/display.hpp"
-#include "nordend/ui/egl_context.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/offscreen.hpp"
-#include "nordend/ui/seat.hpp"
-#include "nordend/ui/text.hpp"
-#include "nordend/ui/window.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/file_picker.hpp"
-#include "nordend/views/state.hpp"
-#include "nordend/views/title_bar.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/core/config.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/file_picker.hpp"
+#include "rummage/core/file_watcher.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/core/memory.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/engines/engines.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/places.hpp"
+#include "rummage/isolate/helpers.hpp"
+#include "rummage/platform/about.hpp"
+#include "rummage/platform/action_handoff.hpp"
+#include "rummage/platform/desktop_entry.hpp"
+#include "rummage/platform/file_picker_portal.hpp"
+#include "rummage/platform/gvfs.hpp"
+#include "rummage/platform/opener.hpp"
+#include "rummage/platform/portal.hpp"
+#include "rummage/platform/udisks.hpp"
+#include "rummage/theme/app_icon.hpp"
+#include "rummage/theme/theme.hpp"
+#include "rummage/thumbs/cache.hpp"
+#include "rummage/ui/activation.hpp"
+#include "rummage/ui/clipboard.hpp"
+#include "rummage/ui/display.hpp"
+#include "rummage/ui/egl_context.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/ui/seat.hpp"
+#include "rummage/ui/text.hpp"
+#include "rummage/ui/window.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/file_picker.hpp"
+#include "rummage/views/state.hpp"
+#include "rummage/views/title_bar.hpp"
+#include "rummage/core/i18n.hpp"
 #include "test_scene.hpp"
 
 namespace {
 
-namespace core = nordend::core;
-namespace engines = nordend::engines;
-namespace isolate = nordend::isolate;
-namespace fs = nordend::fs;
-namespace i18n = nordend::i18n;
-namespace log = nordend::log;
-namespace platform = nordend::platform;
-namespace theme = nordend::theme;
-namespace thumbs = nordend::thumbs;
-namespace ui = nordend::ui;
-namespace views = nordend::views;
+namespace core = rummage::core;
+namespace engines = rummage::engines;
+namespace isolate = rummage::isolate;
+namespace fs = rummage::fs;
+namespace i18n = rummage::i18n;
+namespace log = rummage::log;
+namespace platform = rummage::platform;
+namespace theme = rummage::theme;
+namespace thumbs = rummage::thumbs;
+namespace ui = rummage::ui;
+namespace views = rummage::views;
 
 // SIGINT/SIGTERM delivered as a readable fd, so Ctrl+C ends the loop and runs every
 // destructor instead of killing the process mid-flight; SIGUSR1 asks for the memory report.
@@ -119,14 +120,14 @@ private:
     int fd_;
 };
 
-// Start timing (ROADMAP 7.6). nordend-bench-start puts the steady-clock time of its exec, in
-// nanoseconds, in NORDEND_STARTUP_NS; every step then prints "startup: STEP MS" on stderr, the
-// milliseconds since that exec. With NORDEND_STARTUP_QUIT set, Nordend closes once its folder is
-// shown. Without NORDEND_STARTUP_NS nothing is measured.
+// Start timing (ROADMAP 7.6). rummage-bench-start puts the steady-clock time of its exec, in
+// nanoseconds, in RUMMAGE_STARTUP_NS; every step then prints "startup: STEP MS" on stderr, the
+// milliseconds since that exec. With RUMMAGE_STARTUP_QUIT set, rummage closes once its folder is
+// shown. Without RUMMAGE_STARTUP_NS nothing is measured.
 class StartupTrace {
 public:
     StartupTrace() {
-        const char* start = std::getenv("NORDEND_STARTUP_NS");  // NOLINT(concurrency-mt-unsafe)
+        const char* start = std::getenv("RUMMAGE_STARTUP_NS");  // NOLINT(concurrency-mt-unsafe)
         if (start == nullptr) {
             return;
         }
@@ -138,7 +139,7 @@ public:
             return;
         }
         start_ = std::chrono::steady_clock::time_point{std::chrono::nanoseconds{nanoseconds}};
-        const char* quit = std::getenv("NORDEND_STARTUP_QUIT");  // NOLINT(concurrency-mt-unsafe)
+        const char* quit = std::getenv("RUMMAGE_STARTUP_QUIT");  // NOLINT(concurrency-mt-unsafe)
         quit_ = quit != nullptr && *quit != '\0';
     }
 
@@ -204,17 +205,17 @@ const char* button_name(ui::PointerButton button) {
 }
 
 constexpr const char* kUsage =
-    "Picker: nordend --pick|--pick-directory|--save-file [--multiple] [--name NAME] [--title "
+    "Picker: rummage --pick|--pick-directory|--save-file [--multiple] [--name NAME] [--title "
     "TITLE] [DIR]\n"
     "Selected absolute paths are NUL-separated on stdout; exit 1 cancels.\n"
-    "Portal backend: nordend --portal\n\n"
-    "usage: nordend [--config FILE] [--check-config] [--test-scene] [--version] [--about] [DIR]\n"
+    "Portal backend: rummage --portal\n\n"
+    "usage: rummage [--config FILE] [--check-config] [--test-scene] [--version] [--about] [DIR]\n"
     "  DIR             the folder to show (default: your home folder)\n"
-    "  --config FILE   read FILE instead of ~/.config/nordend/config.toml\n"
+    "  --config FILE   read FILE instead of ~/.config/rummage/config.toml\n"
     "  --test-scene    show the renderer test scene instead of a folder\n"
     "  --check-config  report problems in the config file and exit (status 1 if any)\n"
     "  --version       print the version and exit\n"
-    "  --about         print what Nordend runs on, for a bug report, and exit\n";
+    "  --about         print what rummage runs on, for a bug report, and exit\n";
 
 // The folder to open: DIR as given (made absolute, ".." resolved), else $HOME, else "/".
 std::filesystem::path start_folder(const std::filesystem::path& given) {
@@ -228,23 +229,23 @@ std::filesystem::path start_folder(const std::filesystem::path& given) {
     return error ? folder : absolute;
 }
 
-// NORDEND_FORCE_CSD set and not "0": Nordend's own title bar even where the compositor draws one.
+// RUMMAGE_FORCE_CSD set and not "0": rummage's own title bar even where the compositor draws one.
 bool client_decorations_forced() {
-    const char* value = std::getenv("NORDEND_FORCE_CSD");  // NOLINT(concurrency-mt-unsafe): startup
+    const char* value = std::getenv("RUMMAGE_FORCE_CSD");  // NOLINT(concurrency-mt-unsafe): startup
     return value != nullptr && *value != '\0' && std::string_view{value} != "0";
 }
 
-// --about: what Nordend runs on, one "Label: value" line each, to paste into a bug report.
+// --about: what rummage runs on, one "Label: value" line each, to paste into a bug report.
 int print_about() {
     std::vector<platform::AboutLine> lines;
-    const std::string_view commit = NORDEND_COMMIT;
-    lines.push_back({.label = "Nordend",
-                     .value = commit.empty() ? std::string{NORDEND_VERSION}
-                                             : std::format("{} ({})", NORDEND_VERSION, commit)});
+    const std::string_view commit = RUMMAGE_COMMIT;
+    lines.push_back({.label = "rummage",
+                     .value = commit.empty() ? std::string{RUMMAGE_VERSION}
+                                             : std::format("{} ({})", RUMMAGE_VERSION, commit)});
     std::ranges::move(platform::system_about(), std::back_inserter(lines));
     // The engines found, and where their programs are: an installation in one line.
     const std::filesystem::path directory = engines::default_directory();
-    const engines::Registry registry = engines::Registry::load(directory, engines::locate_program);
+    const engines::Registry registry = engines::Registry::load_installed();
     std::string found;
     for (const engines::Engine& engine : registry.engines()) {
         found += std::format("{}{} ({})", found.empty() ? "" : ", ", engine.manifest.name,
@@ -353,7 +354,7 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (arg == "--version") {
-            std::puts("nordend " NORDEND_VERSION);
+            std::puts("rummage " RUMMAGE_VERSION);
             return 0;
         }
         if (arg == "--about") {
@@ -367,12 +368,12 @@ int main(int argc, char** argv) {
                 picker_request = core::read_picker_request(3);
                 close(3);
             } catch (const std::exception& e) {
-                std::fprintf(stderr, "nordend: %s\n", e.what());
+                std::fprintf(stderr, "rummage: %s\n", e.what());
                 return 2;
             }
         } else if (arg == "--pick" || arg == "--pick-directory" || arg == "--save-file") {
             if (picker_request) {
-                std::fprintf(stderr, "nordend: choose one picker mode\n");
+                std::fprintf(stderr, "rummage: choose one picker mode\n");
                 return 2;
             }
             picker_request.emplace();
@@ -389,14 +390,14 @@ int main(int argc, char** argv) {
             test_scene = true;
         } else if (arg == "--config") {
             if (i + 1 == argc) {
-                std::fprintf(stderr, "nordend: --config needs a file\n%s", kUsage);
+                std::fprintf(stderr, "rummage: --config needs a file\n%s", kUsage);
                 return 2;
             }
             config_path = argv[++i];
         } else if (!arg.starts_with("-") && start_dir.empty()) {
             start_dir = arg;
         } else {
-            std::fprintf(stderr, "nordend: unknown option '%s'\n%s", argv[i], kUsage);
+            std::fprintf(stderr, "rummage: unknown option '%s'\n%s", argv[i], kUsage);
             return 2;
         }
     }
@@ -404,7 +405,7 @@ int main(int argc, char** argv) {
         (picker_request && (test_scene || check_only)) ||
         (picker_request && picker_request->mode != core::PickerRequest::Mode::open &&
          picker_request->multiple)) {
-        std::fprintf(stderr, "nordend: incompatible picker options\n");
+        std::fprintf(stderr, "rummage: incompatible picker options\n");
         return 2;
     }
     if (picker_request && !picker_request->folder.empty()) {
@@ -414,10 +415,21 @@ int main(int argc, char** argv) {
         }
     }
     std::error_code config_creation_error;
+    std::vector<std::string> migration_errors;
     if (config_path.empty()) {
         config_path = core::default_config_path();
         if (!check_only && !test_scene && !portal_backend && !picker_request) {
-            config_creation_error = core::create_default_config(config_path);
+            bool config_migrated = true;
+            for (const auto& path :
+                 {config_path, theme::default_colors_path(), views::default_state_path()}) {
+                if (const auto error = core::migrate_nordend_file(path); !error.empty()) {
+                    migration_errors.push_back(path.string() + ": " + error);
+                    if (path == config_path)
+                        config_migrated = false;
+                }
+            }
+            if (config_migrated)
+                config_creation_error = core::create_default_config(config_path);
         }
     }
     core::ConfigResult config_result = core::load_config(config_path);
@@ -435,7 +447,9 @@ int main(int argc, char** argv) {
     }
 
     log::init_from_env();
-    log::info("nordend {}", NORDEND_VERSION);
+    log::info("rummage {}", RUMMAGE_VERSION);
+    for (const auto& error : migration_errors)
+        log::warn("Nordend settings migration: {}", error);
     if (config_creation_error) {
         log::warn("config: cannot create {}: {}; continuing with defaults", config_path.string(),
                   config_creation_error.message());
@@ -465,7 +479,7 @@ int main(int argc, char** argv) {
                 return;  // a clipboard reader went away: the write already failed with EPIPE
             }
             if (info.ssi_signo == SIGUSR1) {
-                // A development report (ROADMAP 6.3b): pkill -USR1 nordend.
+                // A development report (ROADMAP 6.3b): pkill -USR1 rummage.
                 for (const std::string& line : core::describe(core::read_memory_report())) {
                     log::info("memory: {}", line);
                 }
@@ -509,7 +523,7 @@ int main(int argc, char** argv) {
         portal = std::make_unique<platform::DesktopPortal>(loop, follow_desktop);
         follow_desktop();
         startup.mark("portal");
-        // How Nordend was left (ROADMAP 7.5a).
+        // How rummage was left (ROADMAP 7.5a).
         const std::filesystem::path state_path = views::default_state_path();
         const views::StateResult remembered = views::load_state(state_path);
         for (const std::string& problem : remembered.problems) {
@@ -520,10 +534,10 @@ int main(int argc, char** argv) {
             egl,
             fonts,
             {.title = picker_request ? (picker_request->title.empty()
-                                            ? std::string{i18n::tr("Select a file — Nordend")}
+                                            ? std::string{i18n::tr("Select a file — rummage")}
                                             : picker_request->title)
-                                     : "Nordend",
-             .app_id = "nordend",
+                                     : "rummage",
+             .app_id = "rummage",
              .width = remembered.state.window_width,
              .height = remembered.state.window_height,
              .maximized = !picker_request && remembered.state.maximized,
@@ -546,12 +560,12 @@ int main(int argc, char** argv) {
         core::WorkerPool pool{loop};
         // Pictures are made by the engines in their cages (ROADMAP 2b, 3a), never here.
         {
-            auto registry = std::make_shared<const engines::Registry>(
-                engines::Registry::load(engines::default_directory(), engines::locate_program));
+            auto registry =
+                std::make_shared<const engines::Registry>(engines::Registry::load_installed());
             isolate::use_engines(*registry);
             engines::set_installed(std::move(registry));
         }
-        // Nordend's icon in the desktop's accent (ROADMAP 9.2), written on a worker.
+        // rummage's icon in the desktop's accent (ROADMAP 9.2), written on a worker.
         bool follow_accent = config.icon.follow_accent;
         theme::AppIconKeeper app_icon{pool, theme::default_app_icon_place()};
         const auto update_icon = [&] {
@@ -565,21 +579,26 @@ int main(int argc, char** argv) {
         fs::DirectoryWatcher watcher{loop};
         ui::IconSet icons{fonts};
         icons.set_theme(config.icon.theme);
+        icons.set_place_icons(config.icon.places);
         ui::Activation activation{display, loop};
         ui::Clipboard clipboard{display, loop};  // before the browser that uses it
         // The column view and the grid (ROADMAP 4.2, 4.4), unless the renderer test scene was
         // asked for.
         std::unique_ptr<views::Browser> columns;
         std::unique_ptr<views::FilePicker> picker;
-        // config.toml is followed while Nordend runs: the double click changes at once, the
+        // config.toml is followed while rummage runs: the double click changes at once, the
         // fonts at the next start (`config` keeps the ones in use).
         std::unique_ptr<core::FileWatcher> config_watcher;
         const auto apply_config = [&](const core::ConfigResult& loaded) {
             const auto& fresh = loaded.config;
+            if (columns) {
+                columns->status_bar().set_text_size(fresh.status_bar.text_size);
+            }
             if (loaded.actions_valid && loaded.context_menu_valid) {
                 const auto problems = views::configure_shortcuts(fresh.keybindings, fresh.actions);
                 for (const auto& problem : problems) {
-                    log::warn("config: {}; keeping previous actions, keybindings and menus", problem);
+                    log::warn("config: {}; keeping previous actions, keybindings and menus",
+                              problem);
                 }
                 if (problems.empty() && columns) {
                     columns->set_actions(fresh.actions);
@@ -590,6 +609,7 @@ int main(int argc, char** argv) {
             }
             window.request_redraw();
             icons.set_theme(fresh.icon.theme);
+            icons.set_place_icons(fresh.icon.places);
             window.set_background_opacity(fresh.appearance.background_opacity);
             seat.set_multi_click(std::chrono::milliseconds{fresh.pointer.double_click_ms},
                                  static_cast<float>(fresh.pointer.double_click_distance));
@@ -626,7 +646,7 @@ int main(int argc, char** argv) {
                 loop, pool, watcher, mime, [&] { window.request_redraw(); },
                 [&](ui::CursorShape shape) { seat.set_cursor(shape); },
                 std::make_shared<thumbs::Cache>(thumbs::default_root(),
-                                                "nordend-" NORDEND_VERSION));
+                                                "rummage-" RUMMAGE_VERSION));
             opener = std::make_unique<platform::Opener>(
                 loop, pool, mime, platform::Environment::from_environment(),
                 [&](std::string message, bool error) {
@@ -637,15 +657,21 @@ int main(int argc, char** argv) {
                                        std::move(done));
                 });
             columns->set_actions(configured_actions);
+            columns->status_bar().set_text_size(config.status_bar.text_size);
             columns->set_context_menu(config.context_menu);
             action_handoff = std::make_unique<platform::ActionHandoff>(
                 loop, platform::Environment::from_environment(),
                 [&](std::string message, bool error) {
-                    columns->show_message(std::move(message), error);
+                    columns->show_action_result(std::move(message), error);
                 },
                 [&](std::function<void(std::string)> done) {
                     activation.request(display.seat(), seat.input_serial(), window.surface(),
                                        std::move(done));
+                });
+            action_handoff->set_password_prompt(
+                [&](const std::filesystem::path& path, bool retry, auto done) {
+                    columns->password_dialog().open_password(path.filename().string(), retry,
+                                                             std::move(done));
                 });
             columns->set_action_handoff(
                 [&](const core::Action& action, const core::ActionContext& context) {
@@ -736,11 +762,12 @@ int main(int argc, char** argv) {
                     columns->drag_ended();
                 });
             }
+            columns->set_panes_enabled(!picker_request);
             columns->apply(remembered.state);
             // Without a folder (Super+E) the tabs come back as they were left; with one
             // (xdg-open, "Show in folder") a single tab on it (ROADMAP 9.1d).
             if (picker_request || !start_dir.empty() ||
-                !columns->restore_tabs(remembered.state.tabs, remembered.state.shown_tab)) {
+                !columns->restore_session(remembered.state)) {
                 columns->open(start_folder(start_dir));
             }
             if (picker_request) {
@@ -810,7 +837,7 @@ int main(int argc, char** argv) {
             columns->set_places_reload([&places] { places->reload(); });
         }
 
-        // Nordend's own title bar where the compositor draws none (ROADMAP 7.4).
+        // rummage's own title bar where the compositor draws none (ROADMAP 7.4).
         views::TitleBar title_bar{
             {.move = [&] { window.move(display.seat(), seat.input_serial()); },
              .resize =
@@ -981,7 +1008,7 @@ int main(int argc, char** argv) {
                 note_state();  // every change shows in a frame, so frames are where to look
                 return;
             }
-            nordend::app::draw_test_scene(renderer, content, palette);
+            rummage::app::draw_test_scene(renderer, content, palette);
             renderer.draw_box(target,
                               {.fill = hovered ? palette.primary : palette.surface_container_high,
                                .radius = ui::Corners::all(10)});

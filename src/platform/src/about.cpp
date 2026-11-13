@@ -1,4 +1,4 @@
-#include "nordend/platform/about.hpp"
+#include "rummage/platform/about.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,9 +17,9 @@
 #include <system_error>
 #include <unistd.h>
 
-#include "nordend/core/file.hpp"
+#include "rummage/core/file.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 std::string_view trim(std::string_view text) {
@@ -232,4 +232,4 @@ std::vector<AboutLine> system_about() {
     return lines;
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

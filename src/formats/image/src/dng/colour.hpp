@@ -15,7 +15,7 @@
 
 #include "../tiff/container.hpp"
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 
 using Matrix = std::array<double, 9>;  // row by row
 using Vector = std::array<double, 3>;
@@ -47,4 +47,4 @@ struct Colour {
 // reason when its colour tags are missing or make no sense.
 [[nodiscard]] std::optional<Colour> colour_of(const tiff::Ifd& ifd0, std::string& error);
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

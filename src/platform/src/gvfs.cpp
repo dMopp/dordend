@@ -1,4 +1,4 @@
-#include "nordend/platform/gvfs.hpp"
+#include "rummage/platform/gvfs.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -13,9 +13,9 @@
 #include <utility>
 
 #include "bus_loop.hpp"
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 constexpr std::string_view kService = "org.gtk.vfs.Daemon";
@@ -303,7 +303,7 @@ struct Gvfs::Impl {
 
     // The MountOperation object of a new mount, at a path of its own.
     sdbus::ObjectPath add_operation(std::uint64_t id, Prompts prompts) {
-        sdbus::ObjectPath path{std::format("/org/nordend/fm/MountOperation/{}", id)};
+        sdbus::ObjectPath path{std::format("/org/rummage/fm/MountOperation/{}", id)};
         auto operation = std::make_unique<Operation>();
         operation->prompts = std::move(prompts);
         operation->object = sdbus::createObject(*connection, path);
@@ -347,7 +347,7 @@ struct Gvfs::Impl {
                                     static_cast<std::uint32_t>(choice.value_or(0)));
                             });
                     }),
-                // Only an unmount asks these, and Nordend passes no operation to one.
+                // Only an unmount asks these, and rummage passes no operation to one.
                 sdbus::registerMethod("ShowProcesses")
                     .implementedAs([](const std::string& /*message*/,
                                       const std::vector<std::string>& /*choices*/,
@@ -396,7 +396,7 @@ Gvfs::Gvfs(core::EventLoop& loop, std::function<void()> changed)
         impl_->bus_daemon =
             sdbus::createProxy(*impl_->connection, sdbus::ServiceName{"org.freedesktop.DBus"},
                                sdbus::ObjectPath{"/org/freedesktop/DBus"});
-        // Something mounted or unmounted, by Nordend or another program: read again.
+        // Something mounted or unmounted, by rummage or another program: read again.
         impl_->signals = impl_->connection->addMatch(
             std::format("type='signal',interface='{}'", kTracker),
             [this](const sdbus::Message& /*message*/) { impl_->read_mounts(); },
@@ -430,7 +430,7 @@ Gvfs::Gvfs(core::EventLoop& loop, std::function<void()> changed)
             });
         impl_->pump();
     } catch (const sdbus::Error& error) {
-        log::warn("gvfs: no session bus ({}): network folders are not mounted from Nordend",
+        log::warn("gvfs: no session bus ({}): network folders are not mounted from rummage",
                   error.getMessage());
         impl_->tracker.reset();
         impl_->bus_daemon.reset();
@@ -454,7 +454,7 @@ void Gvfs::mount(const std::string& uri, Prompts prompts, Mounted done) {
     const std::optional<GvfsLocation> location =
         remote ? gvfs_location(*remote) : std::optional<GvfsLocation>{};
     if (!location) {
-        done({}, "it is not a network folder Nordend can mount");
+        done({}, "it is not a network folder rummage can mount");
         return;
     }
     if (const GvfsMount* const mount = mount_holding(impl_->mounts, *location)) {
@@ -542,4 +542,4 @@ void Gvfs::unmount(const std::string& uri, Done done) {
     impl_->pump();
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

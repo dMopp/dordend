@@ -1,4 +1,4 @@
-#include "nordend/views/text_selection.hpp"
+#include "rummage/views/text_selection.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -6,7 +6,7 @@
 #include <string_view>
 #include <utility>
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 // A UTF-8 continuation byte: inside a character, never at its start.
@@ -173,4 +173,4 @@ std::string TextSelection::text(Lines lines) const {
     return out;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

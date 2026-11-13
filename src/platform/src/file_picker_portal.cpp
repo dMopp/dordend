@@ -1,4 +1,4 @@
-#include "nordend/platform/file_picker_portal.hpp"
+#include "rummage/platform/file_picker_portal.hpp"
 
 #include <algorithm>
 #include <csignal>
@@ -14,13 +14,13 @@
 #include <unistd.h>
 
 #include "bus_loop.hpp"
-#include "nordend/core/file.hpp"
-#include "nordend/core/file_picker.hpp"
-#include "nordend/core/log.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/file_picker.hpp"
+#include "rummage/core/log.hpp"
 
 extern char** environ;
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 using Values = std::map<std::string, sdbus::Variant>;
 using Reply = sdbus::Result<std::uint32_t, Values>;
@@ -196,7 +196,7 @@ public:
                 }
             },
             sdbus::return_slot);
-        connection_->requestName(sdbus::ServiceName{"org.freedesktop.impl.portal.desktop.nordend"});
+        connection_->requestName(sdbus::ServiceName{"org.freedesktop.impl.portal.desktop.rummage"});
         bus_ = std::make_unique<BusLoop>(loop_, *connection_, "file chooser");
         bus_->pump();
     }
@@ -238,8 +238,8 @@ private:
                     cancel(*ptr);
                 }))
                 .forInterface("org.freedesktop.impl.portal.Request");
-            Fd input{memfd_create("nordend-picker-request", MFD_CLOEXEC)};
-            pending->output.value = memfd_create("nordend-picker-result", MFD_CLOEXEC);
+            Fd input{memfd_create("rummage-picker-request", MFD_CLOEXEC)};
+            pending->output.value = memfd_create("rummage-picker-result", MFD_CLOEXEC);
             if (input.value < 0 || pending->output.value < 0) {
                 throw std::runtime_error{"Cannot allocate picker channel"};
             }
@@ -274,7 +274,7 @@ private:
             posix_spawn_file_actions_destroy(&actions);
             posix_spawnattr_destroy(&attr);
             if (error != 0) {
-                throw std::runtime_error{"Cannot start Nordend picker: " +
+                throw std::runtime_error{"Cannot start rummage picker: " +
                                          std::string{strerror(error)}};
             }
             pending->source =
@@ -368,4 +368,4 @@ int run_file_picker_portal(core::EventLoop& loop, const std::filesystem::path& p
     Backend backend{loop, picker_program};
     return loop.run();
 }
-}  // namespace nordend::platform
+}  // namespace rummage::platform

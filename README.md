@@ -1,6 +1,13 @@
-<p align="center"><img src="data/nordend.svg" width="96" height="96" alt=""></p>
+<p align="center"><img src="data/rummage.svg" width="96" height="96" alt=""></p>
 
-<h1 align="center">Nordend</h1>
+<h1 align="center">rummage</h1>
+
+rummage is a fork of [Nordend](https://github.com/pankaspe/nordend-fm), created by
+[pankaspe](https://github.com/pankaspe). It builds on Nordend's native Wayland file manager
+and retains the upstream MIT license and copyright notice in [LICENSE](LICENSE).
+Bundled dependencies and their licenses are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
+The repository is [barrulus/rummage](https://github.com/barrulus/rummage).
+
 
 <p align="center">
   <b>A native file manager for Wayland: fast, light and safe.</b><br>
@@ -9,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/pankaspe/nordend-fm/releases/tag/v0.5.0"><img src="https://img.shields.io/badge/release-v0.5.0-2a6a9e" alt="release v0.5.0"></a>
+  <a href="https://github.com/barrulus/rummage/releases/tag/development"><img src="https://img.shields.io/badge/build-development-2a6a9e" alt="development build"></a>
   <img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white" alt="C++20">
   <img src="https://img.shields.io/badge/Wayland-native-FFBC00?logo=wayland&logoColor=black" alt="Wayland native">
   <img src="https://img.shields.io/badge/tests-420%20%C2%B7%20ASan%20%C2%B7%20TSan-4B32C3" alt="420 tests, ASan, TSan">
@@ -20,19 +27,19 @@
 > **Young software, used every day by its author.** 0.5.0 opens **text files** in Quick Look
 > with **syntax colours** for over twenty languages (code, configuration, Markdown, diffs), to
 > select and copy, logs shown from their newest lines; read, like pictures since 0.4.0, by
-> Nordend's own code in a **caged helper process**.
+> rummage's own code in a **caged helper process**.
 > On Void Linux, [install it as a package](#on-void-linux); anywhere else,
 > [build it from source](#from-source) in about a minute.
 
 <p align="center">
-  <img src="docs/images/readme-screenshot.webp" alt="Nordend in a light theme: the column view in a folder of photos exported from darktable, the context menu open on one with Open With, its preview and EXIF in the info pane" width="100%">
+  <img src="docs/images/readme-screenshot.webp" alt="rummage in a light theme: the column view in a folder of photos exported from darktable, the context menu open on one with Open With, its preview and EXIF in the info pane" width="100%">
   <br>
   <sub>The columns in a folder of photos exported from darktable, two tabs open, the context menu and the info pane with the photo's EXIF.</sub>
 </p>
 
-## Why Nordend
+## Why rummage
 
-Nordend talks to the compositor directly, with **no toolkit at all**: text, icons, scrolling and
+rummage talks to the compositor directly, with **no toolkit at all**: text, icons, scrolling and
 animations come from its own renderer. It takes your desktop's light or dark style and accent
 colour; on Noctalia (Noctalia Shell, the Umbriel compositor) it wears your Noctalia theme, live,
 once Noctalia is told to write it ([two steps](#on-noctalia)).
@@ -41,14 +48,14 @@ once Noctalia is told to write it ([two steps](#on-noctalia)).
   Quick Look in under 100 ms. Every figure is measured, with the tool to measure it again.
 - **Light.** A 3 MB binary, 17 libraries, about 25 MB of memory, and no CPU at all while
   nothing moves.
-- **Safe with what it reads.** Files that come from outside are read by `nordend-preview`, a
-  small helper process in a cage of Nordend's own (seccomp and landlock: no files, no network,
-  no programs). A broken or hostile file costs at most its preview; Nordend carries on.
+- **Safe with what it reads.** Files that come from outside are read by `rummage-preview`, a
+  small helper process in a cage of rummage's own (seccomp and landlock: no files, no network,
+  no programs). A broken or hostile file costs at most its preview; rummage carries on.
 - **Its own readers.** TIFF (LZW, Deflate, PackBits, JPEG, tiles, BigTIFF), PGM and PPM are
-  read by code written for Nordend, checked pixel for pixel against libtiff and fuzzed; PNG, JPEG
+  read by code written for rummage, checked pixel for pixel against libtiff and fuzzed; PNG, JPEG
   and GIF by [wuffs](https://github.com/google/wuffs), memory-safe by construction. Raw files
   show the JPEG their camera stored, so the camera's own rendering; a DNG whose stored previews
-  are too small is developed by Nordend's own reader, with the file's own colour.
+  are too small is developed by rummage's own reader, with the file's own colour.
 - **Photos and their editors.** Thumbnails, the info pane and Quick Look with the shot's EXIF
   and rating; darktable sidecars travel with their photo through every rename, copy, move and
   trip to the trash.
@@ -62,7 +69,7 @@ once Noctalia is told to write it ([two steps](#on-noctalia)).
   real name, a real freedesktop trash, and <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 - **Keyboard first, mouse always.** Every action has a key (<kbd>F1</kbd> lists them) and a click.
 
-Everything it does is in [docs/features.md](docs/features.md); inside Nordend, <kbd>F1</kbd> lists
+Everything it does is in [docs/features.md](docs/features.md); inside rummage, <kbd>F1</kbd> lists
 every shortcut.
 
 ## Features
@@ -71,11 +78,11 @@ every shortcut.
 - **Quick Look** (<kbd>Space</kbd>): photos fill the window, raw files included; text files on a
   scrollable page; the arrows walk the folder
 - **Raw files:** the previews cameras embed in ORF, CR2, NEF, ARW, RAF, RW2, SRW, DNG, 3FR
-  (found by Nordend's own reader), upright and cropped to the shot; DNGs with only a small
-  preview (Leica, drones) developed by Nordend itself; EXIF in the info pane
-- **Images:** PNG, JPEG, GIF (wuffs), WebP, JPEG XL, and TIFF, PGM and PPM with Nordend's own
+  (found by rummage's own reader), upright and cropped to the shot; DNGs with only a small
+  preview (Leica, drones) developed by rummage itself; EXIF in the info pane
+- **Images:** PNG, JPEG, GIF (wuffs), WebP, JPEG XL, and TIFF, PGM and PPM with rummage's own
   readers; thumbnails in the shared freedesktop cache
-- **Isolated reading:** every picture is made in a caged helper process, never in Nordend
+- **Isolated reading:** every picture is made in a caged helper process, never in rummage
 - **darktable:** sidecars follow their photo everywhere; ratings shown
 - **Command palette** (<kbd>Ctrl</kbd>+<kbd>K</kbd>): every command, place and tab, fuzzy-matched
   (fzy), the recently used first
@@ -85,7 +92,7 @@ every shortcut.
   from templates, undo and redo, freedesktop trash with restore, delete permanently
 - **Properties** (Alt+Enter or right-click): file and folder details, with a searchable folder
   icon picker. Choices are shared with Dolphin through `.directory` files.
-- **Drag and drop** within Nordend and with other apps; rubber-band selection; the system
+- **Drag and drop** within rummage and with other apps; rubber-band selection; the system
   clipboard
 - **Sidebar:** places, GTK bookmarks (also `smb://` and `sftp://`, mounted through gvfs), disks
   through udisks2 (mount, unmount, eject)
@@ -104,7 +111,7 @@ every shortcut.
 
 | | |
 |---|---|
-| Binary | **3.95 MB** (3.28 MB stripped), x86-64; the decoders and text readers in `nordend-preview`, 1.13 MB (1.01 stripped), a separate caged helper |
+| Binary | **3.95 MB** (3.28 MB stripped), x86-64; the decoders and text readers in `rummage-preview`, 1.13 MB (1.01 stripped), a separate caged helper |
 | Libraries | 17 direct (the helper: 8); no GTK, no Qt, no GLib |
 | Code | about 51 300 lines of C++20, 17 400 of tests (420 test cases, under ASan and TSan too) |
 | Memory | **25 MB** of its own at start; pictures are decoded in the helpers, which give their memory back after a quiet second |
@@ -123,75 +130,120 @@ The design's four targets, measured on 2026-11-01 (Ryzen 7 5700G, RX 6650 XT, SA
 
 Every measurement and its method is in [docs/benchmarks.md](docs/benchmarks.md).
 
+## Upgrading from Nordend
+
+The command, desktop entry, portal backend, packages, Nix module, and environment variables
+now use `rummage` / `RUMMAGE` (including `rummage-media` and `programs.rummage`).
+Update launcher commands, `xdg-mime` defaults, compositor rules, portal preferences, and
+Noctalia templates accordingly; the old executable and portal names are not installed as aliases.
+
+On the first normal launch without `--config`, rummage copies existing Nordend `config.toml`,
+`colors.toml`, and session `state.toml` into the corresponding `rummage` XDG directories,
+only where the destination is absent. Originals and existing rummage files are left intact.
+Custom commands and paths inside copied settings are preserved; update any that invoke Nordend.
+Explicit `--config`, config checks, and picker/portal-only launches do not migrate files.
+Screenshots and historical development notes may still show the upstream name; a separate
+documentation overhaul will follow the rename.
+
+
 ## Install
 
-Nordend needs Linux with a Wayland compositor that offers xdg-shell (developed on Umbriel, also
+rummage needs Linux with a Wayland compositor that offers xdg-shell (developed on Umbriel, also
 tried on GNOME, Plasma and niri) and a GPU driver with OpenGL ES 3.0 (Mesa).
 
 ### Development downloads
 
 <!-- development-downloads:start -->
-The [latest development build](https://github.com/barrulus/bordend-fm/releases/tag/development)
+The [latest development build](https://github.com/barrulus/rummage/releases/tag/development)
 is refreshed automatically after **all checks pass on `main`**. These are unsigned Linux
 x86_64 development snapshots. Choose your exact distribution; the Fedora RPM is **not
 validated for Leap or RHEL**, and the DEB is not validated for Ubuntu or older Debian.
 
 | System | Download | Install after downloading |
 |---|---|---|
-| Debian 13 (trixie), amd64 | [DEB](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-debian13-amd64.deb) | `sudo apt install ./nordend-debian13-amd64.deb` |
-| Fedora 44, x86_64 | [RPM](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-fedora44-x86_64.rpm) | `sudo dnf install ./nordend-fedora44-x86_64.rpm` |
-| Arch Linux, x86_64 | [Arch package](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-arch-x86_64.pkg.tar.zst) | `sudo pacman -Syu`, then `sudo pacman -U ./nordend-arch-x86_64.pkg.tar.zst` |
-| openSUSE Tumbleweed, x86_64 | [Tumbleweed RPM](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-tumbleweed-x86_64.rpm) | `sudo zypper dup`, then `sudo zypper install --allow-unsigned-rpm ./nordend-tumbleweed-x86_64.rpm` |
-| Void glibc, x86_64 | [XBPS bundle](https://github.com/barrulus/bordend-fm/releases/download/development/nordend-void-glibc-x86_64.tar.gz) | See the two commands below. |
+| Debian 13 (trixie), amd64 | [DEB](https://github.com/barrulus/rummage/releases/download/development/rummage-debian13-amd64.deb) | `sudo apt install ./rummage-debian13-amd64.deb` |
+| Fedora 44, x86_64 | [RPM](https://github.com/barrulus/rummage/releases/download/development/rummage-fedora44-x86_64.rpm) | `sudo dnf install ./rummage-fedora44-x86_64.rpm` |
+| Arch Linux, x86_64 | [Arch package](https://github.com/barrulus/rummage/releases/download/development/rummage-arch-x86_64.pkg.tar.zst) | `sudo pacman -Syu`, then `sudo pacman -U ./rummage-arch-x86_64.pkg.tar.zst` |
+| openSUSE Tumbleweed, x86_64 | [Tumbleweed RPM](https://github.com/barrulus/rummage/releases/download/development/rummage-tumbleweed-x86_64.rpm) | `sudo zypper dup`, then `sudo zypper install --allow-unsigned-rpm ./rummage-tumbleweed-x86_64.rpm` |
+| Void glibc, x86_64 | [XBPS bundle](https://github.com/barrulus/rummage/releases/download/development/rummage-void-glibc-x86_64.tar.gz) | See the two commands below. |
 
 For Void, extract the bundle and keep its package and repository index together:
 
 ```sh
-tar -xzf nordend-void-glibc-x86_64.tar.gz
-sudo xbps-install -R "$PWD/nordend-void-x86_64/packages" nordend
+tar -xzf rummage-void-glibc-x86_64.tar.gz
+sudo xbps-install -R "$PWD/rummage-void-x86_64/packages" rummage
 ```
 
 For Nix, with flakes enabled, run or install the same tested source revision through the
-moving `development` tag (this builds Nordend if no cached binary is available):
+moving `development` tag (this builds rummage if no cached binary is available):
 
 ```sh
-nix run github:barrulus/bordend-fm/development
-nix profile install github:barrulus/bordend-fm/development
+nix run github:barrulus/rummage/development
+nix profile install github:barrulus/rummage/development
 ```
 
-[Checksums](https://github.com/barrulus/bordend-fm/releases/download/development/SHA256SUMS)
-and [source identity](https://github.com/barrulus/bordend-fm/releases/download/development/source.json)
+[Checksums](https://github.com/barrulus/rummage/releases/download/development/SHA256SUMS)
+and [source identity](https://github.com/barrulus/rummage/releases/download/development/source.json)
 are provided with every build. To verify a download, save `SHA256SUMS` beside it and run
 `sha256sum --check --ignore-missing SHA256SUMS`. Downloads are replaced as builds pass;
 use the full commit from `source.json` instead of `development` in the Nix reference to
 pin a version. These downloads are individual packages, not an automatic-update repository.
+
+For a **Debian source package**, download the
+[Debian source bundle](https://github.com/barrulus/rummage/releases/download/development/rummage-debian-source.tar.gz).
+It contains the matching `.dsc`, `.orig.tar.gz`, `.debian.tar.xz`, source `.changes` and
+`.buildinfo`, with their versioned filenames preserved. CI builds the published DEB from
+this source package. Rebuild on Debian 13:
+
+```sh
+sudo apt update
+sudo apt install build-essential
+tar -xzf rummage-debian-source.tar.gz
+cd rummage-debian-source
+dpkg-source -x rummage_*.dsc source
+sudo apt build-dep ./source
+cd source
+dpkg-buildpackage -b -us -uc
+```
+
+These source packages are unsigned development snapshots. The
+[generic source archive](https://github.com/barrulus/rummage/releases/download/development/rummage-source.tar.gz)
+is also available; it is distinct from the Debian source package.
 <!-- development-downloads:end -->
 
 ### On Void Linux
 
-Nordend is developed on Void, and comes with an xbps-src template in
-[`packaging/void`](packaging/void). It builds the latest release into a package that puts
-`nordend`, its desktop entry and its icon under `/usr`:
+Use the [development XBPS bundle](#development-downloads) or build a package from this
+fork's exact checkout with the [CI package builder](docs/ci-packaging.md#void-linux).
+The template in [`packaging/void/rummage`](packaging/void/rummage) is populated by that
+builder with a verified source archive and checksum; it does not fetch an upstream Nordend release.
 
-```sh
-# 1. void-packages, once (skip if you already have a checkout)
-git clone --depth 1 https://github.com/void-linux/void-packages
-cd void-packages
-./xbps-src binary-bootstrap
+### Optional video previews
 
-# 2. Nordend's template, then the package
-git clone --depth 1 https://github.com/pankaspe/nordend-fm /tmp/nordend-fm
-cp -r /tmp/nordend-fm/packaging/void/nordend srcpkgs/
-./xbps-src pkg nordend
-sudo xbps-install -R hostdir/binpkgs nordend
-```
+Install the matching `rummage-media` package for video thumbnails and still previews in the
+information pane and Space Quick Look. The grid draws cinema filmstrip borders; cached images
+and larger previews stay undecorated. This is still-frame preview, not video playback.
 
-The package is the latest release, **0.5.0**. What `main` gains after it comes with the next
-release; to have it at once, build from source.
+The helper uses system FFmpeg 6.1 or newer shared libraries (`libavformat`, `libavcodec`,
+`libavutil`, `libswscale`); it does not execute `ffmpeg`, `ffprobe`, or `ffmpegthumbnailer`.
+Your package manager reuses compatible installed libraries. Some distributions package these
+libraries together with the FFmpeg commands. Codec availability follows the distribution build.
 
-For **this fork’s current checkout**, use the [CI package builder](docs/ci-packaging.md#void-linux)
-instead of the upstream release recipe above. It builds an XBPS snapshot from the exact Git
-commit and installs it in a fresh Void container before checking it.
+The main package has no FFmpeg dependency. Without the media helper, videos retain their file
+icons and information cards; existing valid cached thumbnails remain usable. Enter opens the
+selected video in its default application. Missing helpers/libraries are retried after restarting
+rummage and do not create permanent failed-thumbnail records.
+
+For a source build, add `-DRUMMAGE_MEDIA=ON` with the four libraries' development packages
+installed. It defaults to OFF. `cmake --install build --component media` installs only the helper
+and its manifest; `--component Unspecified` installs the core application. The helper uses the
+existing seccomp/Landlock sandbox, reads only the supplied descriptor, and has bounded decoding,
+output dimensions, concurrency and time. Thumbnail selection tries beyond dark opening frames.
+
+For Nix, `nix build .#rummage-with-media` builds the application configured with the optional
+helper; `.#rummage-media` selects its separate helper output. The normal default remains free of
+FFmpeg. Separate custom prefixes can be registered through `RUMMAGE_ENGINE_PATH`, a colon-separated
+list of absolute `share/rummage/engines` directories. Restart after changing the installed engines.
 
 ### With Nix
 
@@ -199,7 +251,7 @@ From a checkout, with Nix flakes enabled:
 
 ```sh
 nix build                 # package in ./result, including the preview helper and desktop entry
-nix run . -- ~/Pictures    # run Nordend in your Wayland session
+nix run . -- ~/Pictures    # run rummage in your Wayland session
 nix flake check           # check the installed package and command-line entry points
 ```
 
@@ -211,7 +263,7 @@ nix develop
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 ctest --test-dir build --output-on-failure
-./build/nordend
+./build/rummage
 ```
 
 The shell includes the build dependencies, doctest, clang tools, GDB and the optional JPEG
@@ -229,12 +281,12 @@ sudo xbps-install -S cmake ninja pkgconf wayland-devel wayland-protocols \
     libxkbcommon-devel libglvnd-devel MesaLib-devel \
     harfbuzz-devel freetype-devel fontconfig-devel tomlplusplus-devel \
     libwebp-devel libjxl-devel zlib-devel sdbus-c++-devel
-git clone https://github.com/pankaspe/nordend-fm
-cd nordend-fm
+git clone https://github.com/barrulus/rummage rummage
+cd rummage
 cmake -B build -G Ninja
 cmake --build build
-./build/nordend            # your home folder, or ./build/nordend ~/Pictures
-cmake --install build --prefix ~/.local --strip   # nordend, its desktop entry and icon
+./build/rummage            # your home folder, or ./build/rummage ~/Pictures
+cmake --install build --prefix ~/.local --strip   # rummage, its desktop entry and icon
 ```
 
 ### Then
@@ -242,57 +294,61 @@ cmake --install build --prefix ~/.local --strip   # nordend, its desktop entry a
 Make it the default for folders (a browser's "Show in folder", `xdg-open`) and give it a key:
 
 ```sh
-xdg-mime default nordend.desktop inode/directory
+xdg-mime default rummage.desktop inode/directory
 ```
 
 ```toml
 # Umbriel's config.toml; other compositors have their own way
-"Mod+E" = { action = "spawn nordend", repeat = false }
+"Mod+E" = { action = "spawn rummage", repeat = false }
 ```
 
 ### As a file picker
 
-Nordend can handle Open/Save dialogs through the XDG FileChooser portal, alongside Umbriel's
+rummage can handle Open/Save dialogs through the XDG FileChooser portal, alongside Umbriel's
 screenshot and screen-sharing backend. On NixOS, import this flake's module and enable both:
 
 ```nix
-imports = [ inputs.nordend.nixosModules.default ];
-programs.nordend.enable = true;
-programs.nordend.filePicker.enable = true;
+imports = [ inputs.rummage.nixosModules.default ];
+programs.rummage.enable = true;
+programs.rummage.filePicker.enable = true;
 ```
 
 The picker defaults to Umbriel; keep your existing portal backends and other preferences.
 See [file-picker setup](docs/file-picker.md) for the flake input, other desktops and manual
-installation, or try `nordend --pick ~/Pictures` without changing desktop defaults.
+installation, or try `rummage --pick ~/Pictures` without changing desktop defaults.
 
 ### On Noctalia
 
-Nordend takes its colours from `~/.config/nordend/colors.toml`, and Noctalia writes that file
+rummage takes its colours from `~/.config/rummage/colors.toml`, and Noctalia writes that file
 through a template, on every theme change. Noctalia does not have the template yet, so tell it
 once:
 
 ```sh
-mkdir -p ~/.config/noctalia/templates ~/.config/nordend
-cp /usr/share/nordend/noctalia/nordend ~/.config/noctalia/templates/
-# installed in ~/.local or not at all: ~/.local/share/nordend/noctalia/nordend, or
-# data/noctalia/nordend in this repository
+mkdir -p ~/.config/noctalia/templates ~/.config/rummage
+cp /usr/share/rummage/noctalia/rummage ~/.config/noctalia/templates/
+# installed in ~/.local or not at all: ~/.local/share/rummage/noctalia/rummage, or
+# data/noctalia/rummage in this repository
 ```
 
 ```toml
 # ~/.config/noctalia/config.toml
-[theme.templates.user.nordend]
-input_path  = "templates/nordend"
-output_path = "~/.config/nordend/colors.toml"
+[theme.templates.user.rummage]
+input_path  = "templates/rummage"
+output_path = "~/.config/rummage/colors.toml"
 ```
 
-Then pick a theme in Noctalia (or the same one again): Nordend changes with it, live. Without
-`colors.toml`, Nordend follows the desktop's light or dark style and accent instead, where the
+Then pick a theme in Noctalia (or the same one again): rummage changes with it, live. Without
+`colors.toml`, rummage follows the desktop's light or dark style and accent instead, where the
 desktop's portal offers them (GNOME, Plasma), else its own default palette.
 
 Configuration: every key, with its default, in [docs/config.example.toml](docs/config.example.toml)
-(copy it to `~/.config/nordend/config.toml`; `nordend --check-config` reports any problem). The
-command line: `nordend [DIR]`, `--config FILE`, `--version`, and `--about` (what Nordend runs on,
+(copy it to `~/.config/rummage/config.toml`; `rummage --check-config` reports any problem). The
+command line: `rummage [DIR]`, `--config FILE`, `--version`, and `--about` (what rummage runs on,
 for a bug report).
+
+To enlarge the status bar text, add `[status_bar]` with `text_size = 15` to `config.toml`.
+Sizes from 8 to 32 logical pixels apply live, independently of list/sidebar zoom; the bar grows
+to fit larger text.
 
 For photo folders, switch to the grid with **Ctrl+2** and enlarge thumbnails with
 **Ctrl+mouse wheel** or **Ctrl++**; **Ctrl+-** shrinks them and **Ctrl+0** restores the usual size.
@@ -301,7 +357,15 @@ over it, or press **F6** to focus it and use **Ctrl++**, **Ctrl+-**, or **Ctrl+0
 remembered across restarts. **Ctrl+I** hides the information pane to give large thumbnails
 more room. Grid thumbnails range from 48 to 512 px and fit the available window width.
 
-For a transparent background with solid text, icons and thumbnails, add to Nordend's config:
+Use **F3** for two persistent panes, each with its own tabs. **Tab** switches the active pane;
+**Ctrl+F5** copies its selected files to the other pane and **Ctrl+F6** moves them. The pane
+headers show focus, and the command palette's transfer commands name the destination. Drag the
+divider to resize (double-click to equalize), or use **Top / bottom** and **Swap panes** above the
+views. F3 shows the active pane full-width without discarding the other pane's tabs. Both tab
+sets and the layout return when rummage starts without an explicit folder. See
+[the pane workflow](docs/features.md#two-persistent-browsing-panes) for details.
+
+For a transparent background with solid text, icons and thumbnails, add to rummage's config:
 
 ```toml
 [appearance]
@@ -310,10 +374,10 @@ background_opacity = 0.70
 
 Transparency is disabled by default (`background_opacity = 1.0`). This reloads live; `1.0` is fully opaque and `0.0` fully transparent. Keep the compositor's
 **window opacity at `1.0`** (or remove its opacity rule), since that fades the entire window.
-Compositor blur can remain enabled; Nordend supplies transparency but does not apply blur itself.
+Compositor blur can remain enabled; rummage supplies transparency but does not apply blur itself.
 
-Nordend uses the desktop icon theme by default. To select Candy explicitly, put this in
-`~/.config/nordend/config.toml` (or add the key to an existing `[icon]` section):
+rummage uses the desktop icon theme by default. To select Candy explicitly, put this in
+`~/.config/rummage/config.toml` (or add the key to an existing `[icon]` section):
 
 ```toml
 [icon]
@@ -321,16 +385,29 @@ theme = "candy-icons"
 ```
 
 Use `theme = "system"` for desktop settings or `theme = "builtin"` for the original line icons.
-Theme changes in Nordend's config apply immediately; desktop theme changes are picked up at
+
+Choose individual Places icons in the same config; changes reload live:
+
+```toml
+[icon.places]
+home = "builtin:home"
+documents = "folder-documents"
+pictures = "/home/you/.local/share/icons/my-pictures.svg"
+```
+
+Values accept names from the selected icon theme, `builtin:<name>` for bundled icons, or absolute
+SVG/PNG paths. Missing icons fall back to the defaults. All place keys and examples are in
+[config.example.toml](docs/config.example.toml).
+Theme changes in rummage's config apply immediately; desktop theme changes are picked up at
 startup. SVG theme icons are rendered in-process using FreeType.
 
-On first normal launch, Nordend creates a complete `config.toml` at
-`$XDG_CONFIG_HOME/nordend/config.toml` (or `~/.config/nordend/config.toml`). It includes
+On first normal launch, rummage creates a complete `config.toml` at
+`$XDG_CONFIG_HOME/rummage/config.toml` (or `~/.config/rummage/config.toml`). It includes
 all settings, commented default shortcuts and context-menu layouts, and custom-action
 examples. Existing files, including
 symlinks, are never replaced. `--check-config`, `--test-scene`, and explicit `--config`
-paths do not create a config. If creation fails, Nordend reports it and continues.
-The same reference is installed at `share/nordend/config.example.toml` under the
+paths do not create a config. If creation fails, rummage reports it and continues.
+The same reference is installed at `share/rummage/config.example.toml` under the
 installation prefix; upgrades update that reference without changing your settings.
 
 Keyboard commands can be overridden in the same file and reload live:
@@ -343,18 +420,18 @@ toggle_selection = "Ctrl+j"
 ```
 
 Each entry replaces that action's default keys; `""` disables it. F1 shows the current
-bindings. `nordend --check-config` reports invalid or conflicting bindings. See
+bindings. `rummage --check-config` reports invalid or conflicting bindings. See
 [the example config](docs/config.example.toml) for action names and key syntax.
 Text-editing, navigation and range-selection keys retain their standard behavior.
 
 ### Custom actions and context menus
 
-Add `[[actions]]` tables to `~/.config/nordend/config.toml`. Actions appear in the context
+Add `[[actions]]` tables to `~/.config/rummage/config.toml`. Actions appear in the context
 menu and command palette (**Ctrl+K**) when their selection and MIME rules match. Programs
 are optional dependencies: install the ones your actions use. Missing programs are dimmed
 in the context menu and omitted from the palette.
 
-This example compresses one or more selected files or folders. Nordend asks for the ZIP
+This example compresses one or more selected files or folders. rummage asks for the ZIP
 filename and destination, calls **7-Zip directly**, then notifies you when the command exits:
 
 ```toml
@@ -396,14 +473,14 @@ destination = "directory"
 notify_on_completion = true
 ```
 
-`destination = "file"` opens Nordend's save dialog; `"directory"` selects an existing
+`destination = "file"` opens rummage's save dialog; `"directory"` selects an existing
 folder. `destination_name` is an optional literal suggested filename for the file picker.
 The picker starts in the current folder, uses the action's label as its title, and passes
 the selected absolute path as `{destination}`. Cancelling launches nothing. The selection
-and working directory are captured before the picker opens. Nordend does not create the
+and working directory are captured before the picker opens. rummage does not create the
 output: the command does, with its own overwrite behavior. The save dialog confirms an
 existing file; commands such as `cp` and `magick` can replace output. External operations
-are not part of Nordend's Undo history.
+are not part of rummage's Undo history.
 
 Omit `destination` and `{destination}` when the application already supplies its own dialog;
 for example, File Roller can use
@@ -419,7 +496,7 @@ quotes around them. Filenames containing spaces remain single arguments.
 | `{file}` | One absolute selected path; requires `selection = "one"` |
 | `{files}` | Each selected absolute path as a separate argument; requires `"one"` or `"many"` |
 | `{directory}` | The current folder, also used as the command's working directory |
-| `{destination}` | The absolute path chosen by Nordend's destination picker |
+| `{destination}` | The absolute path chosen by rummage's destination picker |
 
 `selection` defaults to `"one"` (exactly one item). `"many"` allows one or more items;
 `"background"` requires none; `"any"` allows any number, including none. Use `{directory}`
@@ -429,10 +506,10 @@ MIME filters accept exact types and patterns such as `"image/*"`; **every select
 must match at least one filter. Folders use `"inode/directory"`.
 
 `notify_on_completion = true` enables a desktop notification and status message on success
-or failure; it defaults to false. Nordend sends notifications itself, without `notify-send`.
+or failure; it defaults to false. rummage sends notifications itself, without `notify-send`.
 The option applies to external actions: exit code 0 means success, other exit codes or
 signals mean failure. Cancelling the picker or failing to launch sends no completion notice;
-launch errors still appear in the status bar. Keep Nordend open to receive notifications.
+launch errors still appear in the status bar. Keep rummage open to receive notifications.
 A desktop notification service is needed for popups; the status message still works without
 one. Completion follows the launched process, so a GUI launcher that delegates work and
 exits early cannot report when that delegated work finishes.
@@ -478,7 +555,7 @@ menu customization does not change command-palette or shortcut availability.
 | `trash` | Trash entries or empty space in Trash |
 | `sidebar` | Devices, bookmarks, and the Trash sidebar item |
 
-Specific arrays override `items`. Without either, Nordend uses that context's built-in menu;
+Specific arrays override `items`. Without either, rummage uses that context's built-in menu;
 an empty array hides its menu. The [example config](docs/config.example.toml) includes the
 **complete default layouts for all four contexts**, their separators and submenu contents,
 as well as the available IDs and additional custom-action examples. Default reference arrays
@@ -494,11 +571,11 @@ Actions are unavailable in Trash, and external actions are unavailable in file-p
 Action IDs can also be bound in the existing `[keybindings]` table, for example
 `"action:compress" = "Ctrl+Alt+z"`; define the action before enabling its binding. Actions,
 keybindings, and menu layouts reload together. Invalid changes retain the previous valid
-set on reload. Validate edits with `nordend --check-config` or
-`nordend --config /path/to/config.toml --check-config`.
+set on reload. Validate edits with `rummage --check-config` or
+`rummage --config /path/to/config.toml --check-config`.
 
-The installed reference at `share/nordend/config.example.toml` updates with Nordend.
-Existing personal files, including a copied `~/.config/nordend/config.example.toml`, are
+The installed reference at `share/rummage/config.example.toml` updates with rummage.
+Existing personal files, including a copied `~/.config/rummage/config.example.toml`, are
 not refreshed automatically. Use the current reference when adding new features to an
 existing configuration.
 
@@ -515,7 +592,7 @@ See [CI and packaging](docs/ci-packaging.md) for local commands, downloadable Vo
 required branch checks, pinned build tools, and the distinction between development snapshots
 and release packages.
 
-## Versions
+## Upstream Nordend versions
 
 Nordend stays at 0.x while it is young. A new **minor** version (0.2.0, 0.3.0…) brings features
 you can see; a **patch** (0.2.1) only fixes things. 1.0.0 will come once Nordend has been its
@@ -534,21 +611,9 @@ settled.
 
 ## What's next
 
-Nordend stays what it is: a native C++ file manager, made for Noctalia Shell, with no GTK or Qt;
-very light, safe and fast. Everything else is a feature on top, added only when it keeps those
-three.
-
-0.1.0 came out after a week of daily use by the author; 0.2.0 added Sort By, tabs and zoom in the
-lists; 0.3.0 the command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) and finding files
-(<kbd>Ctrl</kbd>+<kbd>F</kbd>); 0.3.1 more raw previews; 0.4.0 image previews read by Nordend's own
-code in caged helpers; 0.5.0 text previews with syntax colours, selecting and copying. Coming,
-roughly in this order: **previews, one family at a time**: other common formats one by one (SVG,
-AVIF, fonts, archive contents, audio tags).
-After that: colour labels and star ratings of your own, not tied to any raw editor; a Quick Look
-for photographers (100 % zoom, EXIF, histogram, comparison); a dual pane, a queue of operations
-and batch renaming; translations, plugins in Luau (one
-system, each plugin caged; heavy formats such as PDF and video, and local AI search, as separate
-engines).
+After this rename, the documentation will be overhauled to cover the combined feature set,
+installation options, configuration, and workflows. Historical roadmap notes and measurements
+remain in the upstream development notes linked below.
 
 ## Documentation
 
@@ -560,9 +625,9 @@ engines).
 
 ## Development
 
-Nordend is copiloted by **Claude Opus** (Anthropic), which assists with code writing, code analysis,
-bug hunting, testing and documentation. Design decisions, testing on real hardware and every release
-are the author's. Step numbers in code comments ("ROADMAP 6.3") refer to the internal roadmap.
+rummage continues the work of [Nordend](https://github.com/pankaspe/nordend-fm) by pankaspe.
+Historical development notes retain their original attribution. Step numbers in inherited
+code comments ("ROADMAP 6.3") refer to Nordend's original roadmap.
 
 ## License
 

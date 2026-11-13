@@ -5,7 +5,7 @@
 
 #include "decoders.hpp"
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 namespace {
 
 struct DemuxDeleter {
@@ -75,4 +75,4 @@ void decode_webp(std::span<const std::uint8_t> data, const DecodeOptions& option
     result.orientation = orientation_of(webp);
 }
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

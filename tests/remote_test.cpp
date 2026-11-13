@@ -9,33 +9,33 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/file.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/places.hpp"
-#include "nordend/platform/gvfs.hpp"
-#include "nordend/ui/seat.hpp"
-#include "nordend/ui/text_field.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/location_dialog.hpp"
-#include "nordend/views/password_dialog.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/places.hpp"
+#include "rummage/platform/gvfs.hpp"
+#include "rummage/ui/seat.hpp"
+#include "rummage/ui/text_field.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/location_dialog.hpp"
+#include "rummage/views/password_dialog.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::fs::parse_remote_uri;
-using nordend::fs::Place;
-using nordend::fs::RemoteUri;
-using nordend::platform::gvfs_location;
-using nordend::platform::GvfsLocation;
-using nordend::platform::GvfsMount;
-using nordend::platform::GvfsMountSpec;
-using nordend::test::TempDir;
-using nordend::views::Browser;
-using nordend::views::Login;
-using nordend::views::LoginRequest;
-using nordend::views::Remotes;
+using rummage::core::EventLoop;
+using rummage::fs::parse_remote_uri;
+using rummage::fs::Place;
+using rummage::fs::RemoteUri;
+using rummage::platform::gvfs_location;
+using rummage::platform::GvfsLocation;
+using rummage::platform::GvfsMount;
+using rummage::platform::GvfsMountSpec;
+using rummage::test::TempDir;
+using rummage::views::Browser;
+using rummage::views::Login;
+using rummage::views::LoginRequest;
+using rummage::views::Remotes;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -56,21 +56,21 @@ bool run_until(EventLoop& loop, const std::function<bool()>& done) {
     return ok;
 }
 
-nordend::ui::KeyEvent key(xkb_keysym_t keysym, std::string text = {}, bool shift = false) {
-    nordend::ui::KeyEvent event;
+rummage::ui::KeyEvent key(xkb_keysym_t keysym, std::string text = {}, bool shift = false) {
+    rummage::ui::KeyEvent event;
     event.keysym = keysym;
     event.text = std::move(text);
     event.modifiers.shift = shift;
     return event;
 }
 
-void type(nordend::views::PasswordDialog& dialog, std::string_view text) {
+void type(rummage::views::PasswordDialog& dialog, std::string_view text) {
     for (const char c : text) {
         dialog.key(key(static_cast<xkb_keysym_t>(c), std::string(1, c)));
     }
 }
 
-void type_into(nordend::views::LocationDialog& dialog, std::string_view text) {
+void type_into(rummage::views::LocationDialog& dialog, std::string_view text) {
     for (const char c : text) {
         dialog.key(key(static_cast<xkb_keysym_t>(c), std::string(1, c)));
     }
@@ -112,7 +112,7 @@ TEST_CASE("remote: URIs a bookmark names, decoded, with user, port and IPv6 host
           RemoteUri{.scheme = "sftp", .user = "me", .host = "fd00::1", .port = 2222, .path = "/"});
     CHECK(parse_remote_uri("smb://nas/share?query#fragment")->path == "/share");
     CHECK_FALSE(parse_remote_uri("file:///home/me"));
-    CHECK_FALSE(parse_remote_uri("ftp://host/pub"));  // not one Nordend maps to a mount
+    CHECK_FALSE(parse_remote_uri("ftp://host/pub"));  // not one rummage maps to a mount
     CHECK_FALSE(parse_remote_uri("smb:///share"));    // no host
     CHECK_FALSE(parse_remote_uri("smb://nas:99999/share"));
     CHECK_FALSE(parse_remote_uri("smb://nas:port/share"));
@@ -121,11 +121,11 @@ TEST_CASE("remote: URIs a bookmark names, decoded, with user, port and IPv6 host
 }
 
 TEST_CASE("remote: the label of a remote bookmark without one") {
-    CHECK(nordend::fs::remote_label(*parse_remote_uri("smb://fileshare.example/Public")) ==
+    CHECK(rummage::fs::remote_label(*parse_remote_uri("smb://fileshare.example/Public")) ==
           "Public on fileshare.example");
-    CHECK(nordend::fs::remote_label(*parse_remote_uri("smb://nas/Media/Photos/")) ==
+    CHECK(rummage::fs::remote_label(*parse_remote_uri("smb://nas/Media/Photos/")) ==
           "Photos on nas");
-    CHECK(nordend::fs::remote_label(*parse_remote_uri("sftp://me@host")) == "host");
+    CHECK(rummage::fs::remote_label(*parse_remote_uri("sftp://me@host")) == "host");
 }
 
 TEST_CASE("remote: bookmarks listed without a path, removed by their URI, the rest kept") {
@@ -135,7 +135,7 @@ TEST_CASE("remote: bookmarks listed without a path, removed by their URI, the re
         "smb://fileshare.example/DMS-Input Scanner\n"
         "ftp://host/pub\n"
         "sftp://me@host/srv\n";
-    const std::vector<Place> places = nordend::fs::parse_bookmarks(text);
+    const std::vector<Place> places = rummage::fs::parse_bookmarks(text);
     REQUIRE(places.size() == 4);
     CHECK(places[0].label == "Dokumente on fileshare.example");
     CHECK(places[0].uri == "smb://fileshare.example/Dokumente");
@@ -146,15 +146,15 @@ TEST_CASE("remote: bookmarks listed without a path, removed by their URI, the re
     CHECK(places[2].label == "Scanner");
     CHECK(places[3].label == "srv on host");
 
-    CHECK(nordend::fs::remove_remote_bookmark(text, "smb://fileshare.example/DMS-Input") ==
+    CHECK(rummage::fs::remove_remote_bookmark(text, "smb://fileshare.example/DMS-Input") ==
           std::optional<std::string>{"smb://fileshare.example/Dokumente\n"
                                      "file:///tmp/a A\n"
                                      "ftp://host/pub\n"
                                      "sftp://me@host/srv\n"});
-    CHECK_FALSE(nordend::fs::remove_remote_bookmark(text, "smb://fileshare.example/DMS"));
-    CHECK_FALSE(nordend::fs::remove_remote_bookmark(text, ""));
+    CHECK_FALSE(rummage::fs::remove_remote_bookmark(text, "smb://fileshare.example/DMS"));
+    CHECK_FALSE(rummage::fs::remove_remote_bookmark(text, ""));
     // A local folder's removal leaves remote lines alone.
-    CHECK(nordend::fs::remove_bookmark(text, "/tmp/a")
+    CHECK(rummage::fs::remove_bookmark(text, "/tmp/a")
               .value_or("")
               .starts_with("smb://fileshare.example/Dokumente\nsmb://"));
 }
@@ -195,33 +195,33 @@ TEST_CASE("gvfs: a mount matches when it has every key wanted, and gives the loc
                                   "/run/user/1000/gvfs/smb-share:server=fileshare.example,"
                                   "share=public");
     mount.spec.items.emplace("user", "me");  // who logged in: more keys still match
-    CHECK(nordend::platform::spec_matches(wanted.spec, mount.spec));
-    CHECK_FALSE(nordend::platform::spec_matches(mount.spec, wanted.spec));
-    CHECK_FALSE(nordend::platform::spec_matches(
+    CHECK(rummage::platform::spec_matches(wanted.spec, mount.spec));
+    CHECK_FALSE(rummage::platform::spec_matches(mount.spec, wanted.spec));
+    CHECK_FALSE(rummage::platform::spec_matches(
         location_of("smb://fileshare.example/Dokumente").spec, mount.spec));
     CHECK_FALSE(
-        nordend::platform::spec_matches(location_of("sftp://fileshare.example").spec, mount.spec));
+        rummage::platform::spec_matches(location_of("sftp://fileshare.example").spec, mount.spec));
 
     const std::vector<GvfsMount> mounts{share_mount("other", "public", "/x"), mount};
-    const GvfsMount* const holding = nordend::platform::mount_holding(mounts, wanted);
+    const GvfsMount* const holding = rummage::platform::mount_holding(mounts, wanted);
     REQUIRE(holding != nullptr);
-    CHECK(nordend::platform::local_path(*holding, wanted) ==
+    CHECK(rummage::platform::local_path(*holding, wanted) ==
           "/run/user/1000/gvfs/smb-share:server=fileshare.example,share=public/Scans");
-    CHECK(nordend::platform::local_path(*holding, location_of("smb://fileshare.example/public/")) ==
+    CHECK(rummage::platform::local_path(*holding, location_of("smb://fileshare.example/public/")) ==
           "/run/user/1000/gvfs/smb-share:server=fileshare.example,share=public");
     // Without gvfsd-fuse there is no local folder.
     mount.fuse.clear();
-    CHECK(nordend::platform::local_path(mount, wanted).empty());
-    CHECK(nordend::platform::mount_holding({}, wanted) == nullptr);
+    CHECK(rummage::platform::local_path(mount, wanted).empty());
+    CHECK(rummage::platform::mount_holding({}, wanted) == nullptr);
 }
 
 TEST_CASE("gvfs: remote bookmarks get their folder while mounted, and an eject icon") {
-    std::vector<Place> places = nordend::fs::parse_bookmarks(
+    std::vector<Place> places = rummage::fs::parse_bookmarks(
         "file:///tmp/a\n"
         "smb://fileshare.example/Public\n"
         "smb://fileshare.example/Dokumente/Steuer Steuer\n");
     const std::vector<GvfsMount> mounts{share_mount("fileshare.example", "dokumente", "/fuse/d")};
-    places = nordend::platform::with_remote_mounts(std::move(places), mounts);
+    places = rummage::platform::with_remote_mounts(std::move(places), mounts);
     REQUIRE(places.size() == 3);
     CHECK(places[0].path == "/tmp/a");
     CHECK(places[0].disk.mounted);  // a local one stays as it is
@@ -232,20 +232,20 @@ TEST_CASE("gvfs: remote bookmarks get their folder while mounted, and an eject i
     CHECK(places[2].disk.mounted);
     CHECK(places[2].disk.ejectable);
     // Unmounted elsewhere: back without a path.
-    places = nordend::platform::with_remote_mounts(std::move(places), {});
+    places = rummage::platform::with_remote_mounts(std::move(places), {});
     CHECK(places[2].path.empty());
     CHECK_FALSE(places[2].disk.mounted);
 }
 
 TEST_CASE("text field: a masked one draws dots and does not move by words") {
-    nordend::ui::TextField field{"pass word"};
+    rummage::ui::TextField field{"pass word"};
     field.set_masked(true);
     CHECK(field.masked());
-    nordend::ui::KeyEvent left = key(XKB_KEY_Left);
+    rummage::ui::KeyEvent left = key(XKB_KEY_Left);
     left.modifiers.ctrl = true;
     field.key(left);
     CHECK(field.caret() == 0);  // to the start, not to "word"
-    nordend::ui::KeyEvent back = key(XKB_KEY_BackSpace);
+    rummage::ui::KeyEvent back = key(XKB_KEY_BackSpace);
     back.modifiers.ctrl = true;
     field.key(key(XKB_KEY_End));
     field.key(back);
@@ -253,7 +253,7 @@ TEST_CASE("text field: a masked one draws dots and does not move by words") {
 }
 
 TEST_CASE("password dialog: the fields asked, Tab between them, Enter answers") {
-    nordend::views::PasswordDialog dialog{[] {}};
+    rummage::views::PasswordDialog dialog{[] {}};
     std::optional<std::optional<Login>> answered;
     dialog.open("Connect to “Public on nas”",
                 {.message = "Password required for share public on nas",
@@ -291,7 +291,7 @@ TEST_CASE("password dialog: the fields asked, Tab between them, Enter answers") 
 }
 
 TEST_CASE("password dialog: anonymous, Escape and a close without an answer") {
-    nordend::views::PasswordDialog dialog{[] {}};
+    rummage::views::PasswordDialog dialog{[] {}};
     std::optional<std::optional<Login>> answered;
     const LoginRequest request{.message = "Password required",
                                .user = "me",
@@ -337,11 +337,11 @@ struct Fixture {
     TempDir dir;
     fs::path share = dir.path / "gvfs" / "smb-share:server=nas,share=public";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     std::vector<std::string> calls;
     bool ask{true};      // the next mount asks for a password
     std::string answer;  // what the next call answers: empty, "cancelled", another error
@@ -411,9 +411,9 @@ TEST_CASE("remote: a bookmark not mounted asks for a password on a card, then op
     f.browser.open(f.dir.path);
     REQUIRE(f.settle());
     f.browser.open_place(f.place(false));
-    REQUIRE(run_until(f.loop, [&f] { return f.browser.password_dialog().is_open(); }));
+    REQUIRE(run_until(f.loop, [&f] { return f.browser.mount_password_dialog().is_open(); }));
     CHECK(f.calls == std::vector<std::string>{"mount smb://nas/public/Scans"});
-    CHECK(f.browser.password_dialog().title() == "Connect to “Scans”");
+    CHECK(f.browser.mount_password_dialog().title() == "Connect to “Scans”");
     CHECK(f.browser.has_overlay());
     // The card takes the keys meanwhile.
     for (const char c : std::string_view{"me"}) {
@@ -425,7 +425,7 @@ TEST_CASE("remote: a bookmark not mounted asks for a password on a card, then op
     }
     f.browser.key(key(XKB_KEY_Return), {});
     REQUIRE(f.settle());
-    CHECK_FALSE(f.browser.password_dialog().is_open());
+    CHECK_FALSE(f.browser.mount_password_dialog().is_open());
     REQUIRE(f.login);
     CHECK(f.login->user == "me");
     CHECK(f.login->password == "pw");
@@ -438,7 +438,7 @@ TEST_CASE("remote: giving up, an error, and unmounting say how it went") {
     f.browser.open(f.dir.path);
     REQUIRE(f.settle());
     f.browser.open_place(f.place(false));
-    REQUIRE(run_until(f.loop, [&f] { return f.browser.password_dialog().is_open(); }));
+    REQUIRE(run_until(f.loop, [&f] { return f.browser.mount_password_dialog().is_open(); }));
     f.browser.key(key(XKB_KEY_Escape), {});
     REQUIRE(f.settle());
     CHECK(f.message() == "Not connected to “Scans”");
@@ -476,11 +476,11 @@ TEST_CASE("remote: giving up, an error, and unmounting say how it went") {
 TEST_CASE("remote: without gvfs a remote bookmark says so") {
     TempDir dir;
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     browser.set_home_trash(dir.path / "Trash");
     browser.open(dir.path);
     REQUIRE(run_until(loop, [&] { return !browser.loading(); }));
@@ -497,7 +497,7 @@ TEST_CASE("remote: without gvfs a remote bookmark says so") {
 
 TEST_CASE("gvfs: the real session bus answers without starting gvfsd (reads only)") {
     EventLoop loop;
-    nordend::platform::Gvfs gvfs{loop, [] {}};
+    rummage::platform::Gvfs gvfs{loop, [] {}};
     if (!gvfs.available()) {
         MESSAGE("no session bus: skipped");
         return;
@@ -513,8 +513,8 @@ TEST_CASE("gvfs: the real session bus answers without starting gvfsd (reads only
 }
 
 TEST_CASE("location: paths, home, file URIs, servers and Windows shares") {
-    using nordend::fs::Location;
-    using nordend::fs::parse_location;
+    using rummage::fs::Location;
+    using rummage::fs::parse_location;
     const fs::path home{"/home/me"};
     CHECK(parse_location("  /data/fotos ", home) == Location{.folder = "/data/fotos", .uri = {}});
     CHECK(parse_location("~", home) == Location{.folder = "/home/me", .uri = {}});
@@ -536,14 +536,14 @@ TEST_CASE("location: paths, home, file URIs, servers and Windows shares") {
 
 TEST_CASE("remote: a server added to the bookmarks once, the rest kept") {
     const std::string text = "file:///tmp/a A";  // no newline at the end
-    CHECK(nordend::fs::add_remote_bookmark(text, "smb://nas/Public") ==
+    CHECK(rummage::fs::add_remote_bookmark(text, "smb://nas/Public") ==
           std::optional<std::string>{"file:///tmp/a A\nsmb://nas/Public\n"});
-    CHECK_FALSE(nordend::fs::add_remote_bookmark("smb://nas/Public Daten\n", "smb://nas/Public"));
-    CHECK_FALSE(nordend::fs::add_remote_bookmark(text, "/tmp/b"));  // only servers
+    CHECK_FALSE(rummage::fs::add_remote_bookmark("smb://nas/Public Daten\n", "smb://nas/Public"));
+    CHECK_FALSE(rummage::fs::add_remote_bookmark(text, "/tmp/b"));  // only servers
 }
 
 TEST_CASE("location dialog: Enter goes, a wrong address stays with what is wrong") {
-    nordend::views::LocationDialog dialog{[] {}};
+    rummage::views::LocationDialog dialog{[] {}};
     std::vector<std::pair<std::string, bool>> asked;
     dialog.open("/home/me", [&](const std::string& text, bool add) {
         asked.emplace_back(text, add);
@@ -582,7 +582,7 @@ TEST_CASE("remote: Ctrl+L goes to a folder, or adds a server to the sidebar and 
     f.browser.set_bookmarks_file(bookmarks);
     f.browser.open(f.dir.path);
     REQUIRE(f.settle());
-    nordend::ui::KeyEvent ctrl_l = key(XKB_KEY_l, "l");
+    rummage::ui::KeyEvent ctrl_l = key(XKB_KEY_l, "l");
     ctrl_l.modifiers.ctrl = true;
     f.browser.key(ctrl_l, {});
     REQUIRE(f.browser.location_dialog().is_open());
@@ -600,14 +600,14 @@ TEST_CASE("remote: Ctrl+L goes to a folder, or adds a server to the sidebar and 
     REQUIRE(f.settle());
     CHECK(f.calls == std::vector<std::string>{"mount smb://nas/public/Scans"});
     CHECK(f.shown() == f.share / "Scans");
-    CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
+    CHECK(rummage::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
     // Again: mounted, not added twice.
     CHECK(f.browser.go_to("smb://nas/public/Scans", true).empty());
     REQUIRE(f.settle());
-    CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
+    CHECK(rummage::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
     // Without adding.
     CHECK(f.browser.go_to("\\\\nas\\public\\Other", false).empty());
     REQUIRE(f.settle());
     CHECK(f.calls.back() == "mount smb://nas/public/Other");
-    CHECK(nordend::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
+    CHECK(rummage::core::read_text_file(bookmarks).text == "smb://nas/public/Scans\n");
 }

@@ -1,6 +1,6 @@
 # Writes a file's bytes into a C++ source as an array, so the program carries the file in it.
 #   cmake -DINPUT=file -DOUTPUT=file.cpp -DSYMBOL=name -P cmake/embed.cmake
-# The source defines nordend::embedded::SYMBOL (const unsigned char[]) and SYMBOL_size.
+# The source defines rummage::embedded::SYMBOL (const unsigned char[]) and SYMBOL_size.
 file(READ "${INPUT}" hex HEX)
 string(LENGTH "${hex}" length)
 math(EXPR size "${length} / 2")
@@ -11,7 +11,7 @@ get_filename_component(name "${INPUT}" NAME)
 file(WRITE "${OUTPUT}" "// Generated from ${name} by cmake/embed.cmake: do not edit.
 #include <cstddef>
 
-namespace nordend::embedded {
+namespace rummage::embedded {
 
 extern const unsigned char ${SYMBOL}[];
 extern const std::size_t ${SYMBOL}_size;
@@ -21,5 +21,5 @@ const unsigned char ${SYMBOL}[] = {
 };
 const std::size_t ${SYMBOL}_size = ${size};
 
-}  // namespace nordend::embedded
+}  // namespace rummage::embedded
 ")

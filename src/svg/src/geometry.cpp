@@ -2,7 +2,7 @@
 
 #include "internal.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 namespace {
 constexpr double kPi = std::numbers::pi;
 
@@ -294,4 +294,4 @@ Box bounds(const Path& path) {
     }
     return {minx, miny, maxx - minx, maxy - miny};
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

@@ -1,13 +1,13 @@
-#include "nordend/views/file_finder.hpp"
+#include "rummage/views/file_finder.hpp"
 
 #include <algorithm>
 #include <format>
 #include <utility>
 
-#include "nordend/views/fuzzy.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/views/fuzzy.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 // The order of results: score, then the shorter path, then the path.
@@ -211,4 +211,4 @@ std::size_t FileFinder::bytes() const noexcept {
     return total;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

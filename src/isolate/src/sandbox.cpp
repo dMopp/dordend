@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <vector>
 
-namespace nordend::isolate {
+namespace rummage::isolate {
 namespace {
 
 #if defined(__x86_64__)
@@ -43,7 +43,7 @@ constexpr bool kSanitized = false;
 
 #if defined(__SANITIZE_ADDRESS__)
 // LeakSanitizer checks at exit with a tracer (clone and ptrace): the cage forbids both, so the
-// processes that live in it (the helper, the test probe) leave the leak check to Nordend's own.
+// processes that live in it (the helper, the test probe) leave the leak check to rummage's own.
 extern "C" int __lsan_is_turned_off() { return 1; }  // NOLINT(readability-identifier-naming)
 #endif
 
@@ -57,7 +57,7 @@ constexpr rlim_t kFiles = 32;
 // The system calls a picture needs (measured with strace on JPEG, PNG, WebP, JPEG XL, ORF and
 // DNG), and the helper's own: its socket, its memfd, malloc_trim.
 constexpr std::array kAllowed{
-    // reading the file Nordend sent, and talking to Nordend
+    // reading the file rummage sent, and talking to rummage
     __NR_read,
     __NR_pread64,
     __NR_write,
@@ -91,7 +91,7 @@ constexpr std::array kAllowed{
 };
 
 // Sanitizer builds (tests only): their runtimes need a few more (ASan checks whether memory is
-// readable through a pipe: pipe2 and ioctl, seen in a snapshot with NORDEND_SANDBOX_REPORT=1).
+// readable through a pipe: pipe2 and ioctl, seen in a snapshot with RUMMAGE_SANDBOX_REPORT=1).
 constexpr std::array kAllowedSanitized{
     __NR_sigaltstack,       __NR_gettid,    __NR_getpid,
     __NR_sched_yield,       __NR_prctl,     __NR_rt_sigaction,
@@ -165,10 +165,10 @@ Program filter(Unexpected unexpected) {
     return program;
 }
 
-// NORDEND_SANDBOX_REPORT: a call the filter does not know is written to stderr and fails with
+// RUMMAGE_SANDBOX_REPORT: a call the filter does not know is written to stderr and fails with
 // ENOSYS, so that a library's new needs show up instead of a dead helper.
 void report(int /*signal*/, siginfo_t* info, void* context) {
-    constexpr std::string_view prefix = "nordend-preview: system call not allowed: ";
+    constexpr std::string_view prefix = "rummage-preview: system call not allowed: ";
     std::array<char, 80> line{};
     std::ranges::copy(prefix, line.begin());
     char* const digits = line.data() + prefix.size();
@@ -265,4 +265,4 @@ SandboxStatus enter_sandbox(Unexpected unexpected) {
     return status;
 }
 
-}  // namespace nordend::isolate
+}  // namespace rummage::isolate

@@ -19,7 +19,7 @@
 #  include <emmintrin.h>
 #endif
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 namespace {
 
 constexpr std::size_t kCurveSize = 16384;  // linear 0-1 in steps of 1/16383
@@ -67,7 +67,7 @@ double srgb_encode(double linear) {
     return linear <= 0.0031308 ? linear * 12.92 : (1.055 * std::pow(linear, 1.0 / 2.4)) - 0.055;
 }
 
-// Nordend's light curve, on sRGB-encoded values: a little more contrast in the middle, ends
+// rummage's light curve, on sRGB-encoded values: a little more contrast in the middle, ends
 // untouched (to be settled by eye next to darktable).
 double light_curve(double v) {
     constexpr double strength = 0.3;
@@ -95,7 +95,7 @@ double srgb_decode(double encoded) {
 }
 
 // The look's tone curve, linear light to linear light, both in steps of 1/16383 (the table's
-// index and values): the file's ProfileToneCurve, else Nordend's light curve.
+// index and values): the file's ProfileToneCurve, else rummage's light curve.
 std::vector<float> tone_table(const Colour& colour) {
     std::vector<float> out(kCurveSize);
     for (std::size_t i = 0; i < kCurveSize; ++i) {
@@ -779,4 +779,4 @@ std::optional<Developed> develop(const tiff::Container& container, const Develop
     return out;
 }
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

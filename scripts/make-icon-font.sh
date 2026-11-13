@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuilds Nordend's icon fonts, third_party/tabler-icons/tabler-icons{,-filled}.ttf: the
+# Rebuilds rummage's icon fonts, third_party/tabler-icons/tabler-icons{,-filled}.ttf: the
 # official Tabler Icons webfont (npm package @tabler/icons-webfont), cut down to the glyphs
 # listed in icons.txt and icons-filled.txt, glyph names kept. Run it after changing a list or
 # the version below, then update the sha256 in THIRD_PARTY.md.

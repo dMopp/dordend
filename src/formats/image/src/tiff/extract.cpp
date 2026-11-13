@@ -4,7 +4,7 @@
 #include <array>
 #include <span>
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 namespace {
 
 // The tags that describe an image's pixels (offsets and counts are written anew).
@@ -193,4 +193,4 @@ std::vector<std::uint8_t> extract(const Ifd& ifd, std::size_t max_bytes) {
     return std::move(w.out);
 }
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

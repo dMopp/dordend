@@ -1,6 +1,6 @@
 #pragma once
 
-// Walks the segments of a JPEG before its image data: what nordend::image needs from them
+// Walks the segments of a JPEG before its image data: what rummage::image needs from them
 // without decoding (EXIF, size).
 
 #include <cstddef>
@@ -8,7 +8,7 @@
 #include <optional>
 #include <span>
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 
 // The EXIF block of the APP1 "Exif" segment: its TIFF data (after "Exif\0\0") and where that
 // data starts in the file. nullopt when there is none before the image data.
@@ -32,4 +32,4 @@ struct JpegSize {
 // fails this. Reads every byte once.
 [[nodiscard]] bool whole_jpeg(std::span<const std::uint8_t> data);
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

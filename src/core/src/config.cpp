@@ -1,4 +1,4 @@
-#include "nordend/core/config.hpp"
+#include "rummage/core/config.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -8,15 +8,15 @@
 #include <functional>
 #include <initializer_list>
 #include <string>
-#include <unordered_set>
 #include <toml++/toml.hpp>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "config_template.hpp"
-#include "nordend/core/file.hpp"
+#include "rummage/core/file.hpp"
 
-namespace nordend::core {
+namespace rummage::core {
 namespace {
 
 const char* type_name(const toml::node& node) {
@@ -148,6 +148,16 @@ public:
             return;
         }
         out = static_cast<int>(number);
+    }
+
+    void read_text_size(const toml::node& node, const std::string& path, float& out) {
+        const auto value = node.value<double>();
+        if (!value || !std::isfinite(*value) || *value < 8.0 || *value > 32.0) {
+            report(node.source(),
+                   std::format("'{}' must be a number between 8 and 32; using {}", path, out));
+            return;
+        }
+        out = static_cast<float>(*value);
     }
 
 private:
@@ -303,6 +313,12 @@ void read_document(const toml::table& root, Reader& reader, ConfigResult& result
             } else {
                 reader.report(node.source(), "keybindings must be a section; ignored");
             }
+        } else if (key.str() == "status_bar") {
+            reader.read_section(
+                node, "status_bar",
+                {{"text_size", [&](const toml::node& value, const std::string& path) {
+                      reader.read_text_size(value, path, config.status_bar.text_size);
+                  }}});
         } else if (key.str() == "font") {
             reader.read_section(
                 node, "font",
@@ -330,6 +346,30 @@ void read_document(const toml::table& root, Reader& reader, ConfigResult& result
                   [&](const toml::node& value, const std::string& path) {
                       reader.read_string(value, path, config.icon.theme);
                   }},
+                 {"places",
+                  [&](const toml::node& value, const std::string& path) {
+                      const auto* table = value.as_table();
+                      if (!table) {
+                          reader.report(value.source(), path + " must be a section; ignored");
+                          return;
+                      }
+                      for (const auto& [name, entry] : *table) {
+                          static constexpr std::string_view keys[]{
+                              "home",     "desktop", "documents",  "downloads", "music",
+                              "pictures", "videos",  "filesystem", "trash",     "trash_full"};
+                          const std::string entry_path = path + "." + std::string{name.str()};
+                          if (std::ranges::find(keys, name.str()) == std::end(keys)) {
+                              reader.report(name.source(),
+                                            "unknown key '" + entry_path + "'; ignored");
+                              continue;
+                          }
+                          std::string icon;
+                          reader.read_string(entry, entry_path, icon);
+                          if (!icon.empty()) {
+                              config.icon.places.emplace(name.str(), std::move(icon));
+                          }
+                      }
+                  }},
                  {"follow_accent", [&](const toml::node& value, const std::string& path) {
                       reader.read_bool(value, path, config.icon.follow_accent);
                   }}});
@@ -354,15 +394,44 @@ bool read_menu_layout(const toml::node& source, Reader& reader, const std::vecto
         fail(source, "must be a table");
         return false;
     }
-    std::unordered_set<std::string> known{
-        "open",           "properties",   "open_with",      "open_tab",
-        "open_terminal",  "add_bookmark", "copy",           "cut",
-        "paste",          "rename",       "trash",          "erase",
-        "restore",        "empty_trash",  "new_folder",     "new_file",
-        "empty_file",     "sort",         "sort:name",      "sort:size",
-        "sort:modified",  "sort:type",    "sort:ascending", "sort:descending",
-        "actions",        "mount",        "unmount",        "eject",
-        "remove_bookmark"};
+    std::unordered_set<std::string> known{"open",
+                                          "properties",
+                                          "open_with",
+                                          "open_tab",
+                                          "open_terminal",
+                                          "add_bookmark",
+                                          "copy",
+                                          "cut",
+                                          "paste",
+                                          "rename",
+                                          "trash",
+                                          "erase",
+                                          "restore",
+                                          "empty_trash",
+                                          "new_folder",
+                                          "new_file",
+                                          "empty_file",
+                                          "sort",
+                                          "sort:name",
+                                          "sort:size",
+                                          "sort:modified",
+                                          "sort:type",
+                                          "sort:ascending",
+                                          "sort:descending",
+                                          "actions",
+                                          "mount",
+                                          "unmount",
+                                          "eject",
+                                          "remove_bookmark",
+                                          "panes",
+                                          "toggle_split",
+                                          "switch_pane",
+                                          "swap_panes",
+                                          "orient_panes",
+                                          "open_other_pane",
+                                          "same_other_pane",
+                                          "copy_other_pane",
+                                          "move_other_pane"};
     for (const auto& action : action_registry(actions)) {
         known.insert("action:" + action.id);
     }
@@ -460,11 +529,11 @@ std::filesystem::path default_config_path() {
     const char* xdg = std::getenv("XDG_CONFIG_HOME");  // NOLINT(concurrency-mt-unsafe)
     // The XDG base directory spec ignores relative paths.
     if (xdg != nullptr && xdg[0] == '/') {
-        return std::filesystem::path{xdg} / "nordend" / "config.toml";
+        return std::filesystem::path{xdg} / "rummage" / "config.toml";
     }
     const char* home = std::getenv("HOME");  // NOLINT(concurrency-mt-unsafe)
     if (home != nullptr && home[0] != '\0') {
-        return std::filesystem::path{home} / ".config" / "nordend" / "config.toml";
+        return std::filesystem::path{home} / ".config" / "rummage" / "config.toml";
     }
     return {};
 }
@@ -516,4 +585,4 @@ ConfigResult load_config(const std::filesystem::path& path) {
     return parse_config(file.text, path.string());
 }
 
-}  // namespace nordend::core
+}  // namespace rummage::core

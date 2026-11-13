@@ -1,9 +1,9 @@
-#include "nordend/text/text.hpp"
+#include "rummage/text/text.hpp"
 
 #include <mutex>
 #include <utility>
 
-namespace nordend::text {
+namespace rummage::text {
 namespace {
 
 std::mutex loader_mutex;
@@ -53,4 +53,4 @@ Loaded load_text(const LoadRequest& request) {
     return loader(request);
 }
 
-}  // namespace nordend::text
+}  // namespace rummage::text

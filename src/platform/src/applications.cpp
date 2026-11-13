@@ -1,14 +1,14 @@
-#include "nordend/platform/applications.hpp"
+#include "rummage/platform/applications.hpp"
 
 #include <algorithm>
 #include <system_error>
 #include <unordered_set>
 #include <utility>
 
-#include "nordend/core/file.hpp"
-#include "nordend/platform/exec.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/platform/exec.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 std::string_view trim(std::string_view text) {
@@ -258,4 +258,4 @@ std::vector<std::string> Applications::known_types() const {
     return types;
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

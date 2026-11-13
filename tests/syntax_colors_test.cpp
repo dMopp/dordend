@@ -6,17 +6,17 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/text/text.hpp"
-#include "nordend/theme/desktop.hpp"
-#include "nordend/theme/palette.hpp"
-#include "nordend/theme/syntax.hpp"
+#include "rummage/text/text.hpp"
+#include "rummage/theme/desktop.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/theme/syntax.hpp"
 
-using nordend::theme::Color;
-using nordend::theme::contrast;
-using nordend::theme::desktop_palette;
-using nordend::theme::Palette;
-using nordend::theme::syntax_colors;
-using nordend::theme::SyntaxColors;
+using rummage::theme::Color;
+using rummage::theme::contrast;
+using rummage::theme::desktop_palette;
+using rummage::theme::Palette;
+using rummage::theme::syntax_colors;
+using rummage::theme::SyntaxColors;
 
 namespace {
 
@@ -46,7 +46,7 @@ void every_colour_reads(const Palette& palette) {
 }  // namespace
 
 TEST_CASE("syntax colours: one per style") {
-    CHECK(nordend::theme::kSyntaxColors == nordend::text::kStyleCount);
+    CHECK(rummage::theme::kSyntaxColors == rummage::text::kStyleCount);
 }
 
 TEST_CASE("syntax colours: Noctalia's palette as it is, every colour readable") {

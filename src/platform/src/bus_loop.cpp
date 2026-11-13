@@ -3,9 +3,9 @@
 #include <chrono>
 #include <poll.h>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 
 BusLoop::BusLoop(core::EventLoop& loop, sdbus::IConnection& connection, const char* name)
     : loop_{loop}, connection_{connection}, name_{name} {}
@@ -54,4 +54,4 @@ void BusLoop::watch() {
     }
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

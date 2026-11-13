@@ -15,32 +15,32 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/file.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/places.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/theme/palette.hpp"
-#include "nordend/ui/clipboard.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/offscreen.hpp"
-#include "nordend/ui/renderer.hpp"
-#include "nordend/ui/text.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/file_clipboard.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/places.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/ui/clipboard.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/ui/renderer.hpp"
+#include "rummage/ui/text.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/file_clipboard.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::DropEvent;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::ui::PointerButton;
-using nordend::ui::PointerEvent;
-using nordend::views::Browser;
-using nordend::views::ViewHit;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::DropEvent;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::ui::PointerButton;
+using rummage::ui::PointerEvent;
+using rummage::views::Browser;
+using rummage::views::ViewHit;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -84,9 +84,9 @@ KeyEvent key(xkb_keysym_t keysym, Modifiers modifiers = {}) {
 }
 
 // The GL context the drawing needs; nullopt where the platform has none (the tests then stop).
-std::unique_ptr<nordend::ui::Offscreen> offscreen() {
+std::unique_ptr<rummage::ui::Offscreen> offscreen() {
     try {
-        return std::make_unique<nordend::ui::Offscreen>(kWidth, kHeight);
+        return std::make_unique<rummage::ui::Offscreen>(kWidth, kHeight);
     } catch (const std::runtime_error& error) {
         MESSAGE("no offscreen OpenGL: " << error.what());
         return nullptr;
@@ -95,7 +95,7 @@ std::unique_ptr<nordend::ui::Offscreen> offscreen() {
 
 // What the app's Wayland side would do, recorded.
 struct FakeDnd {
-    std::vector<nordend::views::DragAndDrop::Format> started;
+    std::vector<rummage::views::DragAndDrop::Format> started;
     int cancelled{0};
     int finished{0};
     std::vector<std::string> types;
@@ -117,16 +117,16 @@ struct Fixture {
     fs::path trash = dir.path / "Trash";
     fs::path bookmarks = dir.path / "config" / "gtk-3.0" / "bookmarks";
     int reloads = 0;  // the places read again after the bookmarks changed
-    std::unique_ptr<nordend::ui::Offscreen> gl = offscreen();
-    std::unique_ptr<nordend::ui::FontSystem> fonts;
-    std::unique_ptr<nordend::ui::Renderer> renderer;
-    std::unique_ptr<nordend::ui::IconSet> icons;
+    std::unique_ptr<rummage::ui::Offscreen> gl = offscreen();
+    std::unique_ptr<rummage::ui::FontSystem> fonts;
+    std::unique_ptr<rummage::ui::Renderer> renderer;
+    std::unique_ptr<rummage::ui::IconSet> icons;
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     FakeDnd dnd;
 
     Fixture() {
@@ -140,34 +140,34 @@ struct Fixture {
         browser.set_bookmarks_file(bookmarks);
         browser.set_places_reload([this] {
             ++reloads;
-            std::vector<nordend::fs::Place> places = browser.sidebar().places();
-            std::erase_if(places, [](const nordend::fs::Place& place) {
-                return place.section == nordend::fs::Place::Section::bookmarks;
+            std::vector<rummage::fs::Place> places = browser.sidebar().places();
+            std::erase_if(places, [](const rummage::fs::Place& place) {
+                return place.section == rummage::fs::Place::Section::bookmarks;
             });
-            for (nordend::fs::Place& place :
-                 nordend::fs::parse_bookmarks(nordend::core::read_text_file(bookmarks).text)) {
+            for (rummage::fs::Place& place :
+                 rummage::fs::parse_bookmarks(rummage::core::read_text_file(bookmarks).text)) {
                 places.push_back(std::move(place));
             }
             browser.set_places(std::move(places));
         });
-        browser.set_places({{.section = nordend::fs::Place::Section::places,
+        browser.set_places({{.section = rummage::fs::Place::Section::places,
                              .label = "Album",
                              .path = album,
                              .icon = "folder",
                              .disk = {}},
-                            {.section = nordend::fs::Place::Section::places,
+                            {.section = rummage::fs::Place::Section::places,
                              .label = "Trash",
-                             .path = nordend::fs::trash_path(),
+                             .path = rummage::fs::trash_path(),
                              .icon = "trash",
                              .disk = {}}});
         if (gl) {
-            fonts = std::make_unique<nordend::ui::FontSystem>();
-            renderer = std::make_unique<nordend::ui::Renderer>(*fonts);
-            icons = std::make_unique<nordend::ui::IconSet>(*fonts);
+            fonts = std::make_unique<rummage::ui::FontSystem>();
+            renderer = std::make_unique<rummage::ui::Renderer>(*fonts);
+            icons = std::make_unique<rummage::ui::IconSet>(*fonts);
         }
         browser.set_drag_and_drop({
             .start =
-                [this](std::vector<nordend::views::DragAndDrop::Format> formats) {
+                [this](std::vector<rummage::views::DragAndDrop::Format> formats) {
                     dnd.started = std::move(formats);
                 },
             .cancel = [this] { ++dnd.cancelled; },
@@ -181,7 +181,7 @@ struct Fixture {
                     dnd.accepted_actions = actions;
                 },
             .read =
-                [this](const std::string& /*type*/, nordend::views::DragAndDrop::Done done) {
+                [this](const std::string& /*type*/, rummage::views::DragAndDrop::Done done) {
                     loop.post([this, done = std::move(done)] { done(dnd.data); });
                 },
             .finish = [this] { ++dnd.finished; },
@@ -191,7 +191,7 @@ struct Fixture {
 
     void draw() {
         renderer->begin_frame(kWidth, kHeight, 1.0F, {});
-        browser.draw(*renderer, {0.0F, 0.0F, kWidth, kHeight}, nordend::theme::Palette{}, *icons,
+        browser.draw(*renderer, {0.0F, 0.0F, kWidth, kHeight}, rummage::theme::Palette{}, *icons,
                      Browser::Clock::now());
         renderer->end_frame();
     }
@@ -330,9 +330,9 @@ TEST_CASE("grid: large icons fit narrow views and hit testing follows the drawn 
     f.show(f.root, Browser::Mode::grid);
     auto& grid = f.browser.grid();
     grid.set_info_visible(false);
-    nordend::theme::Palette palette;
-    palette.primary = nordend::ui::Color::rgb(0xFF0000);     // folder icons
-    palette.on_surface = nordend::ui::Color::rgb(0x00FF00);  // names
+    rummage::theme::Palette palette;
+    palette.primary = rummage::ui::Color::rgb(0xFF0000);     // folder icons
+    palette.on_surface = rummage::ui::Color::rgb(0x00FF00);  // names
     for (const int size : {384, 512}) {
         for (const int width : {200, 280}) {
             CAPTURE(size);
@@ -418,8 +418,8 @@ TEST_CASE("drag: a press on an entry moved a few pixels drags the selection") {
     CHECK(f.browser.details().folder()->selected_count() == 3);
     REQUIRE(f.dnd.started.size() == 3);
     CHECK(f.dnd.started[0].first == "text/uri-list");
-    const nordend::views::ClipboardFiles offered =
-        nordend::views::parse_uri_list(f.dnd.started[0].second);
+    const rummage::views::ClipboardFiles offered =
+        rummage::views::parse_uri_list(f.dnd.started[0].second);
     CHECK(offered.paths ==
           std::vector<fs::path>{f.photos / "P1.ORF", f.photos / "P1.ORF.xmp", f.photos / "P2.ORF"});
     CHECK(f.dnd.started[1].second == (f.photos / "P1.ORF").string() + "\n" +
@@ -509,14 +509,14 @@ TEST_CASE("drop: from another program, its files are copied; web addresses are n
     std::ofstream{outside / "naïve photo.jpg"} << "jpeg";
     f.show(f.root, Browser::Mode::grid);
     f.dnd.types = {"text/uri-list", "text/plain"};
-    f.dnd.source_actions = nordend::ui::kDndCopy;
-    f.dnd.action = nordend::ui::kDndCopy;
-    f.dnd.data = nordend::views::uri_list(std::vector<fs::path>{outside / "naïve photo.jpg"}) +
+    f.dnd.source_actions = rummage::ui::kDndCopy;
+    f.dnd.action = rummage::ui::kDndCopy;
+    f.dnd.data = rummage::views::uri_list(std::vector<fs::path>{outside / "naïve photo.jpg"}) +
                  "https://example.com/a.jpg\r\n";
     const auto album = f.point_of(f.root, "album");
     f.browser.drop_event({.kind = DropEvent::Kind::enter, .x = album.first, .y = album.second});
     CHECK(f.dnd.accepted == std::optional<std::string>{"text/uri-list"});
-    CHECK(f.dnd.accepted_actions == nordend::ui::kDndCopy);  // the source allows nothing else
+    CHECK(f.dnd.accepted_actions == rummage::ui::kDndCopy);  // the source allows nothing else
     f.drop_at(album);
     CHECK(listing(f.album) == Names{"naïve photo.jpg"});
     CHECK(listing(outside) == Names{"naïve photo.jpg"});
@@ -540,9 +540,10 @@ TEST_CASE("drop: onto a step of the breadcrumb and a place of the sidebar; the t
     f.show(f.photos, Browser::Mode::details);
     // The breadcrumb's step for root.
     std::optional<std::pair<float, float>> crumb;
-    for (float x = 200.0F; x < kWidth && !crumb; x += 4.0F) {
-        if (f.browser.breadcrumb().path_at(x, 20.0F) == f.root) {
-            crumb = std::pair{x, 20.0F};
+    for (float y = 0; y < 160 && !crumb; y += 4) {
+        for (float x = 200.0F; x < kWidth && !crumb; x += 4.0F) {
+            if (f.browser.breadcrumb().path_at(x, y) == f.root)
+                crumb = std::pair{x, y};
         }
     }
     REQUIRE(crumb);
@@ -553,7 +554,7 @@ TEST_CASE("drop: onto a step of the breadcrumb and a place of the sidebar; the t
     // The sidebar's places: Album, then the trash.
     const auto place = [&f](const fs::path& path) {
         for (float y = 0.0F; y < kHeight; y += 3.0F) {
-            if (const nordend::fs::Place* found = f.browser.sidebar().place_under(40.0F, y);
+            if (const rummage::fs::Place* found = f.browser.sidebar().place_under(40.0F, y);
                 found != nullptr && found->path == path) {
                 return std::pair{40.0F, y};
             }
@@ -567,7 +568,7 @@ TEST_CASE("drop: onto a step of the breadcrumb and a place of the sidebar; the t
 
     f.show(f.root, Browser::Mode::details);
     f.drag(f.root, "P2.ORF");
-    f.drop_at(place(nordend::fs::trash_path()));
+    f.drop_at(place(rummage::fs::trash_path()));
     CHECK(listing(f.trash / "files") == Names{"P2.ORF"});
 }
 
@@ -578,8 +579,8 @@ TEST_CASE("sidebar bookmarks: Ctrl+D and the menus add folders once; removed aga
     REQUIRE(run_until(f.loop, [&] { return !f.browser.loading(); }));
     CHECK(f.browser.key(key(XKB_KEY_d, {.ctrl = true}), Browser::Clock::now()));
     REQUIRE(run_until(f.loop, [&] { return !f.browser.loading(); }));
-    CHECK(nordend::core::read_text_file(f.bookmarks).text ==
-          nordend::core::file_uri(f.root) + "\n");
+    CHECK(rummage::core::read_text_file(f.bookmarks).text ==
+          rummage::core::file_uri(f.root) + "\n");
     CHECK(f.browser.status_bar().message() == "“root” added to the sidebar");
     CHECK(f.reloads == 1);
     CHECK(f.browser.sidebar().places().back().path == f.root);
@@ -592,16 +593,16 @@ TEST_CASE("sidebar bookmarks: Ctrl+D and the menus add folders once; removed aga
     // "Add to Sidebar" on two folders selected; files have none.
     const auto run_item = [&f](const std::string& id) {
         const auto& items = f.browser.context_menu().items();
-        const auto item = std::ranges::find(items, id, &nordend::views::MenuItem::id);
+        const auto item = std::ranges::find(items, id, &rummage::views::MenuItem::id);
         REQUIRE(item != items.end());
         const std::function<void()> action = item->action;
         f.browser.context_menu().close();
         action();
         REQUIRE(run_until(f.loop, [&f] { return !f.browser.loading(); }));
     };
-    std::shared_ptr<nordend::views::Folder> shown = f.browser.details().folder();
+    std::shared_ptr<rummage::views::Folder> shown = f.browser.details().folder();
     shown->select_name("album");
-    shown->set_cursor(1, nordend::views::SelectMode::toggle);  // album, photos, sub
+    shown->set_cursor(1, rummage::views::SelectMode::toggle);  // album, photos, sub
     REQUIRE(shown->selected_names() == Names{"album", "photos"});
     f.browser.open_menu_from_keyboard();
     run_item("add_bookmark");
@@ -610,7 +611,7 @@ TEST_CASE("sidebar bookmarks: Ctrl+D and the menus add folders once; removed aga
     f.browser.remove_from_sidebar(f.album);
     REQUIRE(run_until(f.loop, [&] { return !f.browser.loading(); }));
     CHECK(f.browser.status_bar().message() == "“album” removed from the sidebar");
-    CHECK(nordend::fs::parse_bookmarks(nordend::core::read_text_file(f.bookmarks).text).size() ==
+    CHECK(rummage::fs::parse_bookmarks(rummage::core::read_text_file(f.bookmarks).text).size() ==
           2);
 
     // The folder's own menu, from its empty part.
@@ -660,8 +661,8 @@ TEST_CASE("sidebar bookmarks: folders dropped below the places are added; files 
 
     // Right click on the bookmark: its menu removes it.
     for (float y = 0.0F; y < kHeight; y += 3.0F) {
-        const nordend::fs::Place* place = f.browser.sidebar().place_under(40.0F, y);
-        if (place != nullptr && place->section == nordend::fs::Place::Section::bookmarks) {
+        const rummage::fs::Place* place = f.browser.sidebar().place_under(40.0F, y);
+        if (place != nullptr && place->section == rummage::fs::Place::Section::bookmarks) {
             f.browser.pointer({.kind = PointerEvent::Kind::motion, .x = 40.0F, .y = y},
                               Browser::Clock::now());
             f.browser.pointer({.kind = PointerEvent::Kind::press,
@@ -686,25 +687,25 @@ TEST_CASE("sidebar disks: a click on the eject icon ejects; the right click offe
     std::vector<std::string> calls;
     f.browser.set_devices({
         .mount =
-            [&calls](const std::string& volume, const nordend::views::Devices::Mounted& /*done*/) {
+            [&calls](const std::string& volume, const rummage::views::Devices::Mounted& /*done*/) {
                 calls.push_back("mount " + volume);
             },
         .unmount =
-            [&calls](const std::string& volume, const nordend::views::Devices::Done& /*done*/) {
+            [&calls](const std::string& volume, const rummage::views::Devices::Done& /*done*/) {
                 calls.push_back("unmount " + volume);
             },
         .eject =
-            [&calls](const std::string& volume, const nordend::views::Devices::Done& /*done*/) {
+            [&calls](const std::string& volume, const rummage::views::Devices::Done& /*done*/) {
                 calls.push_back("eject " + volume);
             },
     });
-    std::vector<nordend::fs::Place> places = f.browser.sidebar().places();
-    places.push_back({.section = nordend::fs::Place::Section::devices,
+    std::vector<rummage::fs::Place> places = f.browser.sidebar().places();
+    places.push_back({.section = rummage::fs::Place::Section::devices,
                       .label = "kinetic",
                       .path = f.album,
                       .icon = "usb",
                       .disk = {.volume = "sdb1", .mounted = true, .ejectable = true}});
-    places.push_back({.section = nordend::fs::Place::Section::devices,
+    places.push_back({.section = rummage::fs::Place::Section::devices,
                       .label = "spare",
                       .path = {},
                       .icon = "database-off",
@@ -712,9 +713,9 @@ TEST_CASE("sidebar disks: a click on the eject icon ejects; the right click offe
     f.browser.set_places(places);
     f.show(f.root, Browser::Mode::details);
 
-    const std::optional<nordend::ui::Rect> eject = f.browser.sidebar().eject_icon(f.album);
+    const std::optional<rummage::ui::Rect> eject = f.browser.sidebar().eject_icon(f.album);
     REQUIRE(eject);
-    const nordend::ui::Rect icon = eject.value_or(nordend::ui::Rect{});
+    const rummage::ui::Rect icon = eject.value_or(rummage::ui::Rect{});
     const auto click = [&f](float x, float y, PointerButton button) {
         f.browser.pointer({.kind = PointerEvent::Kind::motion, .x = x, .y = y},
                           Browser::Clock::now());
@@ -730,7 +731,7 @@ TEST_CASE("sidebar disks: a click on the eject icon ejects; the right click offe
     // The disk not mounted: a click mounts it; its menu can only mount it.
     float spare = -1.0F;
     for (float y = 0.0F; y < kHeight && spare < 0.0F; y += 3.0F) {
-        const nordend::fs::Place* const place = f.browser.sidebar().place_under(40.0F, y);
+        const rummage::fs::Place* const place = f.browser.sidebar().place_under(40.0F, y);
         if (place != nullptr && place->label == "spare") {
             spare = y;
         }
@@ -813,7 +814,7 @@ TEST_CASE("band: beyond the bottom of the list, it scrolls and selects as it goe
         std::ofstream{many / std::format("photo-{:02}.jpg", i)} << i;
     }
     f.show(many, Browser::Mode::details);
-    const std::shared_ptr<nordend::views::Folder> folder = f.browser.details().folder();
+    const std::shared_ptr<rummage::views::Folder> folder = f.browser.details().folder();
     const auto start = f.beside(many, "photo-00.jpg");
     f.band(start, {start.first, static_cast<float>(kHeight) - 2.0F});
     // The rows shown are selected at once; the rest come while the list scrolls.
@@ -866,7 +867,7 @@ TEST_CASE("details tree: disclosure clicks, child opening and dragging use the c
     CHECK(hit->folder->entries()[*hit->entry].name == "P2.ORF");
     fs::path opened;
     f.browser.set_open_handler(
-        [&](const fs::path& directory, std::vector<nordend::fs::Entry> files) {
+        [&](const fs::path& directory, std::vector<rummage::fs::Entry> files) {
             REQUIRE(files.size() == 1);
             opened = directory / files.front().name;
         });

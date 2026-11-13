@@ -1,4 +1,4 @@
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
 #include <array>
 #include <atomic>
@@ -8,7 +8,7 @@
 #include <mutex>
 #include <string>
 
-namespace nordend::log {
+namespace rummage::log {
 namespace {
 
 #if defined(NDEBUG)
@@ -44,7 +44,7 @@ Level level() noexcept { return g_level.load(std::memory_order_relaxed); }
 bool enabled(Level level) noexcept { return level != Level::off && level >= log::level(); }
 
 void init_from_env() {
-    const char* value = std::getenv("NORDEND_LOG");
+    const char* value = std::getenv("RUMMAGE_LOG");
     if (value == nullptr) {
         return;
     }
@@ -55,7 +55,7 @@ void init_from_env() {
             return;
         }
     }
-    warn("NORDEND_LOG='{}' is not a log level; keeping '{}'", wanted, to_string(level()));
+    warn("RUMMAGE_LOG='{}' is not a log level; keeping '{}'", wanted, to_string(level()));
 }
 
 void write(Level level, std::string_view message) {
@@ -66,4 +66,4 @@ void write(Level level, std::string_view message) {
     std::fflush(stderr);
 }
 
-}  // namespace nordend::log
+}  // namespace rummage::log

@@ -3,10 +3,10 @@
 #include <array>
 #include <string_view>
 
-namespace nordend::formats::text {
+namespace rummage::formats::text {
 namespace {
 
-using nordend::text::Style;
+using rummage::text::Style;
 
 // The word lists, one language at a time. Kept out of clang-format: one word per line would hide
 // them.
@@ -590,4 +590,4 @@ constexpr std::array kLanguages{
 
 std::span<const Language> all_languages() { return kLanguages; }
 
-}  // namespace nordend::formats::text
+}  // namespace rummage::formats::text

@@ -1,0 +1,14 @@
+[engine]
+name = "media"
+program = "rummage-media"
+protocol = 4
+
+[[family]]
+name = "video"
+shows = "picture"
+thumbnails = true
+subclasses = true
+mime = ["video/mp4", "video/quicktime", "video/x-matroska", "video/webm",
+        "video/x-msvideo", "video/mpeg", "video/mp2t", "video/ogg", "video/x-flv",
+        "video/x-ms-wmv", "video/x-ms-asf", "video/3gpp", "video/3gpp2",
+        "video/x-mjpeg", "video/x-yuv4mpeg"]

@@ -1,12 +1,12 @@
 // Start-up benchmark (ROADMAP 7.6). Not installed.
 //
-//   nordend-bench-start [-n RUNS] [--keep-open] -- COMMAND [ARGS...]
+//   rummage-bench-start [-n RUNS] [--keep-open] -- COMMAND [ARGS...]
 //
-// Runs COMMAND (nordend) RUNS times, one after the other. Each run gets NORDEND_STARTUP_NS, the
-// steady-clock time just before its exec, and NORDEND_STARTUP_QUIT, so Nordend prints
+// Runs COMMAND (rummage) RUNS times, one after the other. Each run gets RUMMAGE_STARTUP_NS, the
+// steady-clock time just before its exec, and RUMMAGE_STARTUP_QUIT, so rummage prints
 // "startup: STEP MS" for each step of its start and closes once its folder is shown. Prints
-// every run (and Nordend's warnings and errors), then the median, minimum and maximum of each step.
-// --keep-open leaves NORDEND_STARTUP_QUIT out (one run to look at). A run silent for 10 s is
+// every run (and rummage's warnings and errors), then the median, minimum and maximum of each step.
+// --keep-open leaves RUMMAGE_STARTUP_QUIT out (one run to look at). A run silent for 10 s is
 // stopped and counts as failed. Cold-cache runs: drop the page cache before each run (as root) and
 // call this with -n 1.
 #include <algorithm>
@@ -28,7 +28,7 @@
 namespace {
 
 constexpr const char* kUsage =
-    "usage: nordend-bench-start [-n RUNS] [--keep-open] -- COMMAND [ARGS...]\n";
+    "usage: rummage-bench-start [-n RUNS] [--keep-open] -- COMMAND [ARGS...]\n";
 
 constexpr std::string_view kPrefix = "startup: ";
 constexpr int kRunTimeoutMs = 10'000;
@@ -73,9 +73,9 @@ std::vector<Step> run(char** command, bool keep_open) {
         const auto now = std::chrono::steady_clock::now().time_since_epoch();
         const std::string ns =
             std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
-        setenv("NORDEND_STARTUP_NS", ns.c_str(), 1);  // NOLINT(concurrency-mt-unsafe): one thread
+        setenv("RUMMAGE_STARTUP_NS", ns.c_str(), 1);  // NOLINT(concurrency-mt-unsafe): one thread
         if (!keep_open) {
-            setenv("NORDEND_STARTUP_QUIT", "1", 1);  // NOLINT(concurrency-mt-unsafe)
+            setenv("RUMMAGE_STARTUP_QUIT", "1", 1);  // NOLINT(concurrency-mt-unsafe)
         }
         execvp(command[0], command);
         std::perror(command[0]);
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
     try {
         return bench(argc, argv);
     } catch (const std::exception& error) {
-        std::fprintf(stderr, "nordend-bench-start: %s\n", error.what());
+        std::fprintf(stderr, "rummage-bench-start: %s\n", error.what());
         return 1;
     }
 }

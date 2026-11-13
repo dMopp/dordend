@@ -1,4 +1,4 @@
-#include "nordend/formats/text/syntax.hpp"
+#include "rummage/formats/text/syntax.hpp"
 
 #include <cstddef>
 #include <string>
@@ -7,10 +7,10 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/text/text.hpp"
+#include "rummage/text/text.hpp"
 
-namespace text = nordend::text;
-namespace family = nordend::formats::text;
+namespace text = rummage::text;
+namespace family = rummage::formats::text;
 using Lines = std::vector<std::string>;
 
 // Lines printed when a check fails, one per line.
@@ -152,8 +152,8 @@ TEST_CASE("syntax: C++ comments span lines") {
 
 TEST_CASE("syntax: C preprocessor") {
     CHECK(cpp({"#include <vector>"}) == Lines{"{f:#include} {s:<vector>}"});
-    CHECK(cpp({"#include \"nordend/text/text.hpp\""}) ==
-          Lines{"{f:#include} {s:\"nordend/text/text.hpp\"}"});
+    CHECK(cpp({"#include \"rummage/text/text.hpp\""}) ==
+          Lines{"{f:#include} {s:\"rummage/text/text.hpp\"}"});
     CHECK(cpp({"  #  define MAX(a, b) ((a) > (b) ? (a) : (b))"}) ==
           Lines{"  {f:#  define} {f:MAX}(a, b) ((a) > (b) ? (a) : (b))"});
     CHECK(cpp({"#pragma once"}) == Lines{"{f:#pragma} once"});
@@ -344,7 +344,7 @@ TEST_CASE("syntax: shell") {
     CHECK(shell({"url=a#b; n=$(wc -l < f)"}) == Lines{"{t:url}=a#b; {t:n}=$(wc -l < f)"});
     // A second assignment on the same command (x=1 y=2 cmd) is not told from an argument.
     CHECK(shell({"x=$name y=true"}) == Lines{"{t:x}={t:$name} y={n:true}"});
-    CHECK(shell({"pkgname=nordend; echo a=b"}) == Lines{"{t:pkgname}=nordend; {f:echo} a=b"});
+    CHECK(shell({"pkgname=rummage; echo a=b"}) == Lines{"{t:pkgname}=rummage; {f:echo} a=b"});
     CHECK(shell({"export PATH=$HOME/bin; local n=1"}) ==
           Lines{"{f:export} {t:PATH}={t:$HOME}/bin; {f:local} {t:n}={n:1}"});
     // Strings go on over lines.
@@ -375,8 +375,8 @@ TEST_CASE("syntax: fish") {
 }
 
 TEST_CASE("syntax: CMake") {
-    CHECK(cmake({"add_library(nordend_text STATIC src/text.cpp)  # the module"}) ==
-          Lines{"{f:add_library}(nordend_text {n:STATIC} src/text.cpp)  {c:# the module}"});
+    CHECK(cmake({"add_library(rummage_text STATIC src/text.cpp)  # the module"}) ==
+          Lines{"{f:add_library}(rummage_text {n:STATIC} src/text.cpp)  {c:# the module}"});
     CHECK(cmake({"if(NOT ${NAME}_FOUND AND $ENV{HOME})"}) ==
           Lines{"{k:if}({n:NOT} {t:${NAME}}{n:_FOUND} {n:AND} {t:$ENV{HOME}})"});
     CHECK(cmake({"set(x \"a ${b}\" ON)"}) == Lines{"{f:set}(x {s:\"a ${b}\"} {n:ON})"});
@@ -409,7 +409,7 @@ TEST_CASE("syntax: JSON, TOML, YAML and INI found") {
     CHECK(name_of("Cargo.lock", "text/plain") == "TOML");
     CHECK(name_of("a.yml", "application/yaml") == "YAML");
     CHECK(name_of(".clang-format", "text/plain") == "YAML");
-    CHECK(name_of("nordend.desktop", "application/x-desktop") == "INI");
+    CHECK(name_of("rummage.desktop", "application/x-desktop") == "INI");
     CHECK(name_of("sshd.service", "text/x-dbus-service") == "INI");
     CHECK(name_of("a.timer", "text/plain") == "INI");
     CHECK(name_of(".editorconfig", "text/plain") == "INI");
@@ -431,8 +431,8 @@ Lines ini(const Lines& lines) { return colour(lines, "application/x-desktop"); }
 }  // namespace
 
 TEST_CASE("syntax: JSON") {
-    CHECK(json({"{\"name\": \"nordend\", \"n\": -1.5e3, \"ok\": true, \"x\": null,"}) ==
-          Lines{"{{k:\"name\"}: {s:\"nordend\"}, {k:\"n\"}: -{n:1.5e3}, {k:\"ok\"}: {n:true}, "
+    CHECK(json({"{\"name\": \"rummage\", \"n\": -1.5e3, \"ok\": true, \"x\": null,"}) ==
+          Lines{"{{k:\"name\"}: {s:\"rummage\"}, {k:\"n\"}: -{n:1.5e3}, {k:\"ok\"}: {n:true}, "
                 "{k:\"x\"}: {n:null},"});
     // A quote escaped inside a key; strings in arrays are values.
     CHECK(json({"  \"a\\\"b\" : [\"c\", \"d\"]"}) ==
@@ -443,8 +443,8 @@ TEST_CASE("syntax: JSON") {
 }
 
 TEST_CASE("syntax: TOML") {
-    CHECK(toml({"[package]  # the crate", "name = \"nordend\"", "version.workspace = true"}) ==
-          Lines{"{t:[package]}  {c:# the crate}", "{k:name} = {s:\"nordend\"}",
+    CHECK(toml({"[package]  # the crate", "name = \"rummage\"", "version.workspace = true"}) ==
+          Lines{"{t:[package]}  {c:# the crate}", "{k:name} = {s:\"rummage\"}",
                 "{k:version.workspace} = {n:true}"});
     CHECK(toml({"[[bin]]", "a.\"b.c\".d = 1_000", "build-deps = { cc = \"1\", x = 0x1F }"}) ==
           Lines{"{t:[[bin]]}", "{k:a.\"b.c\".d} = {n:1_000}",
@@ -460,8 +460,8 @@ TEST_CASE("syntax: TOML") {
 }
 
 TEST_CASE("syntax: YAML") {
-    CHECK(yaml({"---", "name: nordend  # app", "version: 0.5", "tags: [a, 1, true]"}) ==
-          Lines{"{k:---}", "{k:name}: nordend  {c:# app}", "{k:version}: {n:0.5}",
+    CHECK(yaml({"---", "name: rummage  # app", "version: 0.5", "tags: [a, 1, true]"}) ==
+          Lines{"{k:---}", "{k:name}: rummage  {c:# app}", "{k:version}: {n:0.5}",
                 "{k:tags}: [a, {n:1}, {n:true}]"});
     // A URL is no key nor comment; a quoted key; anchors, aliases and tags.
     CHECK(yaml({"url: http://x.org/#top", "\"a b\": 'it''s'", "base: &b !!map {x: ~}", "<<: *b"}) ==
@@ -488,11 +488,11 @@ TEST_CASE("syntax: YAML block scalars") {
 }
 
 TEST_CASE("syntax: INI and desktop entries") {
-    CHECK(ini({"[Desktop Entry]", "Name=Nordend", "Name[it]=Nordend", "Terminal=false", "# comment",
-               "; another", "Exec=nordend %U # not a comment"}) ==
-          Lines{"{t:[Desktop Entry]}", "{k:Name}=Nordend", "{k:Name[it]}=Nordend",
+    CHECK(ini({"[Desktop Entry]", "Name=rummage", "Name[it]=rummage", "Terminal=false", "# comment",
+               "; another", "Exec=rummage %U # not a comment"}) ==
+          Lines{"{t:[Desktop Entry]}", "{k:Name}=rummage", "{k:Name[it]}=rummage",
                 "{k:Terminal}={n:false}", "{c:# comment}", "{c:; another}",
-                "{k:Exec}=nordend %U # not a comment"});
+                "{k:Exec}=rummage %U # not a comment"});
     CHECK(colour({"[remote \"origin\"]", "\turl = git@github.com:a/b", "[Service]",
                   "ExecStart=/usr/bin/x --n=2"},
                  "text/plain",
@@ -549,8 +549,8 @@ TEST_CASE("syntax: Markdown and diffs found") {
 }
 
 TEST_CASE("syntax: Markdown blocks") {
-    CHECK(markdown({"# Nordend", "#hashtag", "> a quote", "", "---", "***"}) ==
-          Lines{"{k:# Nordend}", "#hashtag", "{c:> a quote}", "", "{c:---}", "{c:***}"});
+    CHECK(markdown({"# rummage", "#hashtag", "> a quote", "", "---", "***"}) ==
+          Lines{"{k:# rummage}", "#hashtag", "{c:> a quote}", "", "{c:---}", "{c:***}"});
     // Underlines: under a paragraph's line only.
     CHECK(markdown({"Title", "=====", "Other", "---", "", "==="}) ==
           Lines{"Title", "{k:=====}", "Other", "{k:---}", "", "==="});
@@ -559,8 +559,8 @@ TEST_CASE("syntax: Markdown blocks") {
                     "-not a list"}) == Lines{"{n:-} one", "  {n:*} two", "{n:1.} three",
                                              "{n:-} {n:[x]} done", "{n:-} {n:[ ]} todo",
                                              "{c:* * *}", "-not a list"});
-    CHECK(markdown({"[home]: https://nordend.org \"Home\""}) ==
-          Lines{"[home]: {f:https://nordend.org} \"Home\""});
+    CHECK(markdown({"[home]: https://rummage.org \"Home\""}) ==
+          Lines{"[home]: {f:https://rummage.org} \"Home\""});
 }
 
 TEST_CASE("syntax: Markdown inline") {
@@ -596,8 +596,8 @@ TEST_CASE("syntax: Markdown code fences in their language") {
 }
 
 TEST_CASE("syntax: Markdown front matter") {
-    CHECK(markdown({"---", "title: Nordend", "draft: false", "---", "# Hi"}) ==
-          Lines{"{k:---}", "{k:title}: Nordend", "{k:draft}: {n:false}", "{k:---}", "{k:# Hi}"});
+    CHECK(markdown({"---", "title: rummage", "draft: false", "---", "# Hi"}) ==
+          Lines{"{k:---}", "{k:title}: rummage", "{k:draft}: {n:false}", "{k:---}", "{k:# Hi}"});
     CHECK(markdown({"+++", "title = \"x\"", "+++"}) ==
           Lines{"{k:+++}", "{k:title} = {s:\"x\"}", "{k:+++}"});
     // Only on the first line.

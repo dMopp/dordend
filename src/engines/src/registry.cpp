@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -10,11 +11,11 @@
 #include <utility>
 #include <vector>
 
-#include "nordend/core/file.hpp"
-#include "nordend/core/log.hpp"
-#include "nordend/engines/engines.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/log.hpp"
+#include "rummage/engines/engines.hpp"
 
-namespace nordend::engines {
+namespace rummage::engines {
 namespace {
 
 std::mutex installed_mutex;
@@ -68,6 +69,32 @@ Registry Registry::load(const std::filesystem::path& directory, const Locate& lo
         }
     }
     return registry;
+}
+
+Registry Registry::load_installed() {
+    Registry result = load(default_directory(), locate_program);
+    // Explicit trusted installation paths, never paths taken from a previewed file.
+    const char* value = std::getenv("RUMMAGE_ENGINE_PATH");
+    std::string_view paths = value != nullptr ? value : "";
+    while (!paths.empty()) {
+        const auto colon = paths.find(':');
+        const std::filesystem::path directory{paths.substr(0, colon)};
+        if (directory.is_absolute()) {
+            Registry extra = load(directory, [&](std::string_view program) {
+                const auto candidate = directory.parent_path().parent_path().parent_path() /
+                                       "libexec" / "rummage" / program;
+                return ::access(candidate.c_str(), X_OK) == 0 ? candidate : std::filesystem::path{};
+            });
+            for (const auto& engine : extra.engines()) {
+                static_cast<void>(result.add(engine));
+            }
+        }
+        if (colon == std::string_view::npos) {
+            break;
+        }
+        paths.remove_prefix(colon + 1);
+    }
+    return result;
 }
 
 bool Registry::add(Engine engine) {
@@ -131,7 +158,7 @@ std::filesystem::path default_directory() {
         return {};
     }
     for (const std::filesystem::path& candidate :
-         {here / "engines", here.parent_path() / "share" / "nordend" / "engines"}) {
+         {here / "engines", here.parent_path() / "share" / "rummage" / "engines"}) {
         std::error_code error;
         if (std::filesystem::is_directory(candidate, error)) {
             return candidate;
@@ -150,7 +177,7 @@ std::filesystem::path locate_program(std::string_view program) {
         return {};
     }
     for (const std::filesystem::path& candidate :
-         {here / program, here.parent_path() / "libexec" / "nordend" / program}) {
+         {here / program, here.parent_path() / "libexec" / "rummage" / program}) {
         if (::access(candidate.c_str(), X_OK) == 0) {
             return candidate;
         }
@@ -169,4 +196,4 @@ std::shared_ptr<const Registry> installed() {
     return installed_registry ? installed_registry : kEmpty;
 }
 
-}  // namespace nordend::engines
+}  // namespace rummage::engines

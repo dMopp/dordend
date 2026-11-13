@@ -1,4 +1,4 @@
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,7 +12,7 @@
 #include "jpeg_segments.hpp"
 #include "tiff/decode.hpp"
 
-namespace nordend::formats::image {
+namespace rummage::formats::image {
 namespace {
 
 bool starts_with(std::span<const std::uint8_t> data, std::span<const std::uint8_t> prefix) {
@@ -134,7 +134,7 @@ Decoded decode(std::span<const std::uint8_t> data, const DecodeOptions& options)
             result = tiff::decode(tiff::Source{data}, options);
             break;
         case Format::unknown:
-            result.error = data.empty() ? "empty file" : "not an image format Nordend decodes";
+            result.error = data.empty() ? "empty file" : "not an image format rummage decodes";
             result.problem = data.empty() ? Problem::damaged : Problem::unknown_format;
             return result;
     }
@@ -186,4 +186,4 @@ Decoded decode_file(const std::filesystem::path& path, const DecodeOptions& opti
     return decode(data, options);
 }
 
-}  // namespace nordend::formats::image
+}  // namespace rummage::formats::image

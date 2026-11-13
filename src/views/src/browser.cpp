@@ -1,4 +1,4 @@
-#include "nordend/views/browser.hpp"
+#include "rummage/views/browser.hpp"
 
 #include <algorithm>
 #include <array>
@@ -15,18 +15,29 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "draw_helpers.hpp"
-#include "nordend/core/file.hpp"
-#include "nordend/core/memory.hpp"
-#include "nordend/fs/erase.hpp"
-#include "nordend/fs/icon.hpp"
-#include "nordend/fs/operations.hpp"
-#include "nordend/fs/places.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/views/format.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/memory.hpp"
+#include "rummage/fs/erase.hpp"
+#include "rummage/fs/icon.hpp"
+#include "rummage/fs/operations.hpp"
+#include "rummage/fs/places.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/views/format.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
+
+// Temporary drawing/input context; keyboard focus is tracked separately.
+struct AreaContext {
+    std::size_t& slot;
+    std::size_t saved;
+
+    AreaContext(std::size_t& value, std::size_t next)
+        : slot{value}, saved{std::exchange(value, next)} {}
+
+    ~AreaContext() { slot = saved; }
+};
 
 std::filesystem::path home_directory() {
     const char* const home = std::getenv("HOME");  // NOLINT(concurrency-mt-unsafe): at start
@@ -49,15 +60,6 @@ Browser::Browser(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWat
       mime_{mime},
       quick_look_{pool, mime, std::move(thumbnails), redraw},
       sidebar_{redraw, resize_cursor(), [this](const fs::Place& place) { open_place(place); }},
-      breadcrumb_{redraw,
-                  [this](const std::filesystem::path& folder, const std::string& child) {
-                      go_to(folder, child);
-                  },
-                  home_directory()},
-      tab_bar_{redraw,
-               {.select = [this](std::size_t index) { select_tab(index); },
-                .close = [this](std::size_t index) { close_tab(index); },
-                .add = [this] { new_tab(); }}},
       status_bar_{loop, pool, redraw,
                   [this](std::size_t view) { set_mode(static_cast<Mode>(view)); },
                   [this] { shortcuts_.open(); }},
@@ -68,8 +70,10 @@ Browser::Browser(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWat
               [this](std::string problem) { show_message(std::move(problem), true); }},
       conflict_{redraw},
       confirm_{redraw},
-      properties_{pool, mime, redraw},
       password_{redraw},
+      errors_{redraw, [this](std::string text) { copy_text(std::move(text)); }},
+      properties_{pool, mime, redraw},
+      mount_password_{redraw},
       location_{redraw},
       menu_{std::move(redraw)},
       palette_{redraw_},
@@ -84,6 +88,7 @@ Browser::Browser(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWat
                  [this](const fs::TransferRequest& request, const fs::TransferResult& result) {
                      transfer_done(request, result);
                  }} {
+    areas_[0] = std::make_unique<BrowsingArea>(*this);
     add_pane(0);
     palette_.set_chosen_handler([this](const std::string& id) {
         std::erase(palette_recent_, id);
@@ -114,11 +119,11 @@ Browser::Browser(core::EventLoop& loop, core::WorkerPool& pool, fs::DirectoryWat
 }
 
 Pane& Browser::add_pane(std::size_t at) {
-    at = std::min(at, panes_.size());
+    at = std::min(at, area().tabs.size());
     const auto it =
-        panes_.insert(panes_.begin() + static_cast<std::ptrdiff_t>(at),
-                      std::make_unique<Pane>(loop_, pool_, watcher_, mime_, redraw_,
-                                             resize_cursor(), thumbnails_.get(), &info_pane_));
+        area().tabs.insert(area().tabs.begin() + static_cast<std::ptrdiff_t>(at),
+                           std::make_unique<Pane>(loop_, pool_, watcher_, mime_, redraw_,
+                                                  resize_cursor(), thumbnails_.get(), &info_pane_));
     Pane& added = **it;
     const auto wire = [this](auto& view) {
         view.set_open_handler([this] { open_selection(); });
@@ -130,7 +135,6 @@ Pane& Browser::add_pane(std::size_t at) {
     wire(added.columns);
     wire(added.grid);
     wire(added.details);
-    // A zoom is the window's: every list, or every grid, takes the size.
     // A zoom is the tab's: its two lists take the size (the grid has its own).
     Pane* const zoomed = &added;
     const auto lists = [zoomed](std::size_t index) {
@@ -139,18 +143,14 @@ Pane& Browser::add_pane(std::size_t at) {
     };
     added.columns.set_zoom_handler(lists);
     added.details.set_zoom_handler(lists);
-    // A click on a title of the details sorts the whole window.
-    added.details.set_sort_handler([this](const fs::SortOrder& order) {
-        for (const std::unique_ptr<Pane>& each : panes_) {
-            each->details.set_sort(order.key, order.descending);
-            each->columns.set_order(each->details.order());
-            each->grid.set_order(each->details.order());
-        }
+    added.details.set_sort_handler([zoomed](const fs::SortOrder& order) {
+        zoomed->details.set_sort(order.key, order.descending);
+        zoomed->columns.set_order(zoomed->details.order());
+        zoomed->grid.set_order(zoomed->details.order());
     });
-    if (panes_.size() > 1) {
-        // The window's order and column widths; the zoom of the tab it comes from (the one shown,
-        // which the insertion after it did not move).
-        const Pane& from = *panes_[at <= active_ ? active_ + 1 : active_];
+    if (area().tabs.size() > 1) {
+        // Inherit settings from the tab this one comes from; later changes stay independent.
+        const Pane& from = *area().tabs[at <= area().active ? area().active + 1 : area().active];
         added.details.set_sort(from.details.order().key, from.details.order().descending);
         added.columns.set_order(added.details.order());
         added.grid.set_order(added.details.order());
@@ -158,19 +158,22 @@ Pane& Browser::add_pane(std::size_t at) {
         added.columns.set_list_size(from.details.list_size());
         added.details.set_list_size(from.details.list_size());
         added.grid.set_size_index(from.grid.size_index());
+        added.show_hidden = from.show_hidden;
     }
-    added.columns.set_entry_filter(entry_filter_);
-    added.grid.set_entry_filter(entry_filter_);
-    added.details.set_entry_filter(entry_filter_);
-    added.columns.set_show_hidden(show_hidden_);
-    added.grid.set_show_hidden(show_hidden_);
-    added.details.set_show_hidden(show_hidden_);
+    added.entry_filter = picker_filter_;
+    added.columns.set_entry_filter(added.entry_filter);
+    added.grid.set_entry_filter(added.entry_filter);
+    added.details.set_entry_filter(added.entry_filter);
+    added.columns.set_show_hidden(added.show_hidden);
+    added.grid.set_show_hidden(added.show_hidden);
+    added.details.set_show_hidden(added.show_hidden);
     added.grid.set_info_visible(info_visible_);
     added.details.set_info_visible(info_visible_);
     return added;
 }
 
 void Browser::leave_pane() {
+    filter_focused_ = false;
     quick_look_.close();
     if (menu_.is_open()) {
         menu_.close();
@@ -206,10 +209,10 @@ void Browser::open_tab(const std::filesystem::path& directory, bool show) {
     }
     note_location();  // where the tab shown was, for its history
     const Mode mode = pane().mode;
-    const std::size_t from = active_;
+    const std::size_t from = area().active;
     leave_pane();
     add_pane(from + 1);
-    active_ = from + 1;
+    area().active = from + 1;
     pane().mode = mode;
     open(directory);  // into the new pane: its first step
     enter_pane();
@@ -218,39 +221,40 @@ void Browser::open_tab(const std::filesystem::path& directory, bool show) {
 void Browser::open_tab_behind(const std::filesystem::path& directory) {
     note_location();
     const Mode mode = pane().mode;
-    const std::size_t from = active_;
+    const std::size_t from = area().active;
     add_pane(from + 1);
-    active_ = from + 1;
+    area().active = from + 1;
     pane().mode = mode;
     open(directory);
-    active_ = from;
+    area().active = from;
     show_message(i18n::trf("Opened “{}” in a new tab", directory.filename().string()), false);
     redraw_();
 }
 
 void Browser::open_tabs(const std::vector<std::filesystem::path>& folders) {
-    const std::size_t from = active_;
+    const std::size_t from = area().active;
     for (std::size_t i = 0; i < folders.size(); ++i) {
-        active_ = from + i;  // the next one goes after the last opened
+        area().active = from + i;  // the next one goes after the last opened
         open_tab_behind(folders[i]);
     }
-    active_ = from;
+    area().active = from;
     if (folders.size() > 1) {
         show_message(i18n::trf("Opened {} folders in new tabs", folders.size()), false);
     }
 }
 
 void Browser::close_tab(std::size_t index) {
-    if (panes_.size() <= 1 || index >= panes_.size()) {
+    if (area().tabs.size() <= 1 || index >= area().tabs.size()) {
         return;  // the last tab stays: Ctrl+W does nothing then
     }
-    const bool shown = index == active_;
+    const bool shown = index == area().active;
     if (shown) {
         leave_pane();
     }
-    panes_.erase(panes_.begin() + static_cast<std::ptrdiff_t>(index));
-    if (active_ > index || active_ >= panes_.size()) {
-        --active_;  // the one after it takes its place, or the one before when it was the last
+    area().tabs.erase(area().tabs.begin() + static_cast<std::ptrdiff_t>(index));
+    if (area().active > index || area().active >= area().tabs.size()) {
+        --area()
+              .active;  // the one after it takes its place, or the one before when it was the last
     }
     if (shown) {
         enter_pane();
@@ -260,12 +264,12 @@ void Browser::close_tab(std::size_t index) {
 }
 
 void Browser::select_tab(std::size_t index) {
-    if (index >= panes_.size() || index == active_) {
+    if (index >= area().tabs.size() || index == area().active) {
         return;
     }
     note_location();
     leave_pane();
-    active_ = index;
+    area().active = index;
     enter_pane();
 }
 
@@ -284,8 +288,8 @@ std::shared_ptr<Folder> Browser::folder_of(const Pane& pane) {
 std::vector<std::string> Browser::tab_titles() const {
     const std::filesystem::path home = home_directory();
     std::vector<std::string> titles;
-    titles.reserve(panes_.size());
-    for (const std::unique_ptr<Pane>& each : panes_) {
+    titles.reserve(area().tabs.size());
+    for (const std::unique_ptr<Pane>& each : area().tabs) {
         const std::shared_ptr<Folder> folder =
             each->mode == Mode::details ? each->details.root_folder() : folder_of(*each);
         if (!folder) {
@@ -554,6 +558,8 @@ void Browser::paste_text() {
         return;
     }
     const std::vector<std::string> types = system_.types();
+    const bool for_password = password_.is_open();
+    const auto password_generation = password_.generation();
     const bool for_properties = properties_.is_open();
     const auto properties_generation = properties_.generation();
     for (const std::string_view type : kTextTypes) {
@@ -561,36 +567,40 @@ void Browser::paste_text() {
             continue;
         }
         ++operations_;
-        system_.read(std::string{type},
-                     [this, alive = alive_, for_properties,
-                      properties_generation](const std::optional<std::string>& text) {
-                         if (!*alive) {
-                             return;
-                         }
-                         --operations_;
-                         if (!text) {
-                             return;
-                         }
-                         if (for_properties) {
-                             if (properties_.is_open() &&
-                                 properties_.generation() == properties_generation)
-                                 properties_.paste(*text);
-                             return;
-                         }
-                         if (password_.is_open()) {
-                             password_.paste(*text);
-                         } else if (location_.is_open()) {
-                             location_.paste(*text);
-                         } else if (palette_.is_open()) {
-                             palette_.paste(*text);
-                         } else if (filter_focused_) {
-                             filter_field_.insert(
-                                 std::string_view{*text}.substr(0, text->find_first_of("\r\n")));
-                             apply_filters();
-                         } else {
-                             editor_.paste(*text);
-                         }
-                     });
+        system_.read(std::string{type}, [this, alive = alive_, for_password, password_generation,
+                                         for_properties, properties_generation](
+                                            const std::optional<std::string>& text) {
+            if (!*alive) {
+                return;
+            }
+            --operations_;
+            if (!text) {
+                return;
+            }
+            if (for_password) {
+                if (password_.is_open() && password_.generation() == password_generation)
+                    password_.paste(*text);
+                return;
+            }
+            if (for_properties) {
+                if (properties_.is_open() && properties_.generation() == properties_generation)
+                    properties_.paste(*text);
+                return;
+            }
+            if (mount_password_.is_open()) {
+                mount_password_.paste(*text);
+            } else if (location_.is_open()) {
+                location_.paste(*text);
+            } else if (palette_.is_open()) {
+                palette_.paste(*text);
+            } else if (filter_focused_) {
+                pane().filter_field.insert(
+                    std::string_view{*text}.substr(0, text->find_first_of("\r\n")));
+                apply_filters();
+            } else {
+                editor_.paste(*text);
+            }
+        });
         return;
     }
 }
@@ -1766,12 +1776,16 @@ void Browser::show_properties() {
                     owner.refresh_entry(path.filename().string());
             };
             refresh(*folder);
-            for (const auto& tab : panes_) {
-                if (tab->grid.folder())
-                    refresh(*tab->grid.folder());
-                tab->details.refresh_entry(path);
-                for (std::size_t i = 0; i < tab->columns.column_count(); ++i)
-                    refresh(tab->columns.column(i).folder());
+            for (const auto& owner : areas_) {
+                if (!owner)
+                    continue;
+                for (const auto& tab : owner->tabs) {
+                    if (tab->grid.folder())
+                        refresh(*tab->grid.folder());
+                    tab->details.refresh_entry(path);
+                    for (std::size_t i = 0; i < tab->columns.column_count(); ++i)
+                        refresh(tab->columns.column(i).folder());
+                }
             }
             redraw_();
         },
@@ -1801,9 +1815,18 @@ void Browser::open_menu(float x, float y, bool keyboard) {
         empty.action = [this] { empty_trash(); };
         items.push_back(std::move(empty));
     }
-    const auto& layout = folder->is_trash() ? menu_layout_.trash
+    const auto& layout = folder->is_trash()          ? menu_layout_.trash
                          : !targets(*folder).empty() ? menu_layout_.entry
-                                                    : menu_layout_.background;
+                                                     : menu_layout_.background;
+    auto pane_commands = pane_items();
+    if (!pane_commands.empty()) {
+        MenuItem submenu;
+        submenu.id = "panes";
+        submenu.label = "Panes";
+        submenu.submenu = true;
+        submenu.children = std::move(pane_commands);
+        items.push_back(std::move(submenu));
+    }
     items = configured_menu(std::move(items), layout);
     if (items.empty()) {
         menu_loaders_.clear();
@@ -1830,8 +1853,8 @@ void Browser::open_menu_from_keyboard() {
             break;
     }
     // No entry shown under the cursor: near the view's top left.
-    const auto [x, y] =
-        anchor.value_or(std::pair{view_area_.x + (view_area_.width / 4.0F), view_area_.y + 40.0F});
+    const auto [x, y] = anchor.value_or(std::pair{
+        area().view_area.x + (area().view_area.width / 4.0F), area().view_area.y + 40.0F});
     open_menu(x, y, true);
 }
 
@@ -1986,11 +2009,9 @@ std::size_t Browser::grid_index(std::int32_t pixels) {
 }
 
 void Browser::set_sort(fs::SortKey key, bool descending) {
-    for (const std::unique_ptr<Pane>& each : panes_) {
-        each->details.set_sort(key, descending);
-        each->columns.set_order(each->details.order());
-        each->grid.set_order(each->details.order());
-    }
+    pane().details.set_sort(key, descending);
+    pane().columns.set_order(pane().details.order());
+    pane().grid.set_order(pane().details.order());
 }
 
 MenuItem Browser::sort_menu() {
@@ -2043,41 +2064,39 @@ void Browser::set_entry_filter(fs::Listing::Predicate filter) {
 }
 
 void Browser::set_name_filter(std::string text) {
-    filter_field_.set_text(std::move(text));
+    pane().filter_field.set_text(std::move(text));
     apply_filters();
 }
 
 void Browser::apply_filters() {
     const auto fold = [](unsigned char c) { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c; };
-    entry_filter_ = [filter = picker_filter_, text = filter_field_.text(),
-                     fold](const fs::Entry& entry) {
+    pane().entry_filter = [filter = picker_filter_, text = pane().filter_field.text(),
+                           fold](const fs::Entry& entry) {
         return (!filter || filter(entry)) &&
                (text.empty() || std::search(entry.name.begin(), entry.name.end(), text.begin(),
                                             text.end(), [fold](unsigned char a, unsigned char b) {
                                                 return fold(a) == fold(b);
                                             }) != entry.name.end());
     };
-    for (const auto& each : panes_) {
-        each->columns.set_entry_filter(entry_filter_);
-        each->grid.set_entry_filter(entry_filter_);
-        each->details.set_entry_filter(entry_filter_);
-    }
+    pane().columns.set_entry_filter(pane().entry_filter);
+    pane().grid.set_entry_filter(pane().entry_filter);
+    pane().details.set_entry_filter(pane().entry_filter);
 }
 
-void Browser::set_show_hidden(bool show) {
-    show_hidden_ = show;
-    for (const std::unique_ptr<Pane>& each : panes_) {
-        each->columns.set_show_hidden(show);
-        each->grid.set_show_hidden(show);
-        each->details.set_show_hidden(show);
-    }
-    show_message(std::string{show ? i18n::tr("Hidden files shown") : i18n::tr("Hidden files hidden")}, false);
+void Browser::set_show_hidden(bool show, bool announce) {
+    pane().show_hidden = show;
+    pane().columns.set_show_hidden(show);
+    pane().grid.set_show_hidden(show);
+    pane().details.set_show_hidden(show);
+    if (announce)
+        show_message(std::string{show ? i18n::tr("Hidden files shown") : i18n::tr("Hidden files hidden")},
+                     false);
     redraw_();
 }
 
 void Browser::set_info_visible(bool visible) {
     info_visible_ = visible;
-    for (const std::unique_ptr<Pane>& each : panes_) {
+    for (const std::unique_ptr<Pane>& each : area().tabs) {
         each->grid.set_info_visible(visible);
         each->details.set_info_visible(visible);
     }
@@ -2107,7 +2126,7 @@ static_assert(static_cast<int>(State::Mode::columns) == static_cast<int>(Browser
 State Browser::state() const {
     State state;
     state.mode = static_cast<State::Mode>(pane().mode);
-    state.show_hidden = show_hidden_;
+    state.show_hidden = pane().show_hidden;
     state.sidebar_visible = sidebar_visible_;
     state.sidebar_width = sidebar_.width();
     state.sidebar_size = sidebar_.list_size();
@@ -2120,9 +2139,19 @@ State Browser::state() const {
     state.list_size = pane().details.list_size();
     state.grid_icon = static_cast<std::int32_t>(pane().grid.icon_size());
     state.palette_recent = palette_recent_;
-    if (panes_.size() > 1) {  // one tab: nothing to restore, the start folder is the start's
-        for (std::size_t i = 0; i < panes_.size() && i < State::kMaxTabs; ++i) {
-            const Pane& each = *panes_[i];
+    state.split_visible = split_visible_;
+    state.panes_initialized = areas_[1] != nullptr;
+    state.stacked = stacked_;
+    state.split_ratio = split_ratio_;
+    state.active_pane = active_area_;
+    for (std::size_t side = 0; side < areas_.size(); ++side) {
+        if (!areas_[side])
+            continue;
+        const BrowsingArea& owner = *areas_[side];
+        if (owner.tabs.size() <= 1 && !areas_[1])
+            continue;
+        for (std::size_t i = 0; i < owner.tabs.size() && i < State::kMaxTabs; ++i) {
+            const Pane& each = *owner.tabs[i];
             const std::shared_ptr<Folder> folder =
                 each.mode == Mode::details ? each.details.root_folder() : folder_of(each);
             if (!folder || folder->is_trash()) {
@@ -2142,8 +2171,18 @@ State Browser::state() const {
             }
             tab.list_size = each.details.list_size();
             tab.grid_icon = static_cast<std::int32_t>(each.grid.icon_size());
-            if (i == active_) {
-                state.shown_tab = state.tabs.size();
+            tab.pane = side;
+            tab.sort_key = each.details.order().key;
+            tab.sort_descending = each.details.order().descending;
+            tab.show_hidden = each.show_hidden;
+            tab.filter = each.filter_field.text();
+            if (i == owner.active) {
+                auto index = static_cast<std::size_t>(
+                    std::ranges::count(state.tabs, side, &State::Tab::pane));
+                if (side == 0)
+                    state.shown_tab = index;
+                else
+                    state.other_shown_tab = index;
             }
             state.tabs.push_back(std::move(tab));
         }
@@ -2169,7 +2208,7 @@ bool Browser::restore_tabs(const std::vector<State::Tab>& tabs, std::size_t show
         if (restored > 0) {
             add_pane(restored);
         }
-        active_ = restored;
+        area().active = restored;
         pane().mode = static_cast<Mode>(tab.mode);
         const std::filesystem::path relative = tab.folder.lexically_relative(tab.root);
         if (pane().mode == Mode::columns && folder_there(tab.root) && !relative.empty() &&
@@ -2186,21 +2225,26 @@ bool Browser::restore_tabs(const std::vector<State::Tab>& tabs, std::size_t show
         }
         set_list_size(tab.list_size.value_or(window_list));
         set_grid_size(tab.grid_icon ? grid_index(*tab.grid_icon) : window_grid);
+        set_sort(tab.sort_key.value_or(pane().details.order().key),
+                 tab.sort_key ? tab.sort_descending : pane().details.order().descending);
+        set_show_hidden(tab.show_hidden.value_or(pane().show_hidden), false);
+        set_name_filter(tab.filter);
         note_location();
         if (i == shown) {
             to_show = restored;
         }
         ++restored;
     }
-    active_ = std::min(to_show, panes_.size() - 1);
+    area().active = std::min(to_show, area().tabs.size() - 1);
     redraw_();
     return restored > 0;
 }
 
 void Browser::apply(const State& state) {
-    show_hidden_ = state.show_hidden;
+    pane().show_hidden = state.show_hidden;
     palette_recent_ = state.palette_recent;
-    for (const std::unique_ptr<Pane>& each : panes_) {
+    for (const std::unique_ptr<Pane>& each : area().tabs) {
+        each->show_hidden = state.show_hidden;
         each->columns.set_show_hidden(state.show_hidden);
         each->grid.set_show_hidden(state.show_hidden);
         each->details.set_show_hidden(state.show_hidden);
@@ -2263,56 +2307,81 @@ void Browser::set_mode(Mode mode) {
 
 void Browser::draw_toolbar(ui::Renderer& renderer, const ui::Rect& bounds,
                            const theme::Palette& palette) {
-    toolbar_bounds_ = bounds;
-    filter_bounds_ = clear_filter_bounds_ = new_folder_bounds_ = {};
+    area().toolbar_bounds = bounds;
+    area().filter_bounds = area().clear_filter_bounds = area().new_folder_bounds = {};
     if (bounds.height < 40 || bounds.width < 180) {
         return;
     }
     renderer.fill_background(bounds, palette.surface_container);
-    const float button_width = 104;
-    const float field_width = std::max(1.0F, bounds.width - button_width - 76);
-    renderer.draw_text(i18n::tr("Filter"), bounds.x + 10, bounds.y + 14, 13, palette.on_surface);
-    filter_bounds_ = {bounds.x + 54, bounds.y + 6, field_width, 32};
-    if (!name_filter().empty() && field_width > 100) {
-        filter_bounds_.width -= 68;
+    const float separator_height = 1.0F / renderer.scale();
+    renderer.fill_rect(
+        {bounds.x, bounds.bottom() - separator_height, bounds.width, separator_height},
+        palette.outline_variant);
+    const auto width_of = [&](std::string_view text) {
+        return renderer.fonts().layout(text, 13, renderer.scale()).width / renderer.scale();
+    };
+    const float label_width = width_of(i18n::tr("Filter"));
+    const float button_width = std::max(104.0F, width_of(i18n::tr("New Folder")) + 20.0F);
+    const float clear_width = std::max(64.0F, width_of(i18n::tr("Clear")) + 20.0F);
+    const float field_x = bounds.x + 10 + label_width + 10;
+    float field_right = bounds.right() - 10;
+    // Keep the filter usable in a narrow pane; Ctrl+Shift+N still creates a folder.
+    if (field_right - field_x >= button_width + 8 + 48) {
+        area().new_folder_bounds = {field_right - button_width, bounds.y + 6, button_width, 32};
+        field_right = area().new_folder_bounds.x - 8;
     }
-    filter_field_.draw(
-        renderer, filter_bounds_, 14,
+    area().filter_bounds = {field_x, bounds.y + 6, std::max(1.0F, field_right - field_x), 32};
+    if (!name_filter().empty() && area().filter_bounds.width >= clear_width + 4 + 48) {
+        area().filter_bounds.width -= clear_width + 4;
+        area().clear_filter_bounds = {area().filter_bounds.right() + 4, area().filter_bounds.y,
+                                      clear_width, 32};
+    }
+    const auto text_in = [&](std::string_view text, const ui::Rect& rect, ui::Color color) {
+        const auto& line =
+            renderer.fonts().layout(text, 13, renderer.scale(), std::max(1.0F, rect.width));
+        const float height = (line.ascent + line.descent) / renderer.scale();
+        renderer.draw_layout(line, rect.x, rect.y + (rect.height - height) / 2, color);
+    };
+    text_in(i18n::tr("Filter"), {bounds.x + 10, area().filter_bounds.y, label_width, 32}, palette.on_surface);
+    pane().filter_field.draw(
+        renderer, area().filter_bounds, 14,
         {.background = palette.surface,
-         .border = filter_focused_ ? palette.primary : palette.outline_variant,
+         .border = (filter_focused_ && context_area_ == active_area_) ? palette.primary
+                                                                      : palette.outline_variant,
          .text = palette.on_surface,
          .selection = palette.primary_container,
-         .caret = filter_focused_ ? palette.primary : palette.primary.with_alpha(0)});
+         .caret = (filter_focused_ && context_area_ == active_area_)
+                      ? palette.primary
+                      : palette.primary.with_alpha(0)});
     if (name_filter().empty() && !filter_focused_) {
-        renderer.draw_text(i18n::tr("Filter names…"), filter_bounds_.x + 6, filter_bounds_.y + 8,
-                           13, palette.on_surface_variant, filter_bounds_.width - 12);
+        text_in(i18n::tr("Filter names…"),
+                {area().filter_bounds.x + 6, area().filter_bounds.y,
+                 area().filter_bounds.width - 12, area().filter_bounds.height},
+                palette.on_surface_variant);
     }
     const auto button = [&](const ui::Rect& rect, const char* label) {
-        renderer.draw_box(
-            rect, {.fill = palette.surface_container_highest, .radius = ui::Corners::all(6)});
-        renderer.draw_text(i18n::tr(label), rect.x + 10, rect.y + 8, 13, palette.on_surface,
-                           rect.width - 20);
+        renderer.draw_box(rect, {.fill = palette.surface_container_highest, .radius = {}});
+        text_in(i18n::tr(label), {rect.x + 10, rect.y, rect.width - 20, rect.height}, palette.on_surface);
     };
-    if (!name_filter().empty() && field_width > 100) {
-        // The clear button has its own space, outside the editable text.
-        clear_filter_bounds_ = {filter_bounds_.right() + 4, filter_bounds_.y, 64, 32};
-        button(clear_filter_bounds_, "Clear");
+    if (!area().clear_filter_bounds.empty()) {
+        button(area().clear_filter_bounds, "Clear");
     }
-    new_folder_bounds_ = {bounds.right() - button_width - 10, bounds.y + 6, button_width, 32};
-    button(new_folder_bounds_, "New Folder");
+    if (!area().new_folder_bounds.empty()) {
+        button(area().new_folder_bounds, "New Folder");
+    }
 }
 
 void Browser::toolbar_pointer(const ui::PointerEvent& event) {
     if (event.kind != ui::PointerEvent::Kind::press || event.button != ui::PointerButton::left) {
         return;
     }
-    if (filter_bounds_.contains(event.x, event.y)) {
+    if (area().filter_bounds.contains(event.x, event.y)) {
         filter_focused_ = true;
-        filter_field_.click(event.x, event.modifiers.shift);
-    } else if (clear_filter_bounds_.contains(event.x, event.y)) {
+        pane().filter_field.click(event.x, event.modifiers.shift);
+    } else if (area().clear_filter_bounds.contains(event.x, event.y)) {
         set_name_filter({});
         filter_focused_ = true;
-    } else if (new_folder_bounds_.contains(event.x, event.y)) {
+    } else if (area().new_folder_bounds.contains(event.x, event.y)) {
         new_folder();
     }
     redraw_();
@@ -2320,70 +2389,179 @@ void Browser::toolbar_pointer(const ui::PointerEvent& event) {
 
 void Browser::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme::Palette& palette,
                    ui::IconSet& icons, Clock::time_point now) {
+    context_area_ = active_area_;
     const float sidebar_width = sidebar_visible_ ? sidebar_.width_in(bounds.width) : 0.0F;
     sidebar_drawn_ = sidebar_width > 0.0F;
-    info_pane_.forget_layout();  // drawn again below by the view that shows it
-    if (!sidebar_drawn_ && sidebar_.focused()) {
-        sidebar_.set_focused(false);  // no room for it: the keyboard goes back to the view
-    }
+    info_pane_.forget_layout();
+    if (!sidebar_drawn_ && sidebar_.focused())
+        sidebar_.set_focused(false);
     settle_found(now);
-    const std::shared_ptr<Folder> folder = current_folder();
+    const auto folder = current_folder();
     if (sidebar_drawn_) {
         sidebar_.draw(renderer, {bounds.x, bounds.y, sidebar_width, bounds.height}, palette, icons,
                       folder ? folder->path() : std::filesystem::path{}, now);
-    } else {
+    } else
         sidebar_.not_drawn();
+    ui::Rect content{bounds.x + sidebar_width, bounds.y, bounds.width - sidebar_width,
+                     bounds.height};
+    const float bar = std::min(status_bar_.height(renderer), std::max(0.0F, content.height));
+    if (folder)
+        status_bar_.draw(renderer, {content.x, content.bottom() - bar, content.width, bar}, palette,
+                         icons, *folder, static_cast<std::size_t>(pane().mode));
+    content.height -= bar;
+    split_button_ = orientation_button_ = swap_button_ = {};
+    if (panes_enabled_ && content.height >= 30) {
+        const ui::Rect controls{content.x, content.y, content.width, 30};
+        renderer.fill_background(controls, palette.surface_container);
+        const auto button = [&](ui::Rect& rect, float x, float width, const char* label) {
+            rect = {x, controls.y + 2, width, 26};
+            renderer.draw_box(rect, {.fill = palette.surface_container_highest, .radius = {}});
+            renderer.draw_text(label, x + 8, rect.y + 6, 12, palette.on_surface, width - 16);
+        };
+        std::string split_label = split_visible_ ? "One pane" : "Two panes";
+        if (const auto keys = keys_for(Command::toggle_split); !keys.empty())
+            split_label += " · " + keys;
+        button(split_button_, controls.x + 4, std::min(112.0F, std::max(1.0F, controls.width - 8)),
+               split_label.c_str());
+        if (split_visible_ && controls.width >= 360) {
+            button(orientation_button_, split_button_.right() + 6, 130,
+                   stacked_ ? "Side by side" : "Top / bottom");
+            button(swap_button_, orientation_button_.right() + 6, 90, "Swap panes");
+        }
+        content.y += 30;
+        content.height -= 30;
     }
-    ui::Rect view{bounds.x + sidebar_width, bounds.y, bounds.width - sidebar_width, bounds.height};
-    if (panes_.size() > 1 && view.height > TabBar::kHeight + kTitleHeight) {
-        tab_bar_.draw(renderer, {view.x, view.y, view.width, TabBar::kHeight}, palette, icons,
-                      tab_titles(), active_);
-        view.y += TabBar::kHeight;
-        view.height -= TabBar::kHeight;
-    } else {
-        tab_bar_.not_drawn();
+    shared_info_bounds_ = {};
+    if (split_visible_ && info_visible_) {
+        const float width =
+            info_pane_.width_in(content.width - (stacked_ ? 0.0F : InfoPane::kMinContent));
+        if (width > 0) {
+            shared_info_bounds_ = {content.right() - width, content.y, width, content.height};
+            content.width -= width;
+        }
     }
-    const float bar = std::min(StatusBar::kHeight, std::max(0.0F, view.height - kTitleHeight));
-    if (folder) {
-        const auto location = pane().mode == Mode::details ? pane().details.root_folder() : folder;
-        breadcrumb_.draw(renderer, {view.x, view.y, view.width, kTitleHeight}, palette, icons,
-                         *location);
-        status_bar_.draw(renderer, {view.x, view.bottom() - bar, view.width, bar}, palette, icons,
-                         *folder, static_cast<std::size_t>(pane().mode));
-    }
+    split_bounds_ = content;
+    divider_ = {};
+    for (auto& owner : areas_)
+        if (owner)
+            owner->bounds = {};
     if (editor_.active() && !editor_.busy()) {
-        // The entry went away meanwhile (another program): nothing left to rename. A new folder
-        // not listed yet is still on its way: the cursor waits for it.
         const Folder& edited = *editor_.folder();
         if (!edited.cursor_pending() &&
             std::ranges::find(edited.entries(), editor_.slot().name, &fs::Entry::name) ==
-                edited.entries().end()) {
+                edited.entries().end())
             editor_.cancel();
-        }
     }
-    editor_.slot().rect.reset();  // the view places it again if it shows the name
-    const float toolbar_height = std::min(44.0F, std::max(0.0F, view.height - kTitleHeight - bar));
-    draw_toolbar(renderer, {view.x, view.y + kTitleHeight, view.width, toolbar_height}, palette);
-    view_area_ = {view.x, view.y + kTitleHeight + toolbar_height, view.width,
-                  std::max(0.0F, view.height - kTitleHeight - toolbar_height - bar)};
-    draw_view(renderer, view_area_, palette, icons, now);
+    editor_.slot().rect.reset();
+    if (split_visible_) {
+        const float length = std::max(0.0F, (stacked_ ? content.height : content.width) - 6);
+        const float minimum = std::min(stacked_ ? 160.0F : 220.0F, length / 2);
+        const float first = std::clamp(length * split_ratio_, minimum, length - minimum);
+        std::array<ui::Rect, 2> rectangles;
+        if (stacked_) {
+            rectangles = {{{content.x, content.y, content.width, first},
+                           {content.x, content.y + first + 6, content.width, length - first}}};
+            divider_ = {content.x, content.y + first, content.width, 6};
+        } else {
+            rectangles = {{{content.x, content.y, first, content.height},
+                           {content.x + first + 6, content.y, length - first, content.height}}};
+            divider_ = {content.x + first, content.y, 6, content.height};
+        }
+        // Paint the inactive pane first; shared editors and preview belong to the active one.
+        for (const auto index : {1 - active_area_, active_area_}) {
+            context_area_ = index;
+            auto colors = palette;
+            if (index != active_area_) {
+                colors.primary = palette.on_surface_variant;
+                colors.primary_container = palette.surface_container_highest;
+                colors.on_primary_container = palette.on_surface;
+            }
+            draw_area(renderer, rectangles[index], colors, icons, now);
+        }
+        renderer.fill_background(divider_, palette.outline_variant);
+    } else
+        draw_area(renderer, content, palette, icons, now);
+    context_area_ = active_area_;
+    if (folder && shared_info_bounds_.width > 0)
+        info_pane_.draw(renderer, shared_info_bounds_, palette, icons, *folder, now);
     draw_band(renderer, palette);
     editor_.draw(renderer, palette);
-    if (quick_look_.is_open()) {
-        quick_look_.follow(current_folder());  // entries may have moved or gone meanwhile
-    }
+    if (quick_look_.is_open())
+        quick_look_.follow(current_folder());
     quick_look_.draw(renderer, bounds, palette, icons, now);
     shortcuts_.draw(renderer, bounds, palette);
     menu_.draw(renderer, bounds, palette);
     palette_.draw(renderer, bounds, palette);
     properties_.draw(renderer, bounds, palette, icons);
-    conflict_.draw(renderer, bounds, palette);  // last: over everything else
+    conflict_.draw(renderer, bounds, palette);
     confirm_.draw(renderer, bounds, palette);
+    errors_.draw(renderer, bounds, palette);
     location_.draw(renderer, bounds, palette);
     password_.draw(renderer, bounds, palette);
-    if (thumbnails_) {
+    mount_password_.draw(renderer, bounds, palette);
+    if (thumbnails_)
         thumbnails_->end_frame();
+}
+
+void Browser::draw_area(ui::Renderer& renderer, const ui::Rect& bounds,
+                        const theme::Palette& palette, ui::IconSet& icons, Clock::time_point now) {
+    area().bounds = bounds;
+    ui::Rect view = bounds;
+    const auto folder = current_folder();
+    renderer.push_clip(bounds);
+    area().header = {};
+    if (split_visible_) {
+        const float height = std::min(26.0F, view.height);
+        area().header = {view.x, view.y, view.width, height};
+        const bool active = context_area_ == active_area_;
+        renderer.fill_background(area().header, palette.surface_container);
+        if (active)
+            renderer.fill_background({view.x, view.y, 3, height}, palette.primary);
+        const char* position = stacked_ ? (context_area_ == 0 ? "Top" : "Bottom")
+                                        : (context_area_ == 0 ? "Left" : "Right");
+        renderer.draw_text(std::format("{}{}", position, active ? " · Active" : ""), view.x + 8,
+                           view.y + 6, 12, active ? palette.primary : palette.on_surface_variant,
+                           view.width - 16);
+        view.y += height;
+        view.height -= height;
     }
+    if ((split_visible_ || area().tabs.size() > 1) &&
+        view.height > TabBar::kHeight + kTitleHeight) {
+        area().tab_bar.draw(renderer, {view.x, view.y, view.width, TabBar::kHeight}, palette, icons,
+                            tab_titles(), area().active);
+        view.y += TabBar::kHeight;
+        view.height -= TabBar::kHeight;
+    } else {
+        area().tab_bar.not_drawn();
+    }
+    const float bar = split_visible_ ? std::min(status_bar_.height(renderer),
+                                                std::max(0.0F, view.height - kTitleHeight))
+                                     : 0;
+    if (folder) {
+        const auto location = pane().mode == Mode::details ? pane().details.root_folder() : folder;
+        area().breadcrumb.draw(renderer, {view.x, view.y, view.width, kTitleHeight}, palette, icons,
+                               *location);
+        if (split_visible_) {
+            const ui::Rect footer{view.x, view.bottom() - bar, view.width, bar};
+            renderer.fill_background(footer, palette.surface_container);
+            const auto& line =
+                renderer.fonts().layout(status_of(*folder), status_bar_.text_size(),
+                                        renderer.scale(), std::max(1.0F, footer.width - 16));
+            const float height = (line.ascent + line.descent) / renderer.scale();
+            renderer.draw_layout(line, footer.x + 8, footer.y + (footer.height - height) / 2,
+                                 palette.on_surface_variant);
+        }
+    }
+    const float toolbar_height = std::min(44.0F, std::max(0.0F, view.height - kTitleHeight - bar));
+    draw_toolbar(renderer, {view.x, view.y + kTitleHeight, view.width, toolbar_height}, palette);
+    area().view_area = {view.x, view.y + kTitleHeight + toolbar_height, view.width,
+                        std::max(0.0F, view.height - kTitleHeight - toolbar_height - bar)};
+    pane().columns.set_info_visible(!split_visible_ && info_visible_);
+    pane().grid.set_info_visible(!split_visible_ && info_visible_);
+    if (pane().details.info_visible() != (!split_visible_ && info_visible_))
+        pane().details.set_info_visible(!split_visible_ && info_visible_);
+    draw_view(renderer, area().view_area, palette, icons, now);
+    renderer.pop_clip();
 }
 
 void Browser::draw_view(ui::Renderer& renderer, const ui::Rect& bounds,
@@ -2402,40 +2580,36 @@ void Browser::draw_view(ui::Renderer& renderer, const ui::Rect& bounds,
 }
 
 bool Browser::animating() const {
-    bool view = false;
-    switch (pane().mode) {
-        case Mode::columns:
-            view = pane().columns.animating();
-            break;
-        case Mode::grid:
-            view = pane().grid.animating();
-            break;
-        case Mode::details:
-            view = pane().details.animating();
-            break;
+    for (std::size_t i = 0; i < areas_.size(); ++i) {
+        if (!areas_[i] || (!split_visible_ && i != active_area_))
+            continue;
+        const auto& tab = *areas_[i]->tabs[areas_[i]->active];
+        if ((tab.mode == Mode::columns && tab.columns.animating()) ||
+            (tab.mode == Mode::grid && tab.grid.animating()) ||
+            (tab.mode == Mode::details && tab.details.animating()))
+            return true;
     }
-    return view || info_pane_.animating() || sidebar_.animating() ||
-           quick_look_.animating(Clock::now());
+    return info_pane_.animating() || sidebar_.animating() || quick_look_.animating(Clock::now());
 }
 
 bool Browser::loading() const {
-    if (finder_ && (finder_->scanning() || finder_->matching())) {
+    if (finder_ && (finder_->scanning() || finder_->matching()))
         return true;
-    }
     if (operations_ > 0 || menu_loads_ > 0 || transfers_.pending() > 0 || quick_look_.loading() ||
         info_pane_.loading() || status_bar_.loading() || properties_.loading() ||
-        properties_.saving()) {
+        properties_.saving() || (thumbnails_ && thumbnails_->loading()))
         return true;
+    for (const auto& owner : areas_) {
+        if (!owner)
+            continue;
+        for (const auto& tab : owner->tabs) {
+            if ((tab->mode == Mode::columns && tab->columns.loading()) ||
+                (tab->mode == Mode::grid && tab->grid.loading()) ||
+                (tab->mode == Mode::details && tab->details.loading()))
+                return true;
+        }
     }
-    switch (pane().mode) {
-        case Mode::grid:
-            return pane().grid.loading() || (thumbnails_ && thumbnails_->loading());
-        case Mode::details:
-            return pane().details.loading();
-        case Mode::columns:
-            break;
-    }
-    return pane().columns.loading();
+    return false;
 }
 
 void Browser::pointer(const ui::PointerEvent& event, Clock::time_point now) {
@@ -2479,14 +2653,18 @@ ui::CursorShape Browser::cursor_at(float x, float y) const {
     using Shape = ui::CursorShape;
     const auto hand = [](bool clickable) { return clickable ? Shape::pointer : Shape::standard; };
     // What takes the pointer first, as take_pointer() hands it out.
+    if (password_.is_open())
+        return hand(password_.clickable_at(x, y));
+    if (errors_.is_open())
+        return hand(errors_.clickable_at(x, y));
     if (conflict_.is_open()) {
         return hand(conflict_.clickable_at(x, y));
     }
     if (confirm_.is_open()) {
         return hand(confirm_.clickable_at(x, y));
     }
-    if (password_.is_open()) {
-        return hand(password_.clickable_at(x, y));
+    if (mount_password_.is_open()) {
+        return hand(mount_password_.clickable_at(x, y));
     }
     if (location_.is_open()) {
         return location_.field_at(x, y) ? Shape::text : hand(location_.clickable_at(x, y));
@@ -2505,20 +2683,34 @@ ui::CursorShape Browser::cursor_at(float x, float y) const {
     if (editor_.active() && editor_.field().bounds().contains(x, y)) {
         return Shape::text;
     }
-    if (filter_bounds_.contains(x, y)) {
-        return Shape::text;
-    }
-    if (clear_filter_bounds_.contains(x, y) || new_folder_bounds_.contains(x, y)) {
+    if (divider_.contains(x, y))
+        return stacked_ ? Shape::ns_resize : Shape::ew_resize;
+    if (shared_info_bounds_.width > 0 &&
+        std::abs(x - shared_info_bounds_.x) <= InfoPane::kEdgeGrab && y >= shared_info_bounds_.y &&
+        y < shared_info_bounds_.bottom())
+        return Shape::ew_resize;
+    if (split_button_.contains(x, y) || orientation_button_.contains(x, y) ||
+        swap_button_.contains(x, y))
         return Shape::pointer;
+    if (const auto index = area_at(x, y)) {
+        const auto& owner = *areas_[*index];
+        if (owner.filter_bounds.contains(x, y))
+            return Shape::text;
+        if (owner.clear_filter_bounds.contains(x, y) || owner.new_folder_bounds.contains(x, y))
+            return Shape::pointer;
+        if (owner.tab_bar.claims(x, y))
+            return hand(owner.tab_bar.clickable_at(x, y));
+        if (owner.breadcrumb.claims(x, y))
+            return hand(owner.breadcrumb.clickable_at(x, y));
     }
     if (sidebar_drawn_ && sidebar_.claims(x, y)) {
         return hand(sidebar_.clickable_at(x, y));
     }
-    if (tab_bar_.claims(x, y)) {
-        return hand(tab_bar_.clickable_at(x, y));
+    if (area().tab_bar.claims(x, y)) {
+        return hand(area().tab_bar.clickable_at(x, y));
     }
-    if (breadcrumb_.claims(x, y)) {
-        return hand(breadcrumb_.clickable_at(x, y));
+    if (area().breadcrumb.claims(x, y)) {
+        return hand(area().breadcrumb.clickable_at(x, y));
     }
     if (status_bar_.claims(x, y)) {
         return hand(status_bar_.clickable_at(x, y));
@@ -2531,7 +2723,8 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
         found_after_.reset();
     }
     if (event.kind == ui::PointerEvent::Kind::release &&
-        (conflict_.is_open() || confirm_.is_open() || password_.is_open() || location_.is_open() ||
+        (errors_.is_open() || password_.is_open() || mount_password_.is_open() ||
+         location_.is_open() || conflict_.is_open() || confirm_.is_open() ||
          properties_.is_open() || palette_.is_open() || menu_.is_open() || shortcuts_.is_open() ||
          quick_look_.is_open())) {
         // Taken by what the press opened (a menu from a right click): the button is up all the
@@ -2539,6 +2732,14 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
         button_held_ = false;
         band_press_.reset();
         end_band();
+    }
+    if (password_.is_open()) {
+        password_.pointer(event);
+        return;
+    }
+    if (errors_.is_open()) {
+        errors_.pointer(event);
+        return;
     }
     if (conflict_.is_open()) {
         conflict_.pointer(event);  // the question first: nothing under it reacts
@@ -2548,8 +2749,8 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
         confirm_.pointer(event);
         return;
     }
-    if (password_.is_open()) {
-        password_.pointer(event);
+    if (mount_password_.is_open()) {
+        mount_password_.pointer(event);
         return;
     }
     if (location_.is_open()) {
@@ -2611,6 +2812,8 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
     }
     if (event.kind == ui::PointerEvent::Kind::press &&
         (event.button == ui::PointerButton::back || event.button == ui::PointerButton::forward)) {
+        if (const auto index = area_at(event.x, event.y))
+            focus_pane(*index);
         travel(event.button == ui::PointerButton::back ? -1 : 1);
         return;
     }
@@ -2618,6 +2821,104 @@ void Browser::take_pointer(const ui::PointerEvent& event, Clock::time_point now)
 }
 
 void Browser::dispatch_pointer(const ui::PointerEvent& event, Clock::time_point now) {
+    using Kind = ui::PointerEvent::Kind;
+    if (resizing_split_) {
+        if (event.kind == Kind::motion) {
+            const float length = (stacked_ ? split_bounds_.height : split_bounds_.width) - 6;
+            if (length > 0)
+                set_split_ratio(
+                    ((stacked_ ? event.y - split_bounds_.y : event.x - split_bounds_.x) - 3) /
+                    length);
+        }
+        if (event.kind == Kind::release || event.kind == Kind::leave) {
+            resizing_split_ = false;
+            resize_cursor_ = ui::CursorShape::standard;
+        }
+        return;
+    }
+    if (resizing_info_) {
+        if (event.kind == Kind::motion) {
+            info_pane_.set_width(info_resize_width_ + info_resize_x_ - event.x);
+            redraw_();
+        }
+        if (event.kind == Kind::release || event.kind == Kind::leave) {
+            resizing_info_ = false;
+            resize_cursor_ = ui::CursorShape::standard;
+        }
+        return;
+    }
+    if (!button_held_ && event.kind == Kind::press && event.button == ui::PointerButton::left) {
+        if (split_button_.contains(event.x, event.y)) {
+            toggle_split();
+            return;
+        }
+        if (orientation_button_.contains(event.x, event.y)) {
+            set_stacked(!stacked_);
+            return;
+        }
+        if (swap_button_.contains(event.x, event.y)) {
+            swap_panes();
+            return;
+        }
+        if (divider_.contains(event.x, event.y)) {
+            if (event.click_count == 2)
+                set_split_ratio(0.5F);
+            else {
+                resizing_split_ = true;
+                resize_cursor_ = stacked_ ? ui::CursorShape::ns_resize : ui::CursorShape::ew_resize;
+            }
+            return;
+        }
+        if (shared_info_bounds_.width > 0 &&
+            std::abs(event.x - shared_info_bounds_.x) <= InfoPane::kEdgeGrab &&
+            event.y >= shared_info_bounds_.y && event.y < shared_info_bounds_.bottom()) {
+            if (event.click_count == 2) {
+                info_pane_.set_width(InfoPane::kWidth);
+                redraw_();
+            } else {
+                resizing_info_ = true;
+                info_resize_x_ = event.x;
+                info_resize_width_ = info_pane_.width();
+                resize_cursor_ = ui::CursorShape::ew_resize;
+            }
+            return;
+        }
+    }
+    if (!button_held_ && shared_info_bounds_.contains(event.x, event.y)) {
+        if (event.kind == Kind::scroll)
+            info_pane_.scroll(event, now);
+        if (event.kind == Kind::press) {
+            if (event.button == ui::PointerButton::right)
+                open_menu(event.x, event.y, false);
+            else if (event.button == ui::PointerButton::left)
+                info_pane_.click(event.x, event.y);
+        }
+        return;
+    }
+    const auto hovered = area_at(event.x, event.y);
+    const std::size_t index =
+        button_held_ || event.kind == Kind::leave ? pointer_area_ : hovered.value_or(active_area_);
+    if (index != pointer_area_ && areas_[pointer_area_]) {
+        AreaContext previous{context_area_, pointer_area_};
+        send_pointer(pointer_target_, {.kind = Kind::leave}, now);
+        pointer_target_ = Target::view;
+    }
+    if (event.kind == Kind::press && hovered && !button_held_)
+        focus_pane(index);
+    pointer_area_ = index;
+    AreaContext addressed{context_area_, index};
+    if (!button_held_ && area().header.contains(event.x, event.y)) {
+        if (event.kind == Kind::press) {
+            filter_focused_ = false;
+            sidebar_.set_focused(false);
+            redraw_();
+        }
+        return;
+    }
+    dispatch_area_pointer(event, now);
+}
+
+void Browser::dispatch_area_pointer(const ui::PointerEvent& event, Clock::time_point now) {
     using Kind = ui::PointerEvent::Kind;
     if (event.kind == Kind::leave) {
         send_pointer(pointer_target_, event, now);
@@ -2632,11 +2933,11 @@ void Browser::dispatch_pointer(const ui::PointerEvent& event, Clock::time_point 
         Target target = Target::view;
         if (sidebar_drawn_ && sidebar_.claims(event.x, event.y)) {
             target = Target::sidebar;
-        } else if (tab_bar_.claims(event.x, event.y)) {
+        } else if (area().tab_bar.claims(event.x, event.y)) {
             target = Target::tabs;
-        } else if (breadcrumb_.claims(event.x, event.y)) {
+        } else if (area().breadcrumb.claims(event.x, event.y)) {
             target = Target::breadcrumb;
-        } else if (toolbar_bounds_.contains(event.x, event.y)) {
+        } else if (area().toolbar_bounds.contains(event.x, event.y)) {
             target = Target::toolbar;
         } else if (status_bar_.claims(event.x, event.y)) {
             target = Target::status_bar;
@@ -2867,7 +3168,7 @@ void Browser::draw_band(ui::Renderer& renderer, const theme::Palette& palette) c
                       // The text's colour: it shows over the selection it makes, which has
                       // the accent's.
                       {.fill = palette.on_surface.with_alpha(0.12F),
-                       .radius = ui::Corners::all(3.0F),
+                       .radius = {},
                        .border_width = 1.5F,
                        .border = palette.on_surface.with_alpha(0.85F)});
     renderer.pop_clip();
@@ -2882,13 +3183,13 @@ void Browser::send_pointer(Target target, const ui::PointerEvent& event, Clock::
             sidebar_.pointer(event, now);
             break;
         case Target::breadcrumb:
-            breadcrumb_.pointer(event);
+            area().breadcrumb.pointer(event);
             break;
         case Target::status_bar:
             status_bar_.pointer(event);
             break;
         case Target::tabs:
-            tab_bar_.pointer(event);
+            area().tab_bar.pointer(event);
             break;
         case Target::toolbar:
             toolbar_pointer(event);
@@ -2913,15 +3214,18 @@ void Browser::go_to(const std::filesystem::path& folder, const std::string& chil
 }
 
 std::optional<ViewHit> Browser::view_hit(float x, float y) const {
-    switch (pane().mode) {
+    const auto index = area_at(x, y);
+    const auto& owner = index ? *areas_[*index] : area();
+    const auto& tab = *owner.tabs[owner.active];
+    switch (tab.mode) {
         case Mode::grid:
-            return pane().grid.hit(x, y);
+            return tab.grid.hit(x, y);
         case Mode::details:
-            return pane().details.hit(x, y);
+            return tab.details.hit(x, y);
         case Mode::columns:
-            break;
+            return tab.columns.hit(x, y);
     }
-    return pane().columns.hit(x, y);
+    return {};
 }
 
 void Browser::start_drag(Press press) {
@@ -3004,8 +3308,12 @@ std::optional<Browser::DropTarget> Browser::drop_target_at(float x, float y) con
             return std::nullopt;
         }
     }
-    if (const std::optional<std::filesystem::path> crumb = breadcrumb_.path_at(x, y)) {
-        return DropTarget{.folder = *crumb, .mark = {}, .place = {}, .crumb = crumb};
+    for (std::size_t i = 0; i < areas_.size(); ++i) {
+        if (!areas_[i] || (!split_visible_ && i != active_area_))
+            continue;
+        if (const auto crumb = areas_[i]->breadcrumb.path_at(x, y)) {
+            return DropTarget{.folder = *crumb, .mark = {}, .place = {}, .crumb = crumb};
+        }
     }
     const std::optional<ViewHit> hit = view_hit(x, y);
     if (!hit || hit->folder->is_trash()) {
@@ -3053,10 +3361,13 @@ void Browser::show_drop_target(const std::optional<DropTarget>& target) {
     }
     sidebar_.set_drop_target(target ? target->place : std::nullopt);
     sidebar_.set_bookmark_drop(target && target->bookmark);
-    breadcrumb_.set_drop_target(target ? target->crumb : std::nullopt);
+    for (auto& owner : areas_)
+        if (owner)
+            owner->breadcrumb.set_drop_target(target ? target->crumb : std::nullopt);
 }
 
 void Browser::drop_event(const ui::DropEvent& event) {
+    AreaContext addressed{context_area_, area_at(event.x, event.y).value_or(active_area_)};
     using Kind = ui::DropEvent::Kind;
     drop_x_ = event.x;
     drop_y_ = event.y;
@@ -3135,11 +3446,11 @@ void Browser::drop_event(const ui::DropEvent& event) {
     }
     // Near the top or the bottom of the view, it scrolls.
     float notches = 0.0F;
-    if (event.x >= view_area_.x && event.x < view_area_.right()) {
-        if (event.y >= view_area_.y && event.y < view_area_.y + kAutoScrollEdge) {
+    if (event.x >= area().view_area.x && event.x < area().view_area.right()) {
+        if (event.y >= area().view_area.y && event.y < area().view_area.y + kAutoScrollEdge) {
             notches = -0.3F;
-        } else if (event.y < view_area_.bottom() &&
-                   event.y >= view_area_.bottom() - kAutoScrollEdge) {
+        } else if (event.y < area().view_area.bottom() &&
+                   event.y >= area().view_area.bottom() - kAutoScrollEdge) {
             notches = 0.3F;
         }
     }
@@ -3154,6 +3465,7 @@ void Browser::drop_event(const ui::DropEvent& event) {
 }
 
 void Browser::scroll_near_edge() {
+    AreaContext addressed{context_area_, area_at(drop_x_, drop_y_).value_or(active_area_)};
     if (auto_scroll_ == 0.0F) {
         stop_auto_scroll();
         return;
@@ -3358,8 +3670,9 @@ void Browser::mount_place(const fs::Place& place, bool open) {
     show_message(i18n::trf("Mounting “{}”…", place.label), false);
     ++operations_;
     devices_.mount(
-        place.disk.volume, [this, alive = alive_, name = place.label, open](
-                               const std::filesystem::path& where, const std::string& error) {
+        place.disk.volume,
+        [this, alive = alive_, name = place.label, open, origin = current_folder()](
+            const std::filesystem::path& where, const std::string& error) {
             if (!*alive) {
                 return;
             }
@@ -3369,7 +3682,17 @@ void Browser::mount_place(const fs::Place& place, bool open) {
                 return;
             }
             if (open) {
-                this->open(where);
+                // A slow mount belongs to the tab that requested it, even after focus changes.
+                for (std::size_t side = 0; side < areas_.size(); ++side) {
+                    if (!areas_[side])
+                        continue;
+                    AreaContext addressed{context_area_, side};
+                    for (std::size_t i = 0; i < area().tabs.size(); ++i) {
+                        AreaContext tab_context{area().active, i};
+                        if (current_folder() == origin)
+                            this->open(where);
+                    }
+                }
             }
             // A disk mounted read-only says why: NTFS left unclean by Windows or by a pull.
             ++operations_;
@@ -3414,7 +3737,7 @@ void Browser::mount_remote(const fs::Place& place, bool open) {
                     answer(std::nullopt);
                     return;
                 }
-                password_.open(i18n::trf("Connect to “{}”", name), request, answer);
+                mount_password_.open(i18n::trf("Connect to “{}”", name), request, answer);
             },
         .question =
             [this, alive = alive_](const std::string& message,
@@ -3437,7 +3760,7 @@ void Browser::mount_remote(const fs::Place& place, bool open) {
         .cancel =
             [this, alive = alive_] {
                 if (*alive) {
-                    password_.close();
+                    mount_password_.close();
                     confirm_.close();
                 }
             },
@@ -3449,7 +3772,7 @@ void Browser::mount_remote(const fs::Place& place, bool open) {
                            return;
                        }
                        --operations_;
-                       password_.close();
+                       mount_password_.close();
                        if (error == "cancelled") {
                            show_message(i18n::trf("Not connected to “{}”", name), false);
                            return;
@@ -3530,14 +3853,23 @@ void Browser::unmount_remote(const fs::Place& place) {
 }
 
 void Browser::leave_disk(const std::filesystem::path& mount_point) {
-    const std::shared_ptr<Folder> shown = current_folder();
-    if (!shown || mount_point.empty()) {
+    if (mount_point.empty())
         return;
-    }
-    const std::filesystem::path inside = shown->path().lexically_relative(mount_point);
-    if (!inside.empty() && *inside.begin() != "..") {
-        const std::filesystem::path home = place_sources_.home;
-        open(home.empty() ? std::filesystem::path{"/"} : home);
+    for (std::size_t side = 0; side < areas_.size(); ++side) {
+        if (!areas_[side])
+            continue;
+        AreaContext addressed{context_area_, side};
+        for (std::size_t i = 0; i < area().tabs.size(); ++i) {
+            AreaContext tab_context{area().active, i};
+            const auto shown = current_folder();
+            if (!shown)
+                continue;
+            const auto inside = shown->path().lexically_relative(mount_point);
+            if (!inside.empty() && *inside.begin() != "..") {
+                open(place_sources_.home.empty() ? std::filesystem::path{"/"}
+                                                 : place_sources_.home);
+            }
+        }
     }
 }
 
@@ -3607,6 +3939,7 @@ void Browser::view_pointer(const ui::PointerEvent& event, Clock::time_point now)
 std::shared_ptr<Folder> Browser::current_folder() const { return folder_of(pane()); }
 
 bool Browser::key(const ui::KeyEvent& event, Clock::time_point now) {
+    context_area_ = active_area_;
     note_location();  // the cursor of the folder the key may leave
     const bool handled = take_key(event, now);
     note_location();
@@ -3621,19 +3954,29 @@ bool Browser::take_key(const ui::KeyEvent& event, Clock::time_point now) {
         drag_ended();
         return true;
     }
+    if (password_.is_open()) {
+        if (event.modifiers == ui::Modifiers{.ctrl = true} &&
+            (event.keysym == XKB_KEY_v || event.keysym == XKB_KEY_V))
+            paste_text();
+        else
+            password_.key(event);
+        return true;
+    }
+    if (errors_.is_open())
+        return errors_.key(event);
     if (conflict_.is_open()) {
         return conflict_.key(event);  // a copy waits for the answer: every key is the card's
     }
     if (confirm_.is_open()) {
         return confirm_.key(event);
     }
-    if (password_.is_open()) {
+    if (mount_password_.is_open()) {
         if (event.modifiers == ui::Modifiers{.ctrl = true} &&
             (event.keysym == XKB_KEY_v || event.keysym == XKB_KEY_V)) {
             paste_text();
             return true;
         }
-        return password_.key(event);  // every key is the card's meanwhile
+        return mount_password_.key(event);  // every key is the card's meanwhile
     }
     if (location_.is_open()) {
         if (event.modifiers == ui::Modifiers{.ctrl = true} &&
@@ -3697,15 +4040,15 @@ bool Browser::take_key(const ui::KeyEvent& event, Clock::time_point now) {
         } else if (event.modifiers == ui::Modifiers{.ctrl = true} &&
                    (event.keysym == XKB_KEY_c || event.keysym == XKB_KEY_C ||
                     event.keysym == XKB_KEY_x || event.keysym == XKB_KEY_X)) {
-            const auto [first, last] = filter_field_.selection();
-            copy_text(filter_field_.text().substr(first, last - first));
+            const auto [first, last] = pane().filter_field.selection();
+            copy_text(pane().filter_field.text().substr(first, last - first));
             if (event.keysym == XKB_KEY_x || event.keysym == XKB_KEY_X) {
-                filter_field_.insert({});
+                pane().filter_field.insert({});
                 apply_filters();
             }
         } else {
             const auto previous = name_filter();
-            filter_field_.key(event);
+            pane().filter_field.key(event);
             if (name_filter() != previous) {
                 apply_filters();
             }
@@ -3746,6 +4089,8 @@ bool Browser::take_key(const ui::KeyEvent& event, Clock::time_point now) {
         // On a text page Home, End, Page Up and Page Down move through it; Ctrl+A selects its
         // text and Ctrl+C copies it (with nothing selected, Ctrl+C copies the file, as without
         // Quick Look).
+        if (command >= Command::toggle_split)
+            return true;
         if (quick_look_.text_key(event, now)) {
             return true;
         }
@@ -3792,6 +4137,8 @@ bool Browser::take_key(const ui::KeyEvent& event, Clock::time_point now) {
 }
 
 void Browser::run(Command command, Clock::time_point now) {
+    if (!panes_enabled_ && command >= Command::toggle_split)
+        return;
     if (const std::shared_ptr<Folder> shown = current_folder(); shown && shown->is_trash()) {
         switch (command) {
             case Command::rename:
@@ -3809,11 +4156,42 @@ void Browser::run(Command command, Clock::time_point now) {
         }
     }
     switch (command) {
+        case Command::toggle_split:
+            toggle_split();
+            break;
+        case Command::switch_pane:
+            switch_pane();
+            break;
+        case Command::swap_panes:
+            swap_panes();
+            break;
+        case Command::orient_panes:
+            set_stacked(!stacked_);
+            break;
+        case Command::copy_other_pane:
+            transfer_to_other_pane(false);
+            break;
+        case Command::move_other_pane:
+            transfer_to_other_pane(true);
+            break;
+        case Command::same_other_pane:
+            if (const auto folder =
+                    pane().mode == Mode::details ? pane().details.root_folder() : current_folder())
+                open_in_other_pane(folder->path());
+            break;
+        case Command::open_other_pane:
+            if (const auto folder = current_folder()) {
+                const auto entry = folder->single_selection();
+                if (entry && entry->is_directory())
+                    open_in_other_pane(folder->path() / entry->name);
+            }
+            break;
+
         case Command::filter_names:
             quick_look_.close();
             sidebar_.set_focused(false);
             filter_focused_ = true;
-            filter_field_.select_all();
+            pane().filter_field.select_all();
             redraw_();
             break;
         case Command::none:
@@ -3892,19 +4270,19 @@ void Browser::run(Command command, Clock::time_point now) {
             forward();
             break;
         case Command::toggle_hidden:
-            set_show_hidden(!show_hidden_);
+            set_show_hidden(!pane().show_hidden);
             break;
         case Command::new_tab:
             new_tab();
             break;
         case Command::close_tab:
-            close_tab(active_);
+            close_tab(area().active);
             break;
         case Command::next_tab:
-            select_tab((active_ + 1) % panes_.size());
+            select_tab((area().active + 1) % area().tabs.size());
             break;
         case Command::previous_tab:
-            select_tab((active_ + panes_.size() - 1) % panes_.size());
+            select_tab((area().active + area().tabs.size() - 1) % area().tabs.size());
             break;
         case Command::select_tab:
             break;  // take_key: it needs the digit
@@ -3990,4 +4368,4 @@ bool Browser::view_key(const ui::KeyEvent& event, Clock::time_point now) {
     return false;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

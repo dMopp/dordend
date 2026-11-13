@@ -1,4 +1,4 @@
-#include "nordend/fs/directory.hpp"
+#include "rummage/fs/directory.hpp"
 
 #include <algorithm>
 #include <cerrno>
@@ -10,9 +10,9 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/fs/folder_icon.hpp"
+#include "rummage/fs/folder_icon.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 // Entries between cancellation checks.
@@ -54,21 +54,25 @@ bool stat_entry(int dir_fd, Entry& entry) {
     return true;
 }
 
-MimeId mime_without_content(const MimeDatabase& db, const Entry& entry) {
+// The type when the kind or the name decides it (no file read), else the name's best guess.
+void type_without_content(const MimeDatabase& db, Entry& entry) {
     switch (entry.kind) {
         case EntryKind::directory:
-            return MimeDatabase::kDirectory;
+            entry.mime = MimeDatabase::kDirectory;
+            return;
         case EntryKind::other:
-            return entry.is_link ? MimeDatabase::kSymlink : MimeDatabase::kSpecial;
+            entry.mime = entry.is_link ? MimeDatabase::kSymlink : MimeDatabase::kSpecial;
+            return;
         case EntryKind::file:
         case EntryKind::unknown:
             break;
     }
     if (entry.size == 0) {
-        return MimeDatabase::kZeroSize;
+        entry.mime = MimeDatabase::kZeroSize;
+        return;
     }
     const MimeDatabase::NameMatch match = db.by_name(entry.name);
-    return match.certain ? match.mime : kUnknownMime;
+    (match.certain ? entry.mime : entry.name_guess) = match.mime;
 }
 
 }  // namespace
@@ -109,7 +113,7 @@ ReadResult read_directory(const std::filesystem::path& path, const core::CancelT
             continue;
         }
         if (options.mime) {
-            entry.mime = mime_without_content(*options.mime, entry);
+            type_without_content(*options.mime, entry);
         }
         // Avoid probing zero-sized autofs placeholders (which could mount other homes).
         if (entry.is_directory() && entry.size != 0) {
@@ -149,7 +153,7 @@ std::vector<std::optional<Entry>> read_entries(const std::filesystem::path& path
             continue;  // gone
         }
         if (options.mime) {
-            entry.mime = mime_without_content(*options.mime, entry);
+            type_without_content(*options.mime, entry);
         }
         if (entry.is_directory() && entry.size != 0) {
             entry.folder_icon = icons.for_folder(path / entry.name);
@@ -174,4 +178,4 @@ core::CancelToken load_directory(core::WorkerPool& pool, std::filesystem::path p
         [on_done = std::move(on_done)](const ReadResult& result) { on_done(result); });
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

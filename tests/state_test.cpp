@@ -1,4 +1,4 @@
-#include "nordend/views/state.hpp"
+#include "rummage/views/state.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -12,24 +12,24 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/file.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/file.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::fs::SortKey;
-using nordend::test::TempDir;
-using nordend::views::Browser;
-using nordend::views::format_state;
-using nordend::views::load_state;
-using nordend::views::parse_state;
-using nordend::views::State;
-using nordend::views::StateKeeper;
-using nordend::views::StateResult;
+using rummage::core::EventLoop;
+using rummage::fs::SortKey;
+using rummage::test::TempDir;
+using rummage::views::Browser;
+using rummage::views::format_state;
+using rummage::views::load_state;
+using rummage::views::parse_state;
+using rummage::views::State;
+using rummage::views::StateKeeper;
+using rummage::views::StateResult;
 using namespace std::chrono_literals;
 
 namespace {
@@ -133,18 +133,18 @@ TEST_CASE("state: a broken file is the defaults; unknown keys are fine") {
 TEST_CASE("state: the file lives under XDG_STATE_HOME") {
     const char* home = std::getenv("XDG_STATE_HOME");  // NOLINT(concurrency-mt-unsafe)
     REQUIRE(home != nullptr);  // tests/main.cpp points it into the test root
-    CHECK(nordend::views::default_state_path() ==
-          std::filesystem::path{home} / "nordend" / "state.toml");
+    CHECK(rummage::views::default_state_path() ==
+          std::filesystem::path{home} / "rummage" / "state.toml");
 }
 
 TEST_CASE("state: the browser gives back what it was given") {
     const TempDir dir;
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     CHECK(browser.state() == State{});  // the browser's defaults are the file's
 
     State wanted = changed();
@@ -178,9 +178,9 @@ TEST_CASE("state: the browser gives back what it was given") {
 
 TEST_CASE("StateKeeper: one write after the last change, flush writes what is left") {
     const TempDir dir;
-    const std::filesystem::path file = dir.path / "nordend" / "state.toml";
+    const std::filesystem::path file = dir.path / "rummage" / "state.toml";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
+    rummage::core::WorkerPool pool{loop, 2};
     StateKeeper keeper{loop, pool, file, State{}, 20ms};
 
     keeper.note(State{});  // nothing changed: nothing to write
@@ -286,12 +286,12 @@ TEST_CASE("state: the browser's tabs, kept and brought back as they were") {
     std::filesystem::create_directories(dir.path / "b");
     std::filesystem::create_directories(dir.path / "gone");
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     const auto make = [&] {
         return std::make_unique<Browser>(
-            loop, pool, watcher, nordend::fs::MimeDatabase::load(), [] {},
-            [](nordend::ui::CursorShape /*shape*/) {});
+            loop, pool, watcher, rummage::fs::MimeDatabase::load(), [] {},
+            [](rummage::ui::CursorShape /*shape*/) {});
     };
     State saved;
     {
@@ -357,7 +357,7 @@ TEST_CASE("state: the lists' and the grid's size, and what is not one") {
         const auto restored = parse(format_state(large));
         CHECK(restored.problems.empty());
         CHECK(restored.state.grid_icon == size);
-        CHECK(Browser::grid_index(size) != nordend::views::kUsualGridSize);
+        CHECK(Browser::grid_index(size) != rummage::views::kUsualGridSize);
     }
     const StateResult good = parse("[view]\nlist_size = \"largest\"\ngrid_icon = 48\n");
     CHECK(good.problems.empty());
@@ -394,11 +394,11 @@ shown = true
     REQUIRE(read.problems.empty());
     CHECK_FALSE(read.state.tabs[0].list_size);
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
     browser.apply(read.state);
     REQUIRE(browser.restore_tabs(read.state.tabs, read.state.shown_tab));
     REQUIRE(run_until(loop, [&] { return !browser.loading(); }));

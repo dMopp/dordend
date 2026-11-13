@@ -1,4 +1,4 @@
-#include "nordend/core/file_watcher.hpp"
+#include "rummage/core/file_watcher.hpp"
 
 #include <array>
 #include <cerrno>
@@ -12,9 +12,9 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::core {
+namespace rummage::core {
 namespace {
 
 // Writes closed, renames into and out of the directory, deletions. IN_MODIFY is left out on
@@ -87,4 +87,4 @@ void FileWatcher::on_readable() {
     });
 }
 
-}  // namespace nordend::core
+}  // namespace rummage::core

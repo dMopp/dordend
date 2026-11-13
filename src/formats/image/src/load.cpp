@@ -1,4 +1,4 @@
-#include "nordend/formats/image/load.hpp"
+#include "rummage/formats/image/load.hpp"
 
 #include <algorithm>
 #include <array>
@@ -16,11 +16,11 @@
 #include "dng/develop.hpp"
 #include "fd_file.hpp"
 #include "jpeg_segments.hpp"
-#include "nordend/formats/image/preview.hpp"
-#include "nordend/picture/scale.hpp"
+#include "rummage/formats/image/preview.hpp"
+#include "rummage/picture/scale.hpp"
 #include "tiff/decode.hpp"
 
-namespace nordend::formats::image {
+namespace rummage::formats::image {
 
 using picture::scale_to_fit;
 
@@ -38,7 +38,7 @@ enum class Kind : std::uint8_t {
     jpeg,        // decoded whole; a camera's (with EXIF) may carry a larger preview first
     container,   // TIFF and the raw formats built like it, RAF, CR3: previews only
     plain_tiff,  // a TIFF that is not a camera raw: decoded here, read piece by piece
-    no_reader,   // a raw format with no preview Nordend reads (Sigma X3F, Canon CRW, Minolta MRW)
+    no_reader,   // a raw format with no preview rummage reads (Sigma X3F, Canon CRW, Minolta MRW)
     unknown,     // nothing known: only a camera raw's MIME type led here
 };
 
@@ -156,7 +156,7 @@ Loaded load(int fd, std::uint32_t max_width, std::uint32_t max_height) {
         kind = Kind::plain_tiff;
     }
     if (kind == Kind::no_reader) {
-        return failed(Failure::no_readable_preview, "a raw format Nordend does not read");
+        return failed(Failure::no_readable_preview, "a raw format rummage does not read");
     }
 
     Loaded result;
@@ -200,7 +200,7 @@ Loaded load(int fd, std::uint32_t max_width, std::uint32_t max_height) {
         result.from_preview = true;
         return true;
     };
-    // A DNG whose previews are too small: developed (Nordend's own code), else the previews.
+    // A DNG whose previews are too small: developed (rummage's own code), else the previews.
     if (picture.empty() && kind == Kind::container && sniff(head) == Format::tiff &&
         !enough(preview.width, preview.height, max_width, max_height)) {
         const tiff::Source source{*file};
@@ -267,4 +267,4 @@ Loaded load(int fd, std::uint32_t max_width, std::uint32_t max_height) {
     return result;
 }
 
-}  // namespace nordend::formats::image
+}  // namespace rummage::formats::image

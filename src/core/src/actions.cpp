@@ -1,10 +1,10 @@
-#include "nordend/core/actions.hpp"
+#include "rummage/core/actions.hpp"
 
 #include <algorithm>
 #include <array>
 #include <string_view>
 
-namespace nordend::core {
+namespace rummage::core {
 
 std::vector<Action> action_registry(std::span<const Action> custom) {
     const std::vector<std::string> archives{"application/zip",
@@ -15,6 +15,7 @@ std::vector<Action> action_registry(std::span<const Action> custom) {
                                             "application/x-tar",
                                             "application/x-compressed-tar",
                                             "application/x-bzip-compressed-tar",
+                                            "application/x-bzip2-compressed-tar",
                                             "application/x-xz-compressed-tar",
                                             "application/x-zstd-compressed-tar",
                                             "application/gzip",
@@ -178,4 +179,4 @@ std::vector<std::string> action_arguments(const Action& action, const ActionCont
     return args;
 }
 
-}  // namespace nordend::core
+}  // namespace rummage::core

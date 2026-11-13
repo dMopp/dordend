@@ -10,9 +10,9 @@
 #include <unistd.h>
 #include <vector>
 
-#include "nordend/preview/preview.hpp"
+#include "rummage/preview/preview.hpp"
 
-namespace nordend::preview {
+namespace rummage::preview {
 namespace {
 
 constexpr std::size_t kNameBuffer = 4096;     // getpwuid_r / getgrgid_r scratch space
@@ -133,4 +133,4 @@ Info read_info(const std::filesystem::path& path, const core::CancelToken& cance
     return info;
 }
 
-}  // namespace nordend::preview
+}  // namespace rummage::preview

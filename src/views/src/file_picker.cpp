@@ -1,5 +1,5 @@
-#include "nordend/views/file_picker.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/views/file_picker.hpp"
+#include "rummage/core/i18n.hpp"
 
 #include <algorithm>
 #include <fnmatch.h>
@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 using Mode = core::PickerRequest::Mode;
 
@@ -167,6 +167,7 @@ FilePicker::FilePicker(Browser& browser, core::PickerRequest request,
       name_{request_.name},
       menu_{redraw_},
       confirm_{redraw_} {
+    browser_.set_panes_enabled(false);
     focus_ = request_.mode == Mode::save ? 1 : 0;
     if (focus_ == 1) {
         name_.select_all();
@@ -526,7 +527,7 @@ void FilePicker::draw(ui::Renderer& renderer, const ui::Rect& bounds, const them
         controls_[i] = rect;
         renderer.draw_box(rect,
                           {.fill = primary ? palette.primary : palette.surface_container_highest,
-                           .radius = ui::Corners::all(6),
+                           .radius = {},
                            .border_width = focus_ == static_cast<int>(i) ? 2.0F : 0.0F,
                            .border = palette.outline});
         renderer.draw_text(text, rect.x + 10, rect.y + 8, 13,
@@ -555,4 +556,4 @@ void FilePicker::draw(ui::Renderer& renderer, const ui::Rect& bounds, const them
     menu_.draw(renderer, bounds, palette);
     confirm_.draw(renderer, bounds, palette);
 }
-}  // namespace nordend::views
+}  // namespace rummage::views

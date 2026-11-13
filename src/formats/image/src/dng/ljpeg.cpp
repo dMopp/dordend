@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 namespace {
 
 constexpr std::uint8_t kSof3 = 0xC3;
@@ -465,4 +465,4 @@ bool decode_lossless(
     return true;
 }
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

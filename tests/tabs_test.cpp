@@ -16,27 +16,27 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/theme/palette.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/offscreen.hpp"
-#include "nordend/ui/renderer.hpp"
-#include "nordend/ui/text.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/list_size.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/ui/renderer.hpp"
+#include "rummage/ui/text.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/list_size.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::CursorShape;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::ui::PointerButton;
-using nordend::ui::PointerEvent;
-using nordend::views::Browser;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::CursorShape;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::ui::PointerButton;
+using rummage::ui::PointerEvent;
+using rummage::views::Browser;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -73,9 +73,9 @@ constexpr Modifiers kCtrl{.ctrl = true};
 constexpr Modifiers kCtrlShift{.ctrl = true, .shift = true};
 constexpr Modifiers kAlt{.alt = true};
 
-std::unique_ptr<nordend::ui::Offscreen> offscreen() {
+std::unique_ptr<rummage::ui::Offscreen> offscreen() {
     try {
-        return std::make_unique<nordend::ui::Offscreen>(kWidth, kHeight);
+        return std::make_unique<rummage::ui::Offscreen>(kWidth, kHeight);
     } catch (const std::runtime_error& error) {
         MESSAGE("no offscreen OpenGL: " << error.what());
         return nullptr;
@@ -88,10 +88,10 @@ struct Fixture {
     fs::path a = dir.path / "a";
     fs::path b = dir.path / "b";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
+                    watcher, rummage::fs::MimeDatabase::load(),
                     [] {},   [](CursorShape /*shape*/) {}};
 
     Fixture() {
@@ -152,7 +152,7 @@ TEST_CASE("tabs: Ctrl+T, Ctrl+Tab, Ctrl+Shift+Tab, Alt+1…9, Ctrl+W; the last t
     CHECK(f.browser.tab_titles() == Names{"a"});
 }
 
-TEST_CASE("tabs: each has its view and history; the order and hidden files are the window's") {
+TEST_CASE("tabs: each has its view and history; sorting and hidden files are independent") {
     Fixture f;
     f.browser.set_mode(Browser::Mode::grid);
     CHECK(f.press(key(XKB_KEY_t, kCtrl)));  // in the grid too
@@ -167,15 +167,18 @@ TEST_CASE("tabs: each has its view and history; the order and hidden files are t
     CHECK(f.browser.history().size() == 1);
     CHECK(f.browser.grid().folder()->path() == f.a);
 
-    // The window's order and hidden files reach every tab, those made later too.
-    f.browser.set_sort(nordend::fs::SortKey::size, true);
+    // Settings stay in this tab; new tabs inherit the tab they are opened from.
+    f.browser.set_sort(rummage::fs::SortKey::size, true);
     f.browser.set_show_hidden(true);
     f.browser.select_tab(1);
-    CHECK(f.browser.sort_order().key == nordend::fs::SortKey::size);
+    CHECK(f.browser.sort_order().key == rummage::fs::SortKey::name);
+    CHECK_FALSE(f.browser.shows_hidden());
+    f.browser.set_sort(rummage::fs::SortKey::size, true);
+    CHECK(f.browser.sort_order().key == rummage::fs::SortKey::size);
     CHECK(f.browser.sort_order().descending);
-    CHECK(f.browser.details().folder()->order().key == nordend::fs::SortKey::size);
+    CHECK(f.browser.details().folder()->order().key == rummage::fs::SortKey::size);
     CHECK(f.press(key(XKB_KEY_t, kCtrl)));
-    CHECK(f.browser.details().order().key == nordend::fs::SortKey::size);
+    CHECK(f.browser.details().order().key == rummage::fs::SortKey::size);
     CHECK(f.browser.details().folder()->order().descending);
 
     // Back in the second tab goes through its own history only.
@@ -215,22 +218,22 @@ TEST_CASE("tabs: Open in New Tab, one folder or several, behind the tab shown") 
     fs::create_directories(f.a / "more");
     REQUIRE(run_until(f.loop, [&f] {
         const auto& entries = f.browser.columns().focused_folder()->entries();
-        return std::ranges::find(entries, "more", &nordend::fs::Entry::name) != entries.end();
+        return std::ranges::find(entries, "more", &rummage::fs::Entry::name) != entries.end();
     }));
     const auto select = [&f](const Names& names) {
-        const std::shared_ptr<nordend::views::Folder> folder = f.browser.columns().focused_folder();
+        const std::shared_ptr<rummage::views::Folder> folder = f.browser.columns().focused_folder();
         folder->set_cursor(std::nullopt);
         for (const std::string& name : names) {
             const auto& entries = folder->entries();
-            const auto it = std::ranges::find(entries, name, &nordend::fs::Entry::name);
+            const auto it = std::ranges::find(entries, name, &rummage::fs::Entry::name);
             REQUIRE(it != entries.end());
             folder->set_cursor(static_cast<std::size_t>(it - entries.begin()),
-                               nordend::views::SelectMode::toggle);
+                               rummage::views::SelectMode::toggle);
         }
     };
     // The label of the menu's item called id (empty: none), and choosing it.
     const auto label = [&f](const std::string& id) {
-        for (const nordend::views::MenuItem& each : f.browser.context_menu().items()) {
+        for (const rummage::views::MenuItem& each : f.browser.context_menu().items()) {
             if (each.id == id) {
                 return each.label;
             }
@@ -239,7 +242,7 @@ TEST_CASE("tabs: Open in New Tab, one folder or several, behind the tab shown") 
     };
     const auto choose = [&f](const std::string& id) {
         std::function<void()> action;
-        for (const nordend::views::MenuItem& each : f.browser.context_menu().items()) {
+        for (const rummage::views::MenuItem& each : f.browser.context_menu().items()) {
             if (each.id == id) {
                 action = each.action;
             }
@@ -294,7 +297,7 @@ TEST_CASE("tabs: closed while a name is edited, the rename still lands") {
 
     // A folder kept past its tab: moving its cursor tells no columns (ASan would see them gone).
     CHECK(f.press(key(XKB_KEY_t, kCtrl)));
-    const std::shared_ptr<nordend::views::Folder> held = f.browser.columns().focused_folder();
+    const std::shared_ptr<rummage::views::Folder> held = f.browser.columns().focused_folder();
     f.browser.close_tab(1);
     held->set_cursor(0);
     CHECK(held->cursor() == 0);
@@ -302,20 +305,20 @@ TEST_CASE("tabs: closed while a name is edited, the rename still lands") {
 
 TEST_CASE("tabs: the bar with two tabs; a click shows one, its × or a middle click closes it") {
     Fixture f;
-    const std::unique_ptr<nordend::ui::Offscreen> gl = offscreen();
+    const std::unique_ptr<rummage::ui::Offscreen> gl = offscreen();
     if (!gl) {
         return;
     }
-    nordend::ui::FontSystem fonts;
-    nordend::ui::Renderer renderer{fonts};
-    nordend::ui::IconSet icons{fonts};
+    rummage::ui::FontSystem fonts;
+    rummage::ui::Renderer renderer{fonts};
+    rummage::ui::IconSet icons{fonts};
     const auto draw = [&] {
         renderer.begin_frame(kWidth, kHeight, 1.0F, {});
-        f.browser.draw(renderer, {0.0F, 0.0F, kWidth, kHeight}, nordend::theme::Palette{}, icons,
+        f.browser.draw(renderer, {0.0F, 0.0F, kWidth, kHeight}, rummage::theme::Palette{}, icons,
                        Browser::Clock::now());
         renderer.end_frame();
     };
-    const auto click = [&f](const nordend::ui::Rect& rect, PointerButton button) {
+    const auto click = [&f](const rummage::ui::Rect& rect, PointerButton button) {
         const float x = rect.x + (rect.width / 2.0F);
         const float y = rect.y + (rect.height / 2.0F);
         f.browser.pointer({.kind = PointerEvent::Kind::motion, .x = x, .y = y},
@@ -326,14 +329,14 @@ TEST_CASE("tabs: the bar with two tabs; a click shows one, its × or a middle cl
         f.browser.pointer({.kind = PointerEvent::Kind::release, .x = x, .y = y, .button = button},
                           Browser::Clock::now());
     };
-    const nordend::views::TabBar& bar = f.browser.tab_bar();
+    const rummage::views::TabBar& bar = f.browser.tab_bar();
 
     draw();
     CHECK(bar.tab_rects().empty());  // one tab: no bar
     CHECK(f.press(key(XKB_KEY_t, kCtrl)));
     draw();
     REQUIRE(bar.tab_rects().size() == 2);
-    const nordend::ui::Rect first = bar.tab_rects()[0];
+    const rummage::ui::Rect first = bar.tab_rects()[0];
     CHECK(f.browser.cursor_at(first.x + 20.0F, first.y + 10.0F) == CursorShape::pointer);
     // The path and the view moved down under the bar.
     CHECK(f.browser.breadcrumb().claims(first.x + 20.0F, first.bottom() + 5.0F));
@@ -364,24 +367,24 @@ TEST_CASE("tabs: the bar with two tabs; a click shows one, its × or a middle cl
     f.browser.set_mode(Browser::Mode::details);
     REQUIRE(f.settle());
     draw();
-    const auto row_of = [&f](const std::string& name) -> std::optional<nordend::ui::Rect> {
+    const auto row_of = [&f](const std::string& name) -> std::optional<rummage::ui::Rect> {
         for (float y = 1.0F; y < kHeight; y += 2.0F) {
             for (float x = 300.0F; x < kWidth; x += 40.0F) {
                 if (const auto hit = f.browser.details().hit(x, y);
                     hit && hit->entry && hit->folder->entries()[*hit->entry].name == name) {
-                    return nordend::ui::Rect{x, y, 1.0F, 1.0F};
+                    return rummage::ui::Rect{x, y, 1.0F, 1.0F};
                 }
             }
         }
         return std::nullopt;
     };
-    const std::optional<nordend::ui::Rect> sub = row_of("sub");
-    const std::optional<nordend::ui::Rect> one = row_of("one.txt");
+    const std::optional<rummage::ui::Rect> sub = row_of("sub");
+    const std::optional<rummage::ui::Rect> one = row_of("one.txt");
     REQUIRE(sub);
     REQUIRE(one);
-    click(one.value_or(nordend::ui::Rect{}), PointerButton::middle);
+    click(one.value_or(rummage::ui::Rect{}), PointerButton::middle);
     CHECK(f.browser.tab_count() == 1);
-    click(sub.value_or(nordend::ui::Rect{}), PointerButton::middle);
+    click(sub.value_or(rummage::ui::Rect{}), PointerButton::middle);
     REQUIRE(f.settle());
     CHECK(f.browser.tab_titles() == Names{"a", "sub"});
     CHECK(f.browser.active_tab() == 0);
@@ -392,23 +395,23 @@ TEST_CASE("tabs: the bar with two tabs; a click shows one, its × or a middle cl
     fs::create_directories(f.a / "more");
     REQUIRE(run_until(f.loop, [&f] {
         const auto& entries = f.browser.details().folder()->entries();
-        return std::ranges::find(entries, "more", &nordend::fs::Entry::name) != entries.end();
+        return std::ranges::find(entries, "more", &rummage::fs::Entry::name) != entries.end();
     }));
     REQUIRE(f.settle());
     draw();
-    const std::shared_ptr<nordend::views::Folder> shown = f.browser.details().folder();
+    const std::shared_ptr<rummage::views::Folder> shown = f.browser.details().folder();
     shown->set_cursor(std::nullopt);
     for (const char* name : {"more", "sub", "one.txt"}) {
         const auto& entries = shown->entries();
-        const auto it = std::ranges::find(entries, std::string{name}, &nordend::fs::Entry::name);
+        const auto it = std::ranges::find(entries, std::string{name}, &rummage::fs::Entry::name);
         REQUIRE(it != entries.end());
         shown->set_cursor(static_cast<std::size_t>(it - entries.begin()),
-                          nordend::views::SelectMode::toggle);
+                          rummage::views::SelectMode::toggle);
     }
     draw();
-    const std::optional<nordend::ui::Rect> selected = row_of("sub");
+    const std::optional<rummage::ui::Rect> selected = row_of("sub");
     REQUIRE(selected);
-    click(selected.value_or(nordend::ui::Rect{}), PointerButton::middle);
+    click(selected.value_or(rummage::ui::Rect{}), PointerButton::middle);
     REQUIRE(f.settle());
     CHECK(f.browser.tab_titles() == Names{"a", "more", "sub"});
     CHECK(f.browser.active_tab() == 0);
@@ -416,21 +419,21 @@ TEST_CASE("tabs: the bar with two tabs; a click shows one, its × or a middle cl
 
 TEST_CASE("zoom: the lists grow and shrink together, in every tab; the cursor's row stays") {
     Fixture f;
-    const std::unique_ptr<nordend::ui::Offscreen> gl = offscreen();
+    const std::unique_ptr<rummage::ui::Offscreen> gl = offscreen();
     if (!gl) {
         return;
     }
-    nordend::ui::FontSystem fonts;
-    nordend::ui::Renderer renderer{fonts};
-    nordend::ui::IconSet icons{fonts};
+    rummage::ui::FontSystem fonts;
+    rummage::ui::Renderer renderer{fonts};
+    rummage::ui::IconSet icons{fonts};
     const auto draw = [&] {
         renderer.begin_frame(kWidth, kHeight, 1.0F, {});
-        f.browser.draw(renderer, {0.0F, 0.0F, kWidth, kHeight}, nordend::theme::Palette{}, icons,
+        f.browser.draw(renderer, {0.0F, 0.0F, kWidth, kHeight}, rummage::theme::Palette{}, icons,
                        Browser::Clock::now());
         renderer.end_frame();
     };
-    using nordend::views::kListSizes;
-    using nordend::views::kUsualListSize;
+    using rummage::views::kListSizes;
+    using rummage::views::kUsualListSize;
     // Enough entries to scroll, the cursor far down.
     for (int i = 0; i < 60; ++i) {
         std::ofstream{f.a / std::format("file {:02}.txt", i)} << i;
@@ -509,14 +512,14 @@ TEST_CASE("zoom: the lists grow and shrink together, in every tab; the cursor's 
     CHECK(f.browser.details().list_size() == kUsualListSize + 2);
 
     // Each tab's zoom in the state, back as it was.
-    const nordend::views::State state = f.browser.state();
+    const rummage::views::State state = f.browser.state();
     REQUIRE(state.tabs.size() == 2);
     CHECK(state.tabs[0].list_size == std::optional<std::size_t>{0});
     CHECK(state.tabs[0].grid_icon == std::optional<std::int32_t>{zoomed});
     CHECK(state.tabs[1].list_size == std::optional<std::size_t>{kUsualListSize + 2});
     CHECK(state.tabs[1].grid_icon == std::optional<std::int32_t>{static_cast<std::int32_t>(grid)});
     Browser again{f.loop,    f.pool,
-                  f.watcher, nordend::fs::MimeDatabase::load(),
+                  f.watcher, rummage::fs::MimeDatabase::load(),
                   [] {},     [](CursorShape /*shape*/) {}};
     again.apply(state);
     REQUIRE(again.restore_tabs(state.tabs, state.shown_tab));

@@ -2,7 +2,7 @@
 
 #include "internal.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 namespace {
 double linearize(double c) { return c <= .04045 ? c / 12.92 : std::pow((c + .055) / 1.055, 2.4); }
 
@@ -154,4 +154,4 @@ void blur(const Canvas& input, Canvas& output, Canvas& scratch, double sx, doubl
     if (linear)
         convert(output, false);
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

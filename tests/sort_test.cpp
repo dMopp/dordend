@@ -1,4 +1,4 @@
-#include "nordend/fs/sort.hpp"
+#include "rummage/fs/sort.hpp"
 
 #include <algorithm>
 #include <random>
@@ -8,14 +8,14 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/fs/mime.hpp"
+#include "rummage/fs/mime.hpp"
 
-using nordend::fs::Entry;
-using nordend::fs::EntryKind;
-using nordend::fs::Listing;
-using nordend::fs::natural_compare;
-using nordend::fs::SortKey;
-using nordend::fs::SortOrder;
+using rummage::fs::Entry;
+using rummage::fs::EntryKind;
+using rummage::fs::Listing;
+using rummage::fs::natural_compare;
+using rummage::fs::SortKey;
+using rummage::fs::SortOrder;
 
 namespace {
 
@@ -89,10 +89,10 @@ TEST_CASE("sort orders") {
 }
 
 TEST_CASE("sort by type: type names in order, unknown types last, then names") {
-    const auto mime = nordend::fs::MimeDatabase::load();
+    const auto mime = rummage::fs::MimeDatabase::load();
     const auto typed = [&](const char* name, const char* type) {
         Entry entry = file(name, 1, 1);
-        entry.mime = type == nullptr ? nordend::fs::kUnknownMime : mime->find(type);
+        entry.mime = type == nullptr ? rummage::fs::kUnknownMime : mime->find(type);
         return entry;
     };
     std::vector<Entry> entries{typed("z.txt", "text/plain"),          typed("noext", nullptr),

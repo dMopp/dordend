@@ -1,7 +1,7 @@
-// Nordend's exiv2 code as it was before ROADMAP 2e (preview.cpp and photo.cpp of commit
+// rummage's exiv2 code as it was before ROADMAP 2e (preview.cpp and photo.cpp of commit
 // b27367a, with exiv2's input over a descriptor from fd_file): the reference the readers that
 // replace it are compared with (exiv2_reference_test.cpp). Tests only: never linked into
-// Nordend or its helper. Kept as it was; only the names moved into this namespace.
+// rummage or its helper. Kept as it was; only the names moved into this namespace.
 #include "exiv2_reference.hpp"
 
 #include <algorithm>
@@ -23,11 +23,11 @@
 
 #include "fd_file.hpp"
 #include "jpeg_segments.hpp"
-#include "nordend/formats/image/decode.hpp"
+#include "rummage/formats/image/decode.hpp"
 #include "tiff/decode.hpp"
 
-// NOLINTBEGIN: kept as it was in Nordend
-namespace nordend::formats::image::reference {
+// NOLINTBEGIN: kept as it was in rummage
+namespace rummage::formats::image::reference {
 
 // exiv2's input over a descriptor: reads with pread at its own position, maps the file when
 // exiv2 asks for a mapping (inside the helper a file cut short while mapped kills only the
@@ -579,6 +579,6 @@ PhotoInfo read_photo_info(int fd, int sidecar_fd) {
     return info;
 }
 
-}  // namespace nordend::formats::image::reference
+}  // namespace rummage::formats::image::reference
 
 // NOLINTEND

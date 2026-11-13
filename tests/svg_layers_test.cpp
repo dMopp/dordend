@@ -7,19 +7,19 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/picture/wuffs.hpp"
-#include "nordend/svg/svg.hpp"
+#include "rummage/picture/wuffs.hpp"
+#include "rummage/svg/svg.hpp"
 #include "svg_compare.hpp"
 
 namespace {
 auto svg(std::string_view body) {
     const std::string source = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>" +
                                std::string(body) + "</svg>";
-    return nordend::svg::render(
+    return rummage::svg::render(
         {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, 64);
 }
 
-std::array<unsigned, 4> pixel(const nordend::picture::Image& im, unsigned x, unsigned y) {
+std::array<unsigned, 4> pixel(const rummage::picture::Image& im, unsigned x, unsigned y) {
     REQUIRE(x < im.width);
     REQUIRE(y < im.height);
     auto at = (static_cast<std::size_t>(y) * im.width + x) * 4;
@@ -27,7 +27,7 @@ std::array<unsigned, 4> pixel(const nordend::picture::Image& im, unsigned x, uns
 }
 
 std::vector<std::uint8_t> bytes(std::string_view name) {
-    std::ifstream f{std::string(NORDEND_TEST_DATA) + "/svg/" + std::string(name), std::ios::binary};
+    std::ifstream f{std::string(RUMMAGE_TEST_DATA) + "/svg/" + std::string(name), std::ios::binary};
     REQUIRE(f.good());
     return {std::istreambuf_iterator<char>{f}, std::istreambuf_iterator<char>{}};
 }
@@ -36,9 +36,9 @@ std::vector<std::uint8_t> bytes(std::string_view name) {
 TEST_CASE("svg stage2: committed layer references") {
     for (const std::string name : {"group-opacity", "clips", "clip-bbox", "mask"}) {
         CAPTURE(name);
-        const auto actual = nordend::svg::render(bytes(name + ".svg"), 64);
-        const auto expected = nordend::picture::decode_wuffs(bytes(name + ".png"), 4096);
-        const auto diff = nordend::test::svg_difference(actual, expected.image);
+        const auto actual = rummage::svg::render(bytes(name + ".svg"), 64);
+        const auto expected = rummage::picture::decode_wuffs(bytes(name + ".png"), 4096);
+        const auto diff = rummage::test::svg_difference(actual, expected.image);
         CAPTURE(diff.maximum);
         CAPTURE(diff.fraction);
         CHECK(diff.passes());

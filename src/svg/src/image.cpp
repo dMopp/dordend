@@ -1,7 +1,7 @@
 #include "internal.hpp"
-#include "nordend/picture/wuffs.hpp"
+#include "rummage/picture/wuffs.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 std::shared_ptr<picture::Image> embedded(Document& doc, std::string_view href) {
     if (!href.starts_with("data:image/png;base64,") && !href.starts_with("data:image/jpeg;base64,"))
         return {};
@@ -59,4 +59,4 @@ std::shared_ptr<picture::Image> embedded(Document& doc, std::string_view href) {
                 (decoded.image.rgba[i + c] * decoded.image.rgba[i + 3] + 127) / 255);
     return std::make_shared<picture::Image>(std::move(decoded.image));
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

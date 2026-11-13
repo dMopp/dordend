@@ -1,4 +1,4 @@
-#include "nordend/views/file_finder.hpp"
+#include "rummage/views/file_finder.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -17,33 +17,33 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/walk.hpp"
-#include "nordend/ui/seat.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/command_palette.hpp"
-#include "nordend/views/fuzzy.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/walk.hpp"
+#include "rummage/ui/seat.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/command_palette.hpp"
+#include "rummage/views/fuzzy.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::CancelToken;
-using nordend::core::EventLoop;
-using nordend::core::WorkerPool;
-using nordend::fs::PathBatch;
-using nordend::fs::walk;
-using nordend::fs::WalkOptions;
-using nordend::fs::WalkResult;
-using nordend::test::TempDir;
-using nordend::ui::CursorShape;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::views::Browser;
-using nordend::views::FileFinder;
-using nordend::views::FoundFile;
-using nordend::views::FuzzyQuery;
-using nordend::views::match_paths;
+using rummage::core::CancelToken;
+using rummage::core::EventLoop;
+using rummage::core::WorkerPool;
+using rummage::fs::PathBatch;
+using rummage::fs::walk;
+using rummage::fs::WalkOptions;
+using rummage::fs::WalkResult;
+using rummage::test::TempDir;
+using rummage::ui::CursorShape;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::views::Browser;
+using rummage::views::FileFinder;
+using rummage::views::FoundFile;
+using rummage::views::FuzzyQuery;
+using rummage::views::match_paths;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -229,9 +229,9 @@ struct Fixture {
     fs::path a = dir.path / "a";
     EventLoop loop;
     WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
+                    watcher, rummage::fs::MimeDatabase::load(),
                     [] {},   [](CursorShape /*shape*/) {}};
 
     Fixture() {
@@ -268,7 +268,7 @@ struct Fixture {
     bool shown(const std::string& name) {
         return run_until(loop, [this, &name] {
             browser.settle_found(Browser::Clock::now());
-            const std::shared_ptr<nordend::views::Folder> folder = browser.grid().folder();
+            const std::shared_ptr<rummage::views::Folder> folder = browser.grid().folder();
             return folder && folder->cursor_entry() != nullptr &&
                    folder->cursor_entry()->name == name;
         });
@@ -339,7 +339,7 @@ TEST_CASE("find files: in the columns, the way down from the first column stays"
     f.find("far");
     f.press(key(XKB_KEY_Return));
     REQUIRE(run_until(f.loop, [&f] {
-        const std::shared_ptr<nordend::views::Folder> folder = f.browser.columns().focused_folder();
+        const std::shared_ptr<rummage::views::Folder> folder = f.browser.columns().focused_folder();
         return folder && folder->path() == f.a / "photos" / "deep" &&
                folder->cursor_entry() != nullptr && folder->cursor_entry()->name == "far.orf";
     }));

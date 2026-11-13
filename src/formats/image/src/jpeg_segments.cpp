@@ -4,7 +4,7 @@
 #include <array>
 #include <functional>
 
-namespace nordend::formats::image::detail {
+namespace rummage::formats::image::detail {
 namespace {
 
 constexpr std::uint8_t kApp1 = 0xE1;         // the EXIF segment
@@ -120,4 +120,4 @@ bool whole_jpeg(std::span<const std::uint8_t> data) {
     return false;
 }
 
-}  // namespace nordend::formats::image::detail
+}  // namespace rummage::formats::image::detail

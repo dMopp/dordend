@@ -9,7 +9,7 @@
 
 #include "ljpeg.hpp"
 
-namespace nordend::formats::image::dng {
+namespace rummage::formats::image::dng {
 namespace {
 
 constexpr std::uint64_t kUncompressed = 1;
@@ -557,4 +557,4 @@ std::optional<std::vector<std::uint16_t>> read_all(const Raw& raw, std::string& 
     return all;
 }
 
-}  // namespace nordend::formats::image::dng
+}  // namespace rummage::formats::image::dng

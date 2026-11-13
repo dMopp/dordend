@@ -1,6 +1,6 @@
-# Nordend: every feature
+# rummage: every feature
 
-Everything Nordend does today, by area. Numbers are measurements from
+Everything rummage does today, by area. Numbers are measurements from
 [benchmarks.md](benchmarks.md), taken on a Ryzen 7 5700G with an RX 6650 XT; how each feature came
 to be is in the [devlog](devlog.md), and what comes next is in the
 README's [What's next](../README.md#whats-next).
@@ -11,7 +11,7 @@ README's [What's next](../README.md#whats-next).
   boxes, text, icons and images. **No GTK, no Qt, no GLib.**
 - Its own project, at home on any Wayland desktop. On Noctalia (Noctalia Shell, the Umbriel
   compositor) it wears the Noctalia theme and the same line icons, and Umbriel draws its title
-  bar; elsewhere (GNOME, weston) Nordend draws its own.
+  bar; elsewhere (GNOME, weston) rummage draws its own.
 - One window thread, a pool of workers for everything that touches the disk, and **zero CPU when
   nothing moves**: no frame is drawn unless something changed (0 ticks in 30 s, measured).
 
@@ -33,17 +33,48 @@ README's [What's next](../README.md#whats-next).
   lists share one size, the grid keeps its own. Each tab has its own zoom (a new tab starts with
   the one it comes from), remembered with the tabs.
 - **Sort By** in the context menu (on a file or on empty space), in every view: name, size,
-  modified or type, ascending or descending, a dot on the order in use. One order for the whole
-  window: every folder in every view is sorted so, and it comes back at the next start.
+  modified or type, ascending or descending, a dot on the order in use. Each tab keeps its own order,
+  shared by its three views and remembered at the next start.
 - **Tabs** (Ctrl+T): each with its own folder, view and back/forward history. The bar above the
   path shows them when there are two or more: a click shows a tab, its × or a middle click
   closes it, + opens one. Ctrl+Tab and Ctrl+Shift+Tab go round them, Alt+1…9 picks one, Ctrl+W
   closes the one shown (never the last). Each tab keeps its own zoom too. A middle click on a folder, or the context menu's Open in
   New Tab (Tabs, for several folders), opens it in a tab behind the one shown; a middle click on
-  a selected folder opens every selected folder. The order, hidden files, the sidebar and the info pane
-  are the window's, the same in every tab.
+  a selected folder opens every selected folder. Sorting, hidden files and the filename filter
+  are independent in each tab. The shared sidebar and information panel follow the active pane.
 - **One folder, three ways of looking at it.** Switching views keeps the cursor, the selection and
   the file types already detected. The status bar has a button for each view.
+
+## Two persistent browsing panes
+
+- **F3** or **Two panes** splits the browser. On first use, the second pane starts at the current
+  location and receives focus. Each pane has its own tabs, breadcrumb, selections, history,
+  scrolling, view modes, zoom, sort order, hidden-file setting and filename filters.
+- **Tab** switches panes while browsing. Clicking a pane's header focuses it without disturbing
+  its selection. Hovering or scrolling the other pane does not move keyboard focus. The active
+  header has an accent and an “Active” label; inactive selections remain visible in subdued colors.
+- **Ctrl+T**, **Ctrl+W**, **Ctrl+Tab**, **Ctrl+Shift+Tab** and **Alt+1…9** operate in the active
+  pane. The last tab in each pane stays open. New tabs inherit view, zoom, sorting and hidden-file
+  visibility, and start with an empty filename filter.
+- Drag the divider to resize; double-click it to equalize. **Top / bottom** changes orientation,
+  and **Swap panes** exchanges their positions while keeping focus with the same content.
+  Column view works inside either pane, just like Grid and Details.
+- **Ctrl+F5** copies selected files to the other pane's current folder; **Ctrl+F6** moves them.
+  The command palette and **Panes** context submenu show the destination path and direction.
+  In expanded Details views, the destination is the breadcrumb's folder, not a selected child.
+  Transfers capture both ends when invoked and use the existing conflict handling, sidecar
+  support, progress and window-wide undo. Clipboard copy/paste keeps its usual behavior.
+- **Open in Other Pane** opens a selected folder in a new tab there. **Show Same Folder in Other
+  Pane** opens the current location there. Both focus the destination without replacing its tabs.
+  These commands and layout controls are available in the command palette and **Panes** submenu.
+- **F3** again shows the active pane full-width, retaining the hidden pane's tabs and selections.
+  Cross-pane transfers are unavailable until both panes are visible again. Reopening rummage
+  without a folder restores both tab sets, active tabs, focused pane, orientation, divider and
+  whether the second pane was hidden. Older single-pane sessions remain readable.
+- One sidebar, information panel and transfer status serve the window. The information panel
+  follows the active pane; **Ctrl+I** hides it. Each pane also shows its own selection count.
+  The file picker stays single-pane. Text fields and dialogs retain their normal Tab handling.
+
 
 ## Moving and selecting
 
@@ -56,7 +87,7 @@ README's [What's next](../README.md#whats-next).
   folders opened (the last 100), each with the cursor where it was left. Opening a folder after
   going back drops the ones ahead; a folder deleted meanwhile is skipped, with a message.
 - **Hidden files out of the way:** dotfiles are hidden at start; Ctrl+H shows them (dimmed) in
-  every view and hides them again. Hidden, they are never selected, so Ctrl+A and Delete touch
+  the active tab and hides them again. Hidden, they are never selected, so Ctrl+A and Delete touch
   only what you see, and the status bar says how many there are ("12 items, 3 hidden"). A hidden
   folder you open (from a bookmark, say) stays in sight on the way to it.
 - **Selection as you expect it:** click, Ctrl+click and Shift+click; Shift+arrows for a range,
@@ -79,17 +110,29 @@ README's [What's next](../README.md#whats-next).
 - **Copy Location** in the context menu and command palette copies selected absolute paths as
   text, one per line. On empty space it copies the current folder. Bind `copy_location` in
   `[keybindings]` to give it a shortcut.
-- **Extract Here / Extract To…** automatically choose an installed archive program: File Roller
-  when available, otherwise unzip for ZIP, gzip for single gzip files, tar for tar archives,
+- **Extract Here / Extract To…** automatically choose an installed archive program: 7zz/7z
+  for ZIP/7z files and unrar for RAR (falling back to 7zz/7z). Otherwise it uses File Roller,
+  unzip for ZIP, gzip for single gzip files, tar for tar archives,
   and 7zz/7z as a fallback. Compressed tar is unpacked fully, including when only 7z is installed.
-  Each selected archive must have a suitable backend; missing backends dim the menu action.
+  Install 7zz/7z for encrypted ZIP and 7z, and unrar for RAR: some 7-Zip packages omit RAR decoding.
+  Each selected archive must have a suitable backend. If one is missing, extraction stays available
+  with a “setup required” label; invoking it explains which program to install.
 - **CLI extraction** uses a fresh folder named after the archive; a single compressed file becomes
   its decompressed filename. Existing output is kept and the new output gets a numbered name.
-  Extract To… opens Nordend's folder picker. Sources are always retained. Nordend reports success
+  Extract To… opens rummage's folder picker. Sources are always retained. rummage reports success
   only after the tool finishes; failures retain partial output in an `(extracting)` folder.
-  Keep Nordend open until extraction finishes: closing it may leave that folder unfinished.
-  CLI backends do not prompt for passwords; use Open With for encrypted archives. File Roller,
-  when selected, owns its own destination, password and conflict dialogs.
+  Keep rummage open until extraction finishes: closing it may leave that folder unfinished.
+  The 7zz/7z and unrar backends prompt for archive passwords, including encrypted headers. Passwords
+  are masked and passed through stdin. Wrong passwords can be retried; cancelling creates no
+  output. Other CLI backends do not prompt; use Open With for their encrypted archives.
+  File Roller owns its own destination, password and conflict dialogs. In mixed selections,
+  files assigned to File Roller are handed off separately from CLI extraction.
+- **Action failures** stay in a scrollable dialog until dismissed, with Copy Details (Ctrl+C).
+  Reports identify the archive, extractor, destination, exit status or filesystem error,
+  useful diagnostic output, and any retained partial output. Missing RAR support explains how
+  to install unrar. Unsupported encryption, rejected passwords, corrupt archives, disk-space
+  problems and access failures receive specific guidance; unknown errors retain the extractor’s
+  diagnostics. Multiple failures are queued, so another archive succeeding cannot hide them.
 - **Custom actions** in `[[actions]]` tables in `config.toml`: a label, argument array, optional
   MIME filters, and a selection rule. They appear under Actions on right click and directly in
   Ctrl+K; bind `"action:<id>"` to a shortcut, also shown in F1. All three views use the same
@@ -98,10 +141,10 @@ README's [What's next](../README.md#whats-next).
   spaces and punctuation. Shell scripts are explicit, with paths passed as positional arguments.
   A menu or palette captures its target paths, so changing selection or tabs cannot redirect it.
 - **Live configuration:** action definitions and shortcuts update together; invalid definitions
-  keep the previous set on reload. `nordend --check-config` validates both. The bundled archive
+  keep the previous set on reload. `rummage --check-config` validates both. The bundled archive
   actions can be overridden or disabled by ID; Copy Location remains a native operation.
 - **Handoff:** external programs run independently, and the status bar reports launch and exit
-  failures. Directory watching picks up their output. External changes do not enter Nordend's
+  failures. Directory watching picks up their output. External changes do not enter rummage's
   undo history. General-purpose supervised jobs, multi-step macros and an action editor are
   future work; the built-in CLI extraction workflow tracks its own completion.
 
@@ -111,7 +154,7 @@ available in the trash.
 
 ## Photos first
 
-- **Thumbnails in a fraction of a second.** Nordend reads the previews that cameras already store
+- **Thumbnails in a fraction of a second.** rummage reads the previews that cameras already store
   inside their raw files instead of developing the raw. A screenful of photos is ready in
   0.15-0.4 s the first time and in 12-22 ms from the cache. One thumbnail takes 12 ms from an
   OM-1 JPEG and 36 ms from an ORF.
@@ -120,37 +163,37 @@ available in the trash.
   aspect ratio), Samsung SRW, Epson ERF, Hasselblad 3FR and DNG (including previews stored as a
   JPEG inside a TIFF: full size in a Samsung GX20's DNG). A DNG whose previews are too small for
   where it is shown (more than 4/3 stretched: Leica M240 and M8, DJI drones, files from Adobe's
-  converter) is developed by Nordend's own reader instead: lossless JPEG or uncompressed sensor
+  converter) is developed by rummage's own reader instead: lossless JPEG or uncompressed sensor
   data (8-16 bit, strips or tiles, linear raw too), black and white levels, the camera's white
   balance with highlights kept white, the file's colour matrices for the shot's light, its
-  baseline exposure and tone curve (else a light curve of Nordend's), the default crop, the
+  baseline exposure and tone curve (else a light curve of rummage's), the default crop, the
   file's corrections (gain maps for vignetting and colour shading, the lens warp: a DJI drone's
-  corners no longer dark; a correction Nordend does not apply keeps the preview), at half
+  corners no longer dark; a correction rummage does not apply keeps the preview), at half
   size or smaller, straight to the size shown; in Quick Look in about 105 ms (Canon) to 260 ms
   (M240 at 2560x1440). Each is shown upright, in the shape it
   was shot, without the black bars some cameras put on their thumbnails; a preview the camera
-  stored broken is passed over for the next one. Formats with no preview Nordend can read (Sigma
+  stored broken is passed over for the next one. Formats with no preview rummage can read (Sigma
   X3F, old Panasonic RAW) say so in Quick Look.
 - **Images:** PNG, JPEG and GIF (wuffs), WebP (libwebp), JPEG XL (libjxl), binary PGM and PPM
-  (8 and 16 bits), and **TIFF** with Nordend's own reader (BigTIFF too; uncompressed, LZW,
+  (8 and 16 bits), and **TIFF** with rummage's own reader (BigTIFF too; uncompressed, LZW,
   Deflate, PackBits, JPEG; 1 to 16-bit and floating-point samples; grey, RGB, YCbCr, palette,
   CMYK, alpha; strips and tiles), with EXIF orientation. The format is told by the file's bytes, not its name
   (a PNG called `.jpg` still shows), and only camera files are searched for stored previews.
-- **Pictures made apart:** the code that reads photos (libwebp, libjxl, wuffs, and Nordend's own
-  TIFF, DNG and camera-file readers) run in small `nordend-preview` processes, not in Nordend: a file that crashes or hangs
-  one costs only its preview ("Preview unavailable"), and Nordend carries on. Each one lives in
-  a cage of Nordend's own (seccomp and landlock, no library): it cannot open a file, reach the
+- **Pictures made apart:** the code that reads photos (libwebp, libjxl, wuffs, and rummage's own
+  TIFF, DNG and camera-file readers) run in small `rummage-preview` processes, not in rummage: a file that crashes or hangs
+  one costs only its preview ("Preview unavailable"), and rummage carries on. Each one lives in
+  a cage of rummage's own (seccomp and landlock, no library): it cannot open a file, reach the
   network, start a program or signal another one, and has at most 4 GiB of memory. They start when a
   picture is first needed (at most one per worker), give their memory back after a quiet second,
-  and Nordend closes them after 30 s without work.
-- **Engines described by manifests:** each reader program (an *engine*; `nordend-preview` is the
-  base engine, for images and text) comes with a small TOML manifest in `share/nordend/engines/`
+  and rummage closes them after 30 s without work.
+- **Engines described by manifests:** each reader program (an *engine*; `rummage-preview` is the
+  base engine, for images and text) comes with a small TOML manifest in `share/rummage/engines/`
   saying which types it shows and what it gives back. Text files too are read in its cage, never
-  by Nordend. Nordend reads them at start-up (about 0.05 ms) and asks them
+  by rummage. rummage reads them at start-up (about 0.05 ms) and asks them
   who shows a file; a broken manifest or a missing program is skipped with a warning, and the
-  files it would show get the information card. `nordend --about` lists the engines found.
+  files it would show get the information card. `rummage --about` lists the engines found.
 - **Plain reasons:** a file that cannot be shown says why in one sentence, the same in Quick Look
-  and everywhere else: not a kind Nordend shows, no readable preview in a raw file, too large,
+  and everywhere else: not a kind rummage shows, no readable preview in a raw file, too large,
   damaged, or unreadable.
 - **Shared freedesktop thumbnail cache:** thumbnails go where GNOME, KDE and other apps look for
   them, byte-compatible, so they are made once for all of them. Files that fail are remembered.
@@ -190,12 +233,12 @@ available in the trash.
 
 - **Opens in the right app.** Enter or a double click opens a file in its default application,
   chosen exactly as GTK apps choose it: 0 differences from `gio` on all 1 232 file types and
-  aliases. Nordend implements the freedesktop specs itself, without `xdg-open`:
+  aliases. rummage implements the freedesktop specs itself, without `xdg-open`:
   - several files for the same app start one instance (five photos, one darktable);
   - terminal apps such as Helix open in a terminal (`$TERMINAL`, `xdg-terminal-exec`, foot,
     kitty, ghostty, alacritty, wezterm...);
   - the new window comes up in front, through an xdg-activation token;
-  - apps run detached: no zombies, and closing Nordend leaves them open;
+  - apps run detached: no zombies, and closing rummage leaves them open;
   - an executable is never run: it opens in the app for its type;
   - the status bar says what happened ("Opening 5 files with Darktable…"), in red when there is
     no app for a type or the app fails at once.
@@ -248,21 +291,21 @@ available in the trash.
   sidebar; the Trash trashes. On the same disk it moves, onto another it copies; Ctrl copies,
   Shift moves. It goes through the same engine as a paste: sidecars, questions, progress, Ctrl+Z.
   A folder never goes into itself, and dropping where the files already are does nothing. Other
-  programs receive the files as file URIs and paths (Firefox, terminals), only to copy: Nordend
+  programs receive the files as file URIs and paths (Firefox, terminals), only to copy: rummage
   never deletes its files because another program says it took them. Files dragged from another
   program (Firefox's downloads) are copied; a web address is not a file. Near the top or bottom of
   a list the drag scrolls it. Opening a folder by hovering over it comes later.
 - **The system clipboard**, with other programs:
-  - files copied or cut in Nordend paste in other programs: a file manager, Firefox (an upload, a
-    message), a terminal or an editor (their paths); Nordend offers them as
+  - files copied or cut in rummage paste in other programs: a file manager, Firefox (an upload, a
+    message), a terminal or an editor (their paths); rummage offers them as
     `x-special/gnome-copied-files`, `text/uri-list` (each file URI as GLib writes it) and text,
     and says "cut" the GNOME and the KDE way;
-  - files copied or cut in another program paste in Nordend with Ctrl+V: copied, or moved when
+  - files copied or cut in another program paste in rummage with Ctrl+V: copied, or moved when
     the other program cut them, through the same engine (sidecars, conflicts, progress); only
     files on this computer are taken;
   - read and written through pipes the window's loop watches: a program that does not answer
-    never freezes Nordend (it is given up after 3 s);
-  - when another program copies something, the files Nordend cut stop fading: Ctrl+V pastes what
+    never freezes rummage (it is given up after 3 s);
+  - when another program copies something, the files rummage cut stop fading: Ctrl+V pastes what
     is on the clipboard now. A cut pasted once empties the clipboard.
 - **The Trash** in the sidebar (its icon full or empty):
   - every trash as one folder: the home's and each disk's (`.Trash-1000` on a data disk), by
@@ -290,7 +333,7 @@ available in the trash.
     editor, and the selected folders);
   - New File makes an empty file, or a copy of one of your templates (`XDG_TEMPLATES_DIR`),
     never over an existing file, with the name ready to edit;
-  - drawn by Nordend in your theme's colors, it stays whole near the window's edges, and the
+  - drawn by rummage in your theme's colors, it stays whole near the window's edges, and the
     keyboard works in it: arrows, Enter, → into a submenu, ← and Escape back.
 - **Empty files open as their name says**: a new, empty `notes.txt` opens in your text editor
   (GLib calls any empty file `application/x-zerosize`, which no application opens).
@@ -300,7 +343,7 @@ available in the trash.
     own trash (`.Trash-1000` at its top, or `.Trash/1000`): a rename, never a copy, so trashing
     is instant (1 001 items in 25 ms, `gio trash` 70 ms); where no trash can be made, the files
     stay and the status bar says why;
-  - other trash programs (`trash-list`, `trash-restore`, gio, file managers) see what Nordend
+  - other trash programs (`trash-list`, `trash-restore`, gio, file managers) see what rummage
     trashed and restore it to its place: the `.trashinfo` files are the same as GLib's, odd
     names included;
   - darktable sidecars go with their photo, each restorable on its own;
@@ -324,7 +367,7 @@ available in the trash.
 ## Finding your way
 
 - **Command palette** (Ctrl+K): a card at the top of the window; type a few letters of anything
-  Nordend can do and Enter runs it. Every command is there, the ones with a shortcut (shown at the
+  rummage can do and Enter runs it. Every command is there, the ones with a shortcut (shown at the
   right) and the ones only in menus (Sort by…, Open With…, New Empty File, Empty Trash, Eject,
   Zoom, Select All, Quit); only what can be used at that moment is offered ("Paste" with
   something to paste, "Rename…" with one entry). The sidebar's places are there as "Go to …" and
@@ -370,7 +413,7 @@ available in the trash.
   place are added at the end, a line showing where; dropping onto a place still moves into it.
   A right click on a favourite removes it. They are the GTK bookmarks: other file managers and
   the Open dialogs of other apps (Firefox's) show them too. The file is written all at once on a
-  worker, keeping what Nordend does not touch (remote bookmarks, labels, order); a folder already
+  worker, keeping what rummage does not touch (remote bookmarks, labels, order); a folder already
   there is not added twice. Reordering and renaming come later.
 - **Breadcrumb:** the folder's path as a row of clickable steps, starting from your home. A long
   path is shortened from the left.
@@ -384,23 +427,24 @@ available in the trash.
 - **File types exactly as GTK sees them:** the freedesktop shared-mime-info database, read by
   name first and by content only when needed (and only for what is on screen). 0 differences from
   `gio` on about 4 750 files.
-- **Live theme:** change the palette in Noctalia and Nordend follows instantly (with the
-  `nordend` template enabled in Noctalia); elsewhere, switch
-  the desktop between light and dark or pick another accent colour and Nordend follows too.
+- **Live theme:** change the palette in Noctalia and rummage follows instantly (with the
+  `rummage` template enabled in Noctalia); elsewhere, switch
+  the desktop between light and dark or pick another accent colour and rummage follows too.
 
 ## Looks
 
-- Its own icon: a folder with the Nordend's snowy summit, in one ice-blue hue
-  (`share/icons/hicolor/scalable/apps/nordend.svg`, named after the app id), shown by docks,
+- Its own icon: a golden folder holding colourful papers and a photo
+  (`share/icons/hicolor/scalable/apps/rummage.svg`, named after the app id), shown by docks,
   launchers and menus on any desktop.
-- **The icon follows the accent:** Nordend writes its icon in the desktop's accent (Noctalia's
+- **The icon follows the accent:** rummage writes its icon in the desktop's accent (Noctalia's
   primary colour, else GNOME's or Plasma's accent from the portal) to
-  `~/.local/share/icons/hicolor/scalable/apps/nordend.svg`, which docks and launchers read before
+  `~/.local/share/icons/hicolor/scalable/apps/rummage.svg`, which docks and launchers read before
   the installed one, and rewrites it when the accent changes, only when it changes. The three
-  tones keep the ice icon's lightness and steps in OKLCH, with the accent's hue and chroma (held
-  to what the icon can carry); the snow stays white. No accent, or `icon.follow_accent = false`:
-  the copy is taken away (installed under `~/.local`, the ice icon is written back). An icon not
-  written by Nordend at that path is never touched.
+  folder tones keep the supplied icon's lightness and steps in OKLCH, with the accent's hue and
+  chroma (held to what the icon can carry); the papers, photo, and outline retain their colours.
+  No accent, or `icon.follow_accent = false`: the copy is taken away (installed under `~/.local`,
+  the supplied icon is written back). An icon not
+  written by rummage at that path is never touched.
 - Noctalia's colors and the same line icons as Noctalia (Tabler), tinted by the theme; camera
   raw files and darktable sidecars have their own icons. The icons are compiled into the
   program (a 14 KB subset of the official Tabler font), so they show on any desktop.
@@ -428,13 +472,13 @@ available in the trash.
   drag it to move the window, double-click to maximize, right-click for the compositor's window
   menu; the window's edges and corners resize it, with the matching arrows (not when maximized,
   nor on an edge tiled against the screen). Buttons the compositor cannot honour are left out.
-  `NORDEND_FORCE_CSD=1` asks any compositor for it (the compositor may still decorate).
+  `RUMMAGE_FORCE_CSD=1` asks any compositor for it (the compositor may still decorate).
 - Pointer shapes from the compositor's cursor theme (cursor-shape-v1): a resize arrow on every
   draggable edge, a hand on what a click acts on (the status bar's buttons, a transfer's ×, the
   path's crumbs, a disk's eject icon, "More details", the buttons of a question), the text cursor
-  over a name being edited. Where the compositor has no cursor-shape-v1 (GNOME, weston), Nordend
+  over a name being edited. Where the compositor has no cursor-shape-v1 (GNOME, weston), rummage
   draws them itself from the xcursor theme (`XCURSOR_THEME`, `XCURSOR_SIZE`, sharp at any
-  scale); `NORDEND_FORCE_XCURSOR=1` does so on any compositor.
+  scale); `RUMMAGE_FORCE_XCURSOR=1` does so on any compositor.
 
 ## Fast, and measured
 
@@ -446,7 +490,7 @@ available in the trash.
 | Sorting 10 000 entries by size, date or type | 1-3 ms |
 | Quick Look of an ORF, fitted to 2880x1620 | 51-55 ms |
 | Reading every installed app to choose one | 0.5 ms |
-| Copying 342 photos, 3.1 GB, warm cache (Nordend / `cp -a`) | 1.39 s / 1.39 s |
+| Copying 342 photos, 3.1 GB, warm cache (rummage / `cp -a`) | 1.39 s / 1.39 s |
 | CPU while nothing moves | 0 |
 
 A 3.5 MB binary (2.9 MB stripped) with 21 direct libraries; 25 MB of its own memory at start,
@@ -455,31 +499,32 @@ go back to the system.
 
 ## Settings
 
-- `~/.config/nordend/config.toml`: font family, monospace font, double-click time and distance,
-  the icon in the accent ([example](config.example.toml)). `nordend --check-config` reports every problem with its
+- `~/.config/rummage/config.toml`: font family, monospace font, double-click time and distance,
+  the icon in the accent ([example](config.example.toml)). `rummage --check-config` reports every problem with its
   line.
 - No settings window: the defaults are the system's fonts (fontconfig's `sans-serif` and
   `monospace`) and the desktop's colours, and the few settings live in the file.
-  `config.toml` is followed while Nordend runs: the double click and the icon change at once, the fonts at
+  `config.toml` is followed while rummage runs: the double click and the icon change at once, the fonts at
   the next start; a file with problems keeps the settings in use, with the problems in the log.
-- **`nordend --about`**: Nordend's version and commit, the distribution, the kernel, the
+- **`rummage --about`**: rummage's version and commit, the distribution, the kernel, the
   desktop, the versions of Noctalia and Umbriel when they are running (asked of the very
   programs running, never of another copy) and the GPU (from a surfaceless OpenGL context), one
   "Label: value" line each, ready to paste into a bug report; and the engines found, with
   their programs.
-- Colors come from Noctalia (`~/.config/nordend/colors.toml`, written by Noctalia from the
-  `nordend` template, installed at `share/nordend/noctalia/nordend`; the README's "On Noctalia"
-  says how to enable it). Without the file, Nordend follows the desktop through the freedesktop portal (GNOME,
+- Colors come from Noctalia (`~/.config/rummage/colors.toml`, written by Noctalia from the
+  `rummage` template, installed at `share/rummage/noctalia/rummage`; the README's "On Noctalia"
+  says how to enable it). Without the file, rummage follows the desktop through the freedesktop portal (GNOME,
   Plasma): light or dark, and the accent colour for the selection, icons and links, with
   neutral surfaces and text kept readable (WCAG AA contrast, tested for 15 accents). Without a
   portal either, a built-in default palette is used.
-- **Remembered from one start to the next** (`~/.local/state/nordend/state.toml`, written by
-  Nordend): the view, the details' order and column widths, hidden files shown or not, the
+- **Remembered from one start to the next** (`~/.local/state/rummage/state.toml`, written by
+  rummage): the view, the details' order and column widths, hidden files shown or not, the
   sidebar and the info pane (shown, width, "More details"), the window's size and whether it was
-  maximized; with two tabs or more, the tabs (each one's folder, view, cursor and, in the columns,
-  where they start) and which was shown, back when Nordend starts without a folder (Super+E;
-  folders gone meanwhile are left out). With one tab, not the last folder: Nordend opens Home, or
-  the folder given. Not the back/forward history. A broken file only means the defaults.
+  maximized. With multiple tabs or a second pane, both tab sets return when rummage starts without
+  a folder (Super+E): locations, views, cursors, column roots, zoom, sorting, hidden files and
+  filters, plus active tabs, focused pane, layout and divider. Missing folders are left out;
+  an empty restored pane falls back to Home. A single tab that has never been split opens Home
+  or the folder given. Back/forward history is not saved. A broken file means the defaults.
 
 ## Standards it follows
 
@@ -490,11 +535,11 @@ viewporter, cursor-shape and xdg-activation.
 ## Next
 
 0.5.0 is out (text previews with syntax colours, selecting and copying, logs from their end; the
-helper became the first engine), after 0.4.0 (image previews read by Nordend's own code in caged
+helper became the first engine), after 0.4.0 (image previews read by rummage's own code in caged
 helpers: DNG, TIFF, raw previews and EXIF without exiv2), 0.3.1 (more raw previews), 0.3.0 (the
 command palette, finding files, the icon in the accent), 0.2.0 (Sort By, tabs, zoom in the
 lists) and the first release, 0.1.0. Coming, roughly in this order: other common formats, colour
-labels and ratings, a Quick Look for photographers, a dual pane. See the README's
+labels and ratings, a Quick Look for photographers, further pane workflows. See the README's
 [What's next](../README.md#whats-next).
 
 ### Expandable folders in details view
@@ -522,3 +567,11 @@ An optional XDG FileChooser portal backend for OpenFile, SaveFile and SaveFiles:
 multiple files and folders, filename entry, glob/MIME filters, application choices, overwrite
 confirmation and cancellation. Picker windows reuse the three views and previews without
 changing the file manager's saved tabs. See [setup and usage](file-picker.md).
+
+## Optional video thumbnails and still previews
+
+The separate `rummage-media` package uses system FFmpeg shared libraries in the isolated preview
+helper. Grid thumbnails have cinema film rails; information-pane and Quick Look stills are clean.
+There is no playback or autoplay. Without the helper or compatible libraries, the application
+continues normally and can display existing cached thumbnails. Missing dependencies do not poison
+the thumbnail failure cache. Decoder support depends on the installed FFmpeg build.

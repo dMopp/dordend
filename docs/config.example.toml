@@ -1,15 +1,20 @@
-# Nordend configuration: ~/.config/nordend/config.toml ($XDG_CONFIG_HOME/nordend/config.toml).
+# rummage configuration: ~/.config/rummage/config.toml ($XDG_CONFIG_HOME/rummage/config.toml).
 # Every key is optional; the values below are the defaults. A bad value is reported in the log
-# and keeps its default. Check a file without starting Nordend: nordend --check-config
+# and keeps its default. Check a file without starting rummage: rummage --check-config
 # Created on first normal launch when no config exists; existing files are never replaced.
-# Nordend reads the file again when it changes: appearance, pointer, icons and keybindings at once,
-# fonts at the next start.
+# rummage reads the file again when it changes: appearance, status bar, pointer, icons and
+# keybindings at once; fonts at the next start.
 
 [appearance]
 # Background only (0-1); text, icons and thumbnails retain their original opacity.
 # Transparency is disabled by default (1.0). Keep compositor window opacity at 1.0.
 # Compositor blur can still be enabled.
 background_opacity = 1.0
+
+[status_bar]
+# Text size in logical pixels (8-32); independent of list/sidebar zoom, applied live.
+# The bar grows to fit larger text. Use 15 to match the large file-list text.
+text_size = 12.0
 
 [font]
 # fontconfig pattern: a family name, optionally with properties ("Inter", "Inter:weight=medium").
@@ -28,10 +33,29 @@ double_click_distance = 4
 # An installed theme name, e.g. "candy-icons", selects it explicitly; "builtin" uses Tabler.
 # SVG and PNG icons are supported, with inherited themes and built-in fallbacks.
 theme = "system"
-# Nordend's icon in the desktop's accent colour (Noctalia's colours, GNOME's or Plasma's accent):
-# Nordend writes it to ~/.local/share/icons/hicolor/scalable/apps/nordend.svg, where the dock and
+# rummage's icon in the desktop's accent colour (Noctalia's colours, GNOME's or Plasma's accent):
+# rummage writes it to ~/.local/share/icons/hicolor/scalable/apps/rummage.svg, where the dock and
 # the launcher look first. false takes it away and leaves the installed icon.
 follow_accent = true
+
+# Optional icons for the Places sidebar; omitted keys keep their normal icons.
+# Values are names from the selected icon theme, "builtin:<name>" for a bundled Tabler icon,
+# or absolute paths to your own SVG/PNG files. Missing icons fall back to the normal icon.
+# Bundled names are listed in third_party/tabler-icons/icons.txt (filled names use -filled).
+# Changes reload live. Keys follow the folder's purpose even if you rename/move an XDG folder.
+# trash applies to both states unless trash_full is also set. Theme names require a theme
+# other than "builtin"; custom files and builtin:<name> work with any theme.
+[icon.places]
+# home = "user-home"
+# desktop = "user-desktop"
+# documents = "folder-documents"
+# downloads = "folder-download"
+# music = "folder-music"
+# pictures = "/home/you/.local/share/icons/my-pictures.svg"
+# videos = "folder-videos"
+# filesystem = "drive-harddisk"
+# trash = "builtin:trash"
+# trash_full = "builtin:trash-filled"
 
 [keybindings]
 # Defaults are listed below as commented examples. Leave them commented to keep
@@ -71,7 +95,18 @@ follow_accent = true
 # select_all = "Ctrl+a"         # Select all files
 # toggle_selection = "Ctrl+space" # Select/unselect the focused entry
 
-# Tabs
+# Panes (Tab switches only while browsing; dialogs and text fields keep Tab)
+# toggle_split = "F3"           # Show two panes / active pane full-width
+# switch_pane = "Tab"
+# copy_other_pane = "Ctrl+F5"
+# move_other_pane = "Ctrl+F6"
+# These commands have no default shortcut; bind them if useful:
+# swap_panes = "Ctrl+Shift+s"
+# orient_panes = "Ctrl+Shift+F3"
+# open_other_pane = "Ctrl+Shift+o"
+# same_other_pane = "Ctrl+Shift+d"
+
+# Tabs (within the active pane)
 # new_tab = "Ctrl+t"
 # close_tab = "Ctrl+w"
 # next_tab = "Ctrl+Tab"
@@ -121,7 +156,7 @@ follow_accent = true
 #
 # Unknown actions, invalid chords or conflicts reject the whole binding set:
 # defaults at startup, previous bindings on reload. Check before using:
-# nordend --config ~/.config/nordend/config.example.toml --check-config
+# rummage --config ~/.config/rummage/config.example.toml --check-config
 
 # Registry actions also accept bindings: copy_location, extract_here, extract_to,
 # and "action:<id>" for any configured action. They have no default shortcut.
@@ -133,10 +168,10 @@ follow_accent = true
 # set: defaults at startup, previous bindings on reload. Use --check-config to check.
 
 # Custom actions are opt-in: the commented examples below do not enable themselves, and
-# updating Nordend does not replace an existing config. Install the programs you want to use,
+# updating rummage does not replace an existing config. Install the programs you want to use,
 # then uncomment a complete [[actions]] block. These examples call programs directly.
 # Give each action a unique id (letters, digits, _ or -); label is its visible menu text.
-# Check with nordend --check-config. Valid changes reload live together with keybindings.
+# Check with rummage --check-config. Valid changes reload live together with keybindings.
 # Invalid definitions/bindings retain the previous set on reload.
 #
 # Actions appear under Actions in the right-click menu and directly in Ctrl+K when applicable.
@@ -163,7 +198,7 @@ follow_accent = true
 # selection = "one"
 #
 # 3. Compress one or more files/folders with 7-Zip, directly from the parent menu.
-# Requires 7z (use "7zz" instead if that is your installed executable). Nordend's save picker
+# Requires 7z (use "7zz" instead if that is your installed executable). rummage's save picker
 # asks for the ZIP filename and destination, then passes the result directly to 7-Zip.
 # -spd makes wildcard characters in selected filenames literal. No wrapper script is needed.
 # [[actions]]
@@ -199,7 +234,7 @@ follow_accent = true
 # selection = "one"
 #
 # 6. Resize one image to a new file. Requires ImageMagick's magick executable.
-# Nordend asks where to save it; ImageMagick determines the format from the chosen extension.
+# rummage asks where to save it; ImageMagick determines the format from the chosen extension.
 # [[actions]]
 # id = "resize-image"
 # label = "Resize Image to Half Size…"
@@ -211,7 +246,7 @@ follow_accent = true
 # notify_on_completion = true
 #
 # 7. Choose a destination folder for one or more files/folders. Requires GNU cp.
-# cp performs this copy independently, so it is not part of Nordend's Undo history.
+# cp performs this copy independently, so it is not part of rummage's Undo history.
 # [[actions]]
 # id = "copy-to"
 # label = "Copy To…"
@@ -229,19 +264,19 @@ follow_accent = true
 # type/* patterns ("image/*"). Every selected item must match at least one listed type.
 # For a ZIP-only custom action, add mime = ["application/zip"]; a mixed ZIP/text selection
 # then hides it. The built-in extract actions already filter for supported archive types.
-# MIME matching uses Nordend's detected type; it is not a filename-extension pattern.
+# MIME matching uses rummage's detected type; it is not a filename-extension pattern.
 # Placeholders must be whole arguments, after the program:
 #   {file}: one absolute selected path (requires selection = "one")
 #   {files}: separate absolute arguments (requires selection = "one" or "many")
 #   {directory}: the current folder, also used as the process's working directory
-#   {destination}: an absolute path chosen by Nordend before starting the command
+#   {destination}: an absolute path chosen by rummage before starting the command
 # destination = "file" asks for a save filename; "directory" asks for an existing folder.
 # destination_name suggests a filename for "file" only (a literal name, without directories).
 # The picker starts in the current folder and uses the action's label as its window title.
 # Cancelling does not run the command. The selection stays as it was when the action started.
 # Omit destination (or use "none") for commands that do not need a picker. A destination
 # picker and {destination} must be configured together. These options apply to external actions.
-# Nordend does not create or modify the chosen path: the program owns output and conflicts.
+# rummage does not create or modify the chosen path: the program owns output and conflicts.
 # The save picker confirms existing files; 7z a updates an existing archive, whereas programs
 # such as cp or magick may replace output. Choose a new filename to create a separate result.
 # argv is an argument array: no globbing, tilde/environment expansion or shell interpretation
@@ -250,15 +285,15 @@ follow_accent = true
 # A handoff runs independently: the external application owns dialogs, progress and conflicts.
 # notify_on_completion = true adds a desktop notification and status message when an external
 # command exits: success for exit code 0, failure for other codes or signals. Default: false.
-# Nordend sends the notification itself; notify-send and wrapper scripts are not required.
+# rummage sends the notification itself; notify-send and wrapper scripts are not required.
 # Cancelling a destination picker or failing to start a command does not send a completion
-# notification. Launch failures still appear in the status bar. Keep Nordend open to receive
+# notification. Launch failures still appear in the status bar. Keep rummage open to receive
 # completion notifications. This follows the launched process: commands which hand work to
 # another process or an already-running GUI may exit before that work has finished.
 # A desktop notification service must be running; without one, the status message still works.
-# Launch/exit failures appear in the status bar. Nordend watches the resulting file changes;
+# Launch/exit failures appear in the status bar. rummage watches the resulting file changes;
 # external operations are not added to Undo. Jobs and multi-step macros are not yet supported.
-# Missing programs are dimmed in the context menu and omitted from the palette. Programs
+# Missing custom-action programs are dimmed in the menu and omitted from the palette. Programs
 # are found on PATH, or you can supply an absolute executable path as the first argument.
 # Add enabled = false to a block to disable it without deleting it.
 #
@@ -266,15 +301,19 @@ follow_accent = true
 # on empty space. It cannot be replaced. Actions are not offered in the trash; external actions
 # are also unavailable in file-picker mode.
 # Extract Here and Extract To… automatically detect installed programs on PATH:
-#   file-roller, otherwise unzip (ZIP), gzip (single .gz), tar (tar / compressed tar),
+#   unrar for RAR, then 7zz/7z for ZIP/RAR/7z; otherwise file-roller, unzip (ZIP),
+#   gzip (single .gz), tar (tar / compressed tar),
 #   then 7zz or 7z for formats they support. gzip alone does not unpack .tar.gz contents.
 #   7z can unpack compressed tar in two passes when tar is unavailable.
-# File Roller owns its dialogs. CLI backends use Nordend's folder picker for Extract To….
+# File Roller owns its dialogs. CLI backends use rummage's folder picker for Extract To….
 # CLI archives extract into a new archive-named folder; single compressed files become files.
 # Existing output gets a numbered sibling instead of being overwritten; originals are retained.
-# Keep Nordend open until CLI extraction finishes. Failed/interrupted output stays in a visible
-# '(extracting)' folder. CLI password prompts are not supported; use Open With for encryption.
-# All archive programs are optional; none is installed automatically.
+# Keep rummage open until CLI extraction finishes. Failed/interrupted output stays in a visible
+# '(extracting)' folder. The 7zz/7z and unrar backends prompt for passwords (including encrypted headers);
+# cancelling creates no output. Other CLI backends do not prompt; use Open With for encryption.
+# All archive programs are optional; none is installed automatically. Missing archive tools
+# show "setup required"; invoking extraction explains what to install. Archive failures remain
+# in a scrollable dialog with Copy Details, diagnostics and any retained output location.
 # Presets default to placement = "menu"; use "actions" to move extraction into the submenu.
 # Override a preset by ID; unspecified fields retain the preset's defaults. Setting argv opts
 # out of automatic backend selection and makes the preset an ordinary external handoff:
@@ -290,7 +329,7 @@ follow_accent = true
 # enabled = false
 
 # Default context-menu layouts, written out for editing.
-# Nordend builds these menus automatically when [context_menu] is absent. Leave the
+# rummage builds these menus automatically when [context_menu] is absent. Leave the
 # reference commented to follow future defaults, or uncomment [context_menu] and the
 # complete arrays you want to customize. Use only one [context_menu] table per file.
 # These arrays preserve the current default order, separators and built-in submenus.
@@ -428,6 +467,8 @@ follow_accent = true
 # open, open_with, open_tab, open_terminal, add_bookmark, copy, cut, paste, rename, trash,
 # erase, restore, empty_trash, properties, new_folder, new_file, empty_file, sort, sort:name, sort:size,
 # sort:modified, sort:type, sort:ascending, sort:descending, actions,
+# panes, toggle_split, switch_pane, swap_panes, orient_panes, open_other_pane,
+# same_other_pane, copy_other_pane, move_other_pane,
 # action:copy_location, action:extract_here, action:extract_to,
 # mount, unmount, eject, remove_bookmark.
 # open_with and new_file include their dynamically discovered applications/templates;

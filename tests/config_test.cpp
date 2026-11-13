@@ -1,4 +1,4 @@
-#include "nordend/core/config.hpp"
+#include "rummage/core/config.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -8,16 +8,44 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/file.hpp"
+#include "rummage/core/file.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::Config;
-using nordend::core::ConfigResult;
-using nordend::core::default_config_path;
-using nordend::core::load_config;
-using nordend::core::parse_config;
+using rummage::core::Config;
+using rummage::core::ConfigResult;
+using rummage::core::default_config_path;
+using rummage::core::load_config;
+using rummage::core::parse_config;
 
-using nordend::test::TempDir;
+using rummage::test::TempDir;
+
+TEST_CASE("rename: migrate Nordend settings without replacing files or symlinks") {
+    TempDir dir;
+    const auto old = dir.path / "nordend";
+    const auto current = dir.path / "rummage";
+    std::filesystem::create_directories(old);
+    for (const auto* name : {"config.toml", "colors.toml", "state.toml"}) {
+        const std::string content = std::string{"# original "} + name + "\n";
+        REQUIRE_FALSE(rummage::core::write_file_atomically(old / name, content));
+        CHECK(rummage::core::migrate_nordend_file(current / name).empty());
+        CHECK(rummage::core::read_text_file(current / name).text == content);
+        CHECK(rummage::core::read_text_file(old / name).text == content);
+        REQUIRE_FALSE(rummage::core::write_file_atomically(current / name, "# new settings\n"));
+        CHECK(rummage::core::migrate_nordend_file(current / name).empty());
+        CHECK(rummage::core::read_text_file(current / name).text == "# new settings\n");
+    }
+    CHECK(rummage::core::migrate_nordend_file(current / "missing.toml").empty());
+    CHECK_FALSE(std::filesystem::exists(current / "missing.toml"));
+    std::filesystem::create_directory(old / "bad.toml");
+    CHECK_FALSE(rummage::core::migrate_nordend_file(current / "bad.toml").empty());
+    CHECK_FALSE(std::filesystem::exists(current / "bad.toml"));
+    REQUIRE_FALSE(rummage::core::write_file_atomically(old / "link.toml", "# legacy\n"));
+    std::filesystem::create_symlink(dir.path / "absent", current / "link.toml");
+    CHECK(rummage::core::migrate_nordend_file(current / "link.toml").empty());
+    CHECK(std::filesystem::is_symlink(current / "link.toml"));
+    CHECK_FALSE(std::filesystem::exists(dir.path / "absent"));
+    CHECK(rummage::core::migrate_nordend_file({}).empty());
+}
 
 TEST_CASE("context menu config: nested layouts and per-context overrides") {
     const auto result = parse_config(R"(
@@ -98,6 +126,7 @@ ConfigResult parse(std::string_view text) { return parse_config(text, "test.toml
 
 void check_defaults(const Config& config) {
     const Config defaults;
+    CHECK(config.status_bar.text_size == defaults.status_bar.text_size);
     CHECK(config.appearance.background_opacity == defaults.appearance.background_opacity);
     CHECK(config.font.family == defaults.font.family);
     CHECK(config.font.monospace == defaults.font.monospace);
@@ -105,6 +134,7 @@ void check_defaults(const Config& config) {
     CHECK(config.pointer.double_click_distance == defaults.pointer.double_click_distance);
     CHECK(config.icon.follow_accent == defaults.icon.follow_accent);
     CHECK(config.icon.theme == defaults.icon.theme);
+    CHECK(config.icon.places == defaults.icon.places);
 }
 
 bool contains(const std::string& text, std::string_view part) {
@@ -152,11 +182,50 @@ TEST_CASE("an empty file gives the defaults and no problems") {
     check_defaults(result.config);
 }
 
+TEST_CASE("status bar text size accepts finite logical pixels from 8 to 32") {
+    for (const std::string value : {"8", "12.0", "15", "15.5", "32"}) {
+        const auto result = parse("[status_bar]\ntext_size = " + value);
+        CAPTURE(value);
+        CHECK(result.problems.empty());
+        CHECK(result.config.status_bar.text_size == doctest::Approx(std::stof(value)));
+    }
+    for (const std::string value : {"7.9", "32.1", "nan", "inf", "-inf", "true", "\"15\""}) {
+        const auto result = parse("[status_bar]\ntext_size = " + value);
+        CAPTURE(value);
+        REQUIRE(result.problems.size() == 1);
+        CHECK(contains(result.problems.front(), "status_bar.text_size"));
+        CHECK(result.config.status_bar.text_size == 12.0F);
+    }
+    CHECK_FALSE(parse("status_bar = 15").problems.empty());
+    CHECK_FALSE(parse("[status_bar]\nsize = 15").problems.empty());
+}
+
 TEST_CASE("icon themes follow desktop settings, accept an override and can be disabled") {
     CHECK(parse("").config.icon.theme == "system");
     CHECK(parse("[icon]\ntheme = \"builtin\"").config.icon.theme == "builtin");
     CHECK_FALSE(parse("[icon]\ntheme = 42").problems.empty());
     CHECK_FALSE(parse("[icon]\ntheme = \"\"").problems.empty());
+}
+
+TEST_CASE("place icons: named icons and custom files are read independently") {
+    const auto result = parse(R"(
+[icon.places]
+home = "builtin:home"
+documents = "folder-documents"
+pictures = "/tmp/my pictures.svg"
+trash_full = "builtin:trash-filled"
+downloads = 42
+music = ""
+typo = "folder"
+)");
+    REQUIRE(result.config.icon.places.size() == 4);
+    CHECK(result.config.icon.places.at("home") == "builtin:home");
+    CHECK(result.config.icon.places.at("documents") == "folder-documents");
+    CHECK(result.config.icon.places.at("pictures") == "/tmp/my pictures.svg");
+    CHECK(result.config.icon.places.at("trash_full") == "builtin:trash-filled");
+    CHECK(result.problems.size() == 3);
+    CHECK_FALSE(parse("[icon]\nplaces = false").problems.empty());
+    CHECK(parse("").config.icon.places.empty());  // removing overrides restores defaults
 }
 
 TEST_CASE("every key is read") {
@@ -296,7 +365,7 @@ TEST_CASE("load_config: missing file, real file, directory") {
 }
 
 TEST_CASE("the example config parses clean and matches the defaults") {
-    const ConfigResult result = load_config(NORDEND_EXAMPLE_CONFIG);
+    const ConfigResult result = load_config(RUMMAGE_EXAMPLE_CONFIG);
     CHECK(result.from_file);
     CHECK(result.problems.empty());
     check_defaults(result.config);
@@ -306,15 +375,15 @@ TEST_CASE("default_config_path follows XDG_CONFIG_HOME, then HOME") {
     const ScopedEnv home{"HOME", "/home/someone"};
     {
         const ScopedEnv xdg{"XDG_CONFIG_HOME", "/tmp/xdg"};
-        CHECK(default_config_path() == "/tmp/xdg/nordend/config.toml");
+        CHECK(default_config_path() == "/tmp/xdg/rummage/config.toml");
     }
     {
         const ScopedEnv xdg{"XDG_CONFIG_HOME", "relative/ignored"};
-        CHECK(default_config_path() == "/home/someone/.config/nordend/config.toml");
+        CHECK(default_config_path() == "/home/someone/.config/rummage/config.toml");
     }
     {
         const ScopedEnv xdg{"XDG_CONFIG_HOME", nullptr};
-        CHECK(default_config_path() == "/home/someone/.config/nordend/config.toml");
+        CHECK(default_config_path() == "/home/someone/.config/rummage/config.toml");
         const ScopedEnv no_home{"HOME", nullptr};
         CHECK(default_config_path().empty());
     }
@@ -345,24 +414,24 @@ TEST_CASE("config: keybindings accept overrides and disabling") {
 
 TEST_CASE("first run creates the full reference and preserves existing configs") {
     TempDir dir;
-    const auto path = dir.path / "nested" / "nordend" / "config.toml";
-    REQUIRE_FALSE(nordend::core::create_default_config(path));
-    const auto created = nordend::core::read_text_file(path);
-    CHECK(created.text == nordend::core::read_text_file(NORDEND_EXAMPLE_CONFIG).text);
+    const auto path = dir.path / "nested" / "rummage" / "config.toml";
+    REQUIRE_FALSE(rummage::core::create_default_config(path));
+    const auto created = rummage::core::read_text_file(path);
+    CHECK(created.text == rummage::core::read_text_file(RUMMAGE_EXAMPLE_CONFIG).text);
     const auto loaded = load_config(path);
     CHECK(loaded.from_file);
     CHECK(loaded.problems.empty());
     check_defaults(loaded.config);
 
     for (const std::string content : {"", "[font]\nfamily = 'Custom'\n", "invalid ["}) {
-        REQUIRE_FALSE(nordend::core::write_file_atomically(path, content));
-        REQUIRE_FALSE(nordend::core::create_default_config(path));
-        CHECK(nordend::core::read_text_file(path).text == content);
+        REQUIRE_FALSE(rummage::core::write_file_atomically(path, content));
+        REQUIRE_FALSE(rummage::core::create_default_config(path));
+        CHECK(rummage::core::read_text_file(path).text == content);
         // Exercise the publication race: another process has already created the target.
-        REQUIRE_FALSE(nordend::core::write_file_atomically(path, "replacement", false));
-        CHECK(nordend::core::read_text_file(path).text == content);
+        REQUIRE_FALSE(rummage::core::write_file_atomically(path, "replacement", false));
+        CHECK(rummage::core::read_text_file(path).text == content);
     }
-    CHECK_FALSE(nordend::core::create_default_config({}));
+    CHECK_FALSE(rummage::core::create_default_config({}));
 }
 
 TEST_CASE("first run preserves symlinks and reports creation failures") {
@@ -370,15 +439,15 @@ TEST_CASE("first run preserves symlinks and reports creation failures") {
     const auto target = dir.write("settings.toml", "# user settings\n");
     const auto link = dir.path / "config.toml";
     std::filesystem::create_symlink(target, link);
-    CHECK_FALSE(nordend::core::create_default_config(link));
+    CHECK_FALSE(rummage::core::create_default_config(link));
     CHECK(std::filesystem::is_symlink(link));
-    CHECK(nordend::core::read_text_file(target).text == "# user settings\n");
+    CHECK(rummage::core::read_text_file(target).text == "# user settings\n");
 
     const auto missing = dir.path / "missing.toml";
     const auto dangling = dir.path / "dangling.toml";
     std::filesystem::create_symlink(missing, dangling);
-    CHECK_FALSE(nordend::core::create_default_config(dangling));
+    CHECK_FALSE(rummage::core::create_default_config(dangling));
     CHECK(std::filesystem::is_symlink(dangling));
     CHECK_FALSE(std::filesystem::exists(missing));
-    CHECK(nordend::core::create_default_config(target / "config.toml"));
+    CHECK(rummage::core::create_default_config(target / "config.toml"));
 }

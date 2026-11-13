@@ -1,4 +1,4 @@
-#include "nordend/core/event_loop.hpp"
+#include "rummage/core/event_loop.hpp"
 
 #include <array>
 #include <chrono>
@@ -9,7 +9,7 @@
 
 #include <doctest/doctest.h>
 
-using nordend::core::EventLoop;
+using rummage::core::EventLoop;
 using namespace std::chrono_literals;
 
 namespace {

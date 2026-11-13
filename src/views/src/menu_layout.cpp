@@ -1,8 +1,8 @@
 #include <unordered_set>
 
-#include "nordend/views/context_menu.hpp"
+#include "rummage/views/context_menu.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 
 std::vector<MenuItem> arrange_menu(const std::vector<MenuItem>& available,
                                    const std::vector<core::MenuNode>& layout) {
@@ -95,4 +95,4 @@ std::vector<MenuItem> arrange_menu(const std::vector<MenuItem>& available,
     return build(build, layout);
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

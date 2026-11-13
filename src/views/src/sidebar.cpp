@@ -1,5 +1,5 @@
-#include "nordend/views/sidebar.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/views/sidebar.hpp"
+#include "rummage/core/i18n.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -8,7 +8,7 @@
 #include <utility>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kTop = 8.0F;  // above the first section
@@ -205,13 +205,16 @@ void Sidebar::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme::
             renderer.draw_box({bounds.x + kInset, y + 1.0F, bounds.width - (2.0F * kInset),
                                (kRowHeight * scale()) - 2.0F},
                               {.fill = *fill,
-                               .radius = ui::Corners::all(8.0F),
+                               .radius = {},
                                .border_width = drop ? 1.5F : 0.0F,
                                .border = palette.primary});
         }
-        icons.draw(renderer, place.icon, bounds.x + (kIconLeft * scale()),
-                   y + (((kRowHeight * scale()) - (kIconSize * scale())) / 2.0F),
-                   (kIconSize * scale()), icon);
+        const auto icon_key = place.icon_key == "trash" && place.icon == "trash-filled"
+                                  ? std::string_view{"trash_full"}
+                                  : place.icon_key;
+        icons.draw_place(renderer, icon_key, place.icon, bounds.x + (kIconLeft * scale()),
+                         y + (((kRowHeight * scale()) - (kIconSize * scale())) / 2.0F),
+                         (kIconSize * scale()), icon);
         float text_room = bounds.width - (kTextLeft * scale()) - kInset - 4.0F;
         if (place.disk.ejectable) {
             const ui::Rect eject{bounds.right() - kInset - 6.0F - (kEjectSize * scale()),
@@ -236,7 +239,7 @@ void Sidebar::draw(ui::Renderer& renderer, const ui::Rect& bounds, const theme::
         }
         renderer.draw_box({bounds.x + kInset, bounds.y + line - offset - 1.0F,
                            bounds.width - (2.0F * kInset), 2.0F},
-                          {.fill = palette.primary, .radius = ui::Corners::all(1.0F)});
+                          {.fill = palette.primary, .radius = {}});
     }
     renderer.pop_clip();
 
@@ -517,4 +520,4 @@ bool Sidebar::key(const ui::KeyEvent& event) {
     return true;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

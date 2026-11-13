@@ -1,9 +1,9 @@
 #pragma once
 
-#include "nordend/ui/color.hpp"
+#include "rummage/ui/color.hpp"
 
 // OKLCH, shared by the desktop palette and the application icon (private to the theme library).
-namespace nordend::theme {
+namespace rummage::theme {
 
 using ui::Color;
 
@@ -23,4 +23,4 @@ struct Lch {
 // The colour at that lightness and hue, with as much of the chroma as sRGB can show; opaque.
 [[nodiscard]] Color from_lch(Lch lch);
 
-}  // namespace nordend::theme
+}  // namespace rummage::theme

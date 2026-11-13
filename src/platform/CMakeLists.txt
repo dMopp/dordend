@@ -1,4 +1,4 @@
-add_library(nordend_platform
+add_library(rummage_platform
     src/action_handoff.cpp
     src/archives.cpp
     src/about.cpp
@@ -14,10 +14,10 @@ add_library(nordend_platform
     src/portal.cpp
     src/udisks.cpp
     src/volumes.cpp)
-add_library(nordend::platform ALIAS nordend_platform)
+add_library(rummage::platform ALIAS rummage_platform)
 
-target_include_directories(nordend_platform PUBLIC include)
+target_include_directories(rummage_platform PUBLIC include)
 # thumbs: file_uri(), the file:// URIs %u and %U take, escaped as GLib does.
-target_link_libraries(nordend_platform
-    PUBLIC nordend::core nordend::fs
-    PRIVATE nordend::thumbs nordend::warnings PkgConfig::SDBUSCPP)
+target_link_libraries(rummage_platform
+    PUBLIC rummage::core rummage::fs
+    PRIVATE rummage::thumbs rummage::warnings PkgConfig::SDBUSCPP)

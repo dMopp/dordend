@@ -2,27 +2,27 @@
 set -euo pipefail
 prefix=${1:?usage: check-installed.sh PREFIX VERSION}
 version=${2:?usage: check-installed.sh PREFIX VERSION}
-test -s "${3:-$prefix/share/licenses/nordend/LICENSE}"
-app="$prefix/bin/nordend"
-"$app" --version | grep -Fx "nordend $version"
+test -s "${3:-$prefix/share/licenses/rummage/LICENSE}"
+app="$prefix/bin/rummage"
+"$app" --version | grep -Fx "rummage $version"
 "$app" --help | grep -F -- '--pick'
-"$app" --config "$prefix/share/nordend/config.example.toml" --check-config
+"$app" --config "$prefix/share/rummage/config.example.toml" --check-config
 for file in \
-    share/nordend/config.example.toml \
-    share/nordend/engines/base.toml \
-    share/applications/nordend.desktop \
-    share/icons/hicolor/scalable/apps/nordend.svg \
-    share/nordend/noctalia/nordend \
-    share/xdg-desktop-portal/portals/nordend.portal \
-    share/dbus-1/services/org.freedesktop.impl.portal.desktop.nordend.service; do
+    share/rummage/config.example.toml \
+    share/rummage/engines/base.toml \
+    share/applications/rummage.desktop \
+    share/icons/hicolor/scalable/apps/rummage.svg \
+    share/rummage/noctalia/rummage \
+    share/xdg-desktop-portal/portals/rummage.portal \
+    share/dbus-1/services/org.freedesktop.impl.portal.desktop.rummage.service; do
     test -s "$prefix/$file"
 done
-test -x "$prefix/libexec/nordend/nordend-preview"
-desktop-file-validate "$prefix/share/applications/nordend.desktop"
+test -x "$prefix/libexec/rummage/rummage-preview"
+desktop-file-validate "$prefix/share/applications/rummage.desktop"
 grep -Fx 'Interfaces=org.freedesktop.impl.portal.FileChooser;' \
-    "$prefix/share/xdg-desktop-portal/portals/nordend.portal"
+    "$prefix/share/xdg-desktop-portal/portals/rummage.portal"
 grep -Fx "Exec=$app --portal" \
-    "$prefix/share/dbus-1/services/org.freedesktop.impl.portal.desktop.nordend.service"
+    "$prefix/share/dbus-1/services/org.freedesktop.impl.portal.desktop.rummage.service"
 # The installed binary must understand the features documented in the installed reference.
 config=$(mktemp)
 trap 'rm -f "$config"' EXIT

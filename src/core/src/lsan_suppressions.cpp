@@ -1,4 +1,4 @@
-// Linked only into sanitizer builds (see NORDEND_SANITIZER in CMakeLists.txt). Both functions are
+// Linked only into sanitizer builds (see RUMMAGE_SANITIZER in CMakeLists.txt). Both functions are
 // weak hooks the sanitizer runtimes look up; a build without that sanitizer just ignores one.
 //
 // LeakSanitizer: fontconfig keeps 320 bytes of global state from its first FcFontSort until
@@ -8,7 +8,7 @@
 //
 // ThreadSanitizer: Mesa's gallium driver runs a GL worker thread (gl0) and synchronises with it
 // through code TSan does not instrument, so every GL program reports races inside libgallium
-// (seen with Mesa 26.2.5 on radeonsi, also before any Nordend thread exists). The same holds
+// (seen with Mesa 26.2.5 on radeonsi, also before any rummage thread exists). The same holds
 // for libdrm_amdgpu, which that thread and our GL calls on the main thread both go through
 // (seen uploading glyphs while Quick Look draws a card). Only reports with a frame in one of
 // these libraries are suppressed: races between our own threads still show. It relies on GL

@@ -1,4 +1,4 @@
-#include "nordend/fs/directory_model.hpp"
+#include "rummage/fs/directory_model.hpp"
 
 #include <algorithm>
 #include <initializer_list>
@@ -7,9 +7,9 @@
 #include <unordered_set>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 ModelChange reset_change() {
@@ -412,4 +412,4 @@ void DirectoryModel::fail(std::error_code error) {
     notify(reset_change());
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

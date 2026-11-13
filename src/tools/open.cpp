@@ -1,9 +1,9 @@
 // Default applications check (ROADMAP 6.1). Not installed.
 //
-//   nordend-open [--dry-run] FILE...   open files as Nordend does, or only print how
-//   nordend-open --default TYPE...     the default application of each type
-//   nordend-open --apps TYPE...        every application of each type ("Open With")
-//   nordend-open --types               every type a mimeapps.list or desktop entry names
+//   rummage-open [--dry-run] FILE...   open files as rummage does, or only print how
+//   rummage-open --default TYPE...     the default application of each type
+//   rummage-open --apps TYPE...        every application of each type ("Open With")
+//   rummage-open --types               every type a mimeapps.list or desktop entry names
 //
 // --dry-run prints "<type>\t<file>" for each file, then each process: its application, folder
 // and command line. --default prints "<type>\t<desktop ID>" ("-" for none). Compare with GLib:
@@ -18,25 +18,25 @@
 #include <string_view>
 #include <vector>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/entry.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/platform/applications.hpp"
-#include "nordend/platform/desktop_entry.hpp"
-#include "nordend/platform/opener.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/entry.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/platform/applications.hpp"
+#include "rummage/platform/desktop_entry.hpp"
+#include "rummage/platform/opener.hpp"
 
 namespace {
 
-namespace core = nordend::core;
-namespace fs = nordend::fs;
-namespace platform = nordend::platform;
+namespace core = rummage::core;
+namespace fs = rummage::fs;
+namespace platform = rummage::platform;
 
 constexpr const char* kUsage =
-    "usage: nordend-open [--dry-run] FILE...\n"
-    "       nordend-open --default TYPE...\n"
-    "       nordend-open --apps TYPE...\n"
-    "       nordend-open --types\n";
+    "usage: rummage-open [--dry-run] FILE...\n"
+    "       rummage-open --default TYPE...\n"
+    "       rummage-open --apps TYPE...\n"
+    "       rummage-open --types\n";
 
 // A file as a directory listing would give it (the type left to detection).
 fs::Entry entry_of(const std::filesystem::path& file) {
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
         loop.run();
         return status;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "nordend-open: %s\n", e.what());
+        std::fprintf(stderr, "rummage-open: %s\n", e.what());
         return 1;
     }
 }

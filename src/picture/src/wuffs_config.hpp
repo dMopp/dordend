@@ -1,6 +1,6 @@
 #pragma once
 
-// The wuffs modules Nordend compiles: PNG, JPEG and GIF with what they need, and the C++
+// The wuffs modules rummage compiles: PNG, JPEG and GIF with what they need, and the C++
 // convenience API (wuffs_aux). Included before wuffs-v0.4.c everywhere it is used.
 
 // NOLINTBEGIN(bugprone-reserved-identifier): the names wuffs reads

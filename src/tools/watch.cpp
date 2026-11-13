@@ -1,6 +1,6 @@
 // Live directory model check (ROADMAP 3.3). Not installed.
 //
-//   nordend-watch DIR
+//   rummage-watch DIR
 //
 // Loads DIR like a view would, then prints every change as it is applied:
 //   + name  added    - name  removed    ~ name  updated    old -> new  renamed
@@ -17,16 +17,16 @@
 #include <sys/signalfd.h>
 #include <unistd.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_model.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_model.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
 
 namespace {
 
-namespace core = nordend::core;
-namespace fs = nordend::fs;
+namespace core = rummage::core;
+namespace fs = rummage::fs;
 using Clock = std::chrono::steady_clock;
 
 // Updates up to this many changes are listed name by name.
@@ -42,7 +42,7 @@ std::string stamp(Clock::time_point start) {
 int main(int argc, char** argv) {
     const std::span args{argv, static_cast<std::size_t>(argc)};
     if (args.size() != 2) {
-        std::fprintf(stderr, "usage: nordend-watch DIR\n");
+        std::fprintf(stderr, "usage: rummage-watch DIR\n");
         return 2;
     }
     try {
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         close(signals);
         return code;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "nordend-watch: %s\n", e.what());
+        std::fprintf(stderr, "rummage-watch: %s\n", e.what());
         return 1;
     }
 }

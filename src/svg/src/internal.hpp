@@ -15,13 +15,13 @@
 #include <string_view>
 #include <vector>
 
-#include "nordend/svg/svg.hpp"
+#include "rummage/svg/svg.hpp"
 #include FT_FREETYPE_H
 #include FT_OUTLINE_H
 #include FT_STROKER_H
-#include "nordend/picture/image.hpp"
+#include "rummage/picture/image.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 inline constexpr std::size_t kMaxBytes = 8U * 1024U * 1024U, kMaxNodes = 100000, kMaxDepth = 256,
                              kMaxSegments = 1000000, kMaxExpansion = 10000;
 
@@ -197,4 +197,4 @@ struct Document {
 std::shared_ptr<picture::Image> embedded(Document& doc, std::string_view href);
 void colour_matrix(const Canvas& input, Canvas& output, const Node& node, bool linear);
 void blur(const Canvas& input, Canvas& output, Canvas& scratch, double sx, double sy, bool linear);
-}  // namespace nordend::svg
+}  // namespace rummage::svg

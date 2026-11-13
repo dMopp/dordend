@@ -1,4 +1,4 @@
-#include "nordend/ui/xcursor.hpp"
+#include "rummage/ui/xcursor.hpp"
 
 #include <array>
 #include <filesystem>
@@ -7,9 +7,9 @@
 
 #include <doctest/doctest.h>
 
-using nordend::ui::CursorShape;
-using nordend::ui::xcursor_names;
-using nordend::ui::xcursor_size;
+using rummage::ui::CursorShape;
+using rummage::ui::xcursor_names;
+using rummage::ui::xcursor_size;
 
 namespace {
 

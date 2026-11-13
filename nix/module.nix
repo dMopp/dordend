@@ -6,21 +6,21 @@ self:
   ...
 }:
 let
-  cfg = config.programs.nordend;
+  cfg = config.programs.rummage;
 in
 {
-  options.programs.nordend = {
-    enable = lib.mkEnableOption "the Nordend file manager";
+  options.programs.rummage = {
+    enable = lib.mkEnableOption "the rummage file manager";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-      defaultText = lib.literalExpression "inputs.nordend.packages.\${pkgs.stdenv.hostPlatform.system}.default";
-      description = "Nordend package to install and use for the file picker.";
+      defaultText = lib.literalExpression "inputs.rummage.packages.\${pkgs.stdenv.hostPlatform.system}.default";
+      description = "rummage package to install and use for the file picker.";
     };
 
     filePicker = {
-      enable = lib.mkEnableOption "Nordend as the XDG FileChooser portal backend";
+      enable = lib.mkEnableOption "rummage as the XDG FileChooser portal backend";
 
       desktops = lib.mkOption {
         type = lib.types.listOf lib.types.str;
@@ -30,7 +30,7 @@ in
           "niri"
         ];
         description = ''
-          Lowercase desktop names whose portal configuration should select Nordend
+          Lowercase desktop names whose portal configuration should select rummage
           for file selection. Use "common" for the desktop-independent portals.conf.
           Keep the other portal preferences in xdg.portal.config for these desktops:
           desktop-specific configurations take precedence over common and package
@@ -45,11 +45,11 @@ in
       assertions = [
         {
           assertion = cfg.filePicker.enable -> cfg.enable;
-          message = "programs.nordend.filePicker.enable requires programs.nordend.enable.";
+          message = "programs.rummage.filePicker.enable requires programs.rummage.enable.";
         }
         {
           assertion = cfg.filePicker.enable -> cfg.filePicker.desktops != [ ];
-          message = "programs.nordend.filePicker.desktops must select at least one desktop (or common).";
+          message = "programs.rummage.filePicker.desktops must select at least one desktop (or common).";
         }
       ];
     }
@@ -61,7 +61,7 @@ in
         enable = true;
         extraPortals = [ cfg.package ];
         config = lib.genAttrs cfg.filePicker.desktops (_: {
-          "org.freedesktop.impl.portal.FileChooser" = [ "nordend" ];
+          "org.freedesktop.impl.portal.FileChooser" = [ "rummage" ];
         });
       };
     })

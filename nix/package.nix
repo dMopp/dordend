@@ -15,6 +15,7 @@
   fontconfig,
   tomlplusplus,
   libwebp,
+  ffmpeg,
   libjxl,
   zlib,
   sdbus-cpp_2,
@@ -29,11 +30,13 @@
   unzip,
   writeShellScriptBin,
   withTests ? false,
+  withMedia ? false,
 }:
 
 stdenv.mkDerivation {
-  pname = "nordend";
+  pname = "rummage";
   version = "0.5.0";
+  outputs = [ "out" ] ++ lib.optional withMedia "media";
 
   src = lib.fileset.toSource {
     root = ../.;
@@ -82,11 +85,13 @@ stdenv.mkDerivation {
     libjxl
     zlib
     sdbus-cpp_2
-  ];
+  ]
+  ++ lib.optional withMedia ffmpeg;
 
   cmakeFlags = [
-    "-DNORDEND_WERROR=OFF"
-    "-DNORDEND_BUILD_TESTS=${if withTests then "ON" else "OFF"}"
+    "-DRUMMAGE_WERROR=OFF"
+    "-DRUMMAGE_MEDIA=${if withMedia then "ON" else "OFF"}"
+    "-DRUMMAGE_BUILD_TESTS=${if withTests then "ON" else "OFF"}"
   ];
 
   doCheck = withTests;
@@ -119,23 +124,30 @@ stdenv.mkDerivation {
     runHook postCheck
   '';
 
-  postInstall = ''
-    install -Dm644 "$src/LICENSE" "$out/share/licenses/nordend/LICENSE"
-    wrapProgram "$out/bin/nordend" \
-      --set-default XDG_DATA_DIRS /usr/local/share:/usr/share \
-      --suffix XDG_DATA_DIRS : "${
-        lib.makeSearchPath "share" [
-          shared-mime-info
-          hicolor-icon-theme
-        ]
-      }"
-  '';
+  postInstall =
+    lib.optionalString withMedia ''
+      mkdir -p "$media/libexec/rummage" "$media/share/rummage/engines"
+      mv "$out/libexec/rummage/rummage-media" "$media/libexec/rummage/"
+      mv "$out/share/rummage/engines/media.toml" "$media/share/rummage/engines/"
+    ''
+    + ''
+      install -Dm644 "$src/LICENSE" "$out/share/licenses/rummage/LICENSE"
+      wrapProgram "$out/bin/rummage" \
+        ${lib.optionalString withMedia "--suffix RUMMAGE_ENGINE_PATH : $media/share/rummage/engines"} \
+        --set-default XDG_DATA_DIRS /usr/local/share:/usr/share \
+        --suffix XDG_DATA_DIRS : "${
+          lib.makeSearchPath "share" [
+            shared-mime-info
+            hicolor-icon-theme
+          ]
+        }"
+    '';
 
   meta = {
     description = "Native file manager for Wayland";
-    homepage = "https://github.com/pankaspe/nordend-fm";
+    homepage = "https://github.com/barrulus/rummage";
     license = lib.licenses.mit;
-    mainProgram = "nordend";
+    mainProgram = "rummage";
     platforms = [
       "x86_64-linux"
       "aarch64-linux"

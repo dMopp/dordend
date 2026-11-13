@@ -1,4 +1,4 @@
-#include "nordend/fs/icon.hpp"
+#include "rummage/fs/icon.hpp"
 
 #include <algorithm>
 #include <array>
@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 // Types with an icon of their own, checked in order with is_a(): subtypes match too, so
@@ -144,4 +144,4 @@ std::string_view icon_name(const MimeDatabase& db, const Entry& entry) {
     return icon_name(db, db.to_open(entry.mime, entry.name));
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

@@ -6,7 +6,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "nordend/formats/image/preview.hpp"
+#include "rummage/formats/image/preview.hpp"
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     const int fd = ::memfd_create("fuzz", MFD_CLOEXEC);
@@ -15,8 +15,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     }
     if (::write(fd, data, size) == static_cast<ssize_t>(size)) {
         for (const std::uint32_t side : {160U, 4000U}) {
-            const nordend::formats::image::EmbeddedPreview preview =
-                nordend::formats::image::embedded_preview(fd, side);
+            const rummage::formats::image::EmbeddedPreview preview =
+                rummage::formats::image::embedded_preview(fd, side);
             static_cast<void>(preview);
         }
     }

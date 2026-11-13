@@ -1,13 +1,13 @@
-#include "nordend/views/command_palette.hpp"
+#include "rummage/views/command_palette.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-#include "nordend/views/fuzzy.hpp"
-#include "nordend/core/i18n.hpp"
+#include "rummage/views/fuzzy.hpp"
+#include "rummage/core/i18n.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kWidth = 600.0F;
@@ -21,7 +21,6 @@ constexpr float kRowHeight = 30.0F;
 constexpr float kTextSize = 13.0F;
 constexpr float kTextInset = 12.0F;
 constexpr float kKeysGap = 32.0F;
-constexpr float kRadius = 12.0F;
 constexpr float kStatusHeight = 24.0F;  // the dim line under the list (finding files)
 constexpr float kStatusText = 12.0F;
 
@@ -396,10 +395,10 @@ void CommandPalette::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     const float height = fixed + (static_cast<float>(rows) * kRowHeight);
     panel_ = {bounds.x + ((bounds.width - width) / 2.0F), top, width, height};
 
-    renderer.draw_shadow({panel_.x, panel_.y + 6.0F, panel_.width, panel_.height},
-                         ui::Corners::all(kRadius), 18.0F, palette.shadow.with_alpha(0.6F));
+    renderer.draw_shadow({panel_.x, panel_.y + 6.0F, panel_.width, panel_.height}, {}, 18.0F,
+                         palette.shadow.with_alpha(0.6F));
     renderer.draw_box(panel_, {.fill = palette.surface_container_high,
-                               .radius = ui::Corners::all(kRadius),
+                               .radius = {},
                                .border_width = 1.0F,
                                .border = palette.outline_variant});
 
@@ -443,7 +442,7 @@ void CommandPalette::draw(ui::Renderer& renderer, const ui::Rect& bounds,
                             kRowHeight};
         const bool lit = highlighted_ == row;
         if (lit) {
-            renderer.draw_box(rect, {.fill = palette.hover, .radius = ui::Corners::all(6.0F)});
+            renderer.draw_box(rect, {.fill = palette.hover, .radius = {}});
         }
         const ui::Color text = lit ? palette.on_hover : palette.on_surface;
         const ui::Color dim = lit ? palette.on_hover : palette.on_surface_variant;
@@ -464,4 +463,4 @@ void CommandPalette::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     renderer.pop_clip();
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

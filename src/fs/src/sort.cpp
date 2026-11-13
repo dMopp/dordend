@@ -1,4 +1,4 @@
-#include "nordend/fs/sort.hpp"
+#include "rummage/fs/sort.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -7,7 +7,7 @@
 #include <unordered_set>
 #include <utility>
 
-namespace nordend::fs {
+namespace rummage::fs {
 namespace {
 
 bool is_digit(char c) noexcept { return c >= '0' && c <= '9'; }
@@ -91,15 +91,19 @@ bool SortOrder::operator()(const Entry& a, const Entry& b) const noexcept {
         case SortKey::modified:
             result = three_way(a.modified_ns, b.modified_ns);
             break;
-        case SortKey::type:
-            if ((a.mime == kUnknownMime) != (b.mime == kUnknownMime)) {
-                result = a.mime == kUnknownMime ? 1 : -1;
+        case SortKey::type: {
+            // A name that gives several types sorts by its best one (Entry::name_guess).
+            const MimeId ta = a.mime != kUnknownMime ? a.mime : a.name_guess;
+            const MimeId tb = b.mime != kUnknownMime ? b.mime : b.name_guess;
+            if ((ta == kUnknownMime) != (tb == kUnknownMime)) {
+                result = ta == kUnknownMime ? 1 : -1;
             } else if (mime != nullptr) {
-                result = sign(mime->name(a.mime).compare(mime->name(b.mime)));
+                result = sign(mime->name(ta).compare(mime->name(tb)));
             } else {
-                result = three_way(a.mime, b.mime);
+                result = three_way(ta, tb);
             }
             break;
+        }
         case SortKey::name:
             break;
     }
@@ -170,4 +174,4 @@ Listing::Moved Listing::set_filter(bool show_hidden, std::string keep) {
     return moved;
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

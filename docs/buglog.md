@@ -1,3 +1,6 @@
+> Historical notes from Nordend development, retained with their original names and measurements.
+> Upstream: https://github.com/pankaspe/nordend-fm. Current application: rummage.
+
 # Upstream bug log
 
 Bugs found in **Noctalia Shell** and **Umbriel** while building Nordend.

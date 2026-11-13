@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(nordend VERSION 0.5.0 LANGUAGES C CXX)
+project(rummage VERSION 0.5.0 LANGUAGES C CXX)
 
 # ---------------------------------------------------------------------------
 # Global settings
@@ -16,45 +16,45 @@ endif()
 # ---------------------------------------------------------------------------
 # Warning flags — applied to our code only, never to system libraries.
 # ---------------------------------------------------------------------------
-add_library(nordend_warnings INTERFACE)
-add_library(nordend::warnings ALIAS nordend_warnings)
-# NORDEND_WERROR=OFF for package builds: a newer compiler's new warning must not break them.
-option(NORDEND_WERROR "Turn warnings into errors" ON)
-target_compile_options(nordend_warnings INTERFACE
-    -Wall -Wextra -Wpedantic $<$<BOOL:${NORDEND_WERROR}>:-Werror>
+add_library(rummage_warnings INTERFACE)
+add_library(rummage::warnings ALIAS rummage_warnings)
+# RUMMAGE_WERROR=OFF for package builds: a newer compiler's new warning must not break them.
+option(RUMMAGE_WERROR "Turn warnings into errors" ON)
+target_compile_options(rummage_warnings INTERFACE
+    -Wall -Wextra -Wpedantic $<$<BOOL:${RUMMAGE_WERROR}>:-Werror>
     -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Woverloaded-virtual
     -Wconversion -Wsign-conversion -Wdouble-promotion
     -Wnull-dereference -Wformat=2 -Wimplicit-fallthrough)
 
 # ---------------------------------------------------------------------------
 # Sanitizers for Debug builds in their own directory, e.g.
-#   cmake -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DNORDEND_SANITIZER=address,undefined
+#   cmake -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DRUMMAGE_SANITIZER=address,undefined
 # ---------------------------------------------------------------------------
-set(NORDEND_SANITIZER "" CACHE STRING "Sanitizers to enable (e.g. address,undefined or thread)")
-if(NORDEND_SANITIZER)
-    target_compile_options(nordend_warnings INTERFACE
-        -fsanitize=${NORDEND_SANITIZER} -fno-omit-frame-pointer)
-    target_link_options(nordend_warnings INTERFACE -fsanitize=${NORDEND_SANITIZER})
+set(RUMMAGE_SANITIZER "" CACHE STRING "Sanitizers to enable (e.g. address,undefined or thread)")
+if(RUMMAGE_SANITIZER)
+    target_compile_options(rummage_warnings INTERFACE
+        -fsanitize=${RUMMAGE_SANITIZER} -fno-omit-frame-pointer)
+    target_link_options(rummage_warnings INTERFACE -fsanitize=${RUMMAGE_SANITIZER})
 endif()
 
 # Fuzzing (ROADMAP 2c), development only, clang only, in its own directory:
 #   CC=clang CXX=clang++ cmake -B build-fuzz -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-#       -DNORDEND_FUZZ=ON -DNORDEND_WERROR=OFF -DNORDEND_BUILD_TESTS=OFF
+#       -DRUMMAGE_FUZZ=ON -DRUMMAGE_WERROR=OFF -DRUMMAGE_BUILD_TESTS=OFF
 # Our code is instrumented for libFuzzer, AddressSanitizer and UBSan; tests/fuzz holds the targets.
-option(NORDEND_FUZZ "Build the libFuzzer targets in tests/fuzz (clang only)" OFF)
-if(NORDEND_FUZZ)
+option(RUMMAGE_FUZZ "Build the libFuzzer targets in tests/fuzz (clang only)" OFF)
+if(RUMMAGE_FUZZ)
     if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        message(FATAL_ERROR "NORDEND_FUZZ needs clang (CC=clang CXX=clang++)")
+        message(FATAL_ERROR "RUMMAGE_FUZZ needs clang (CC=clang CXX=clang++)")
     endif()
-    target_compile_options(nordend_warnings INTERFACE
+    target_compile_options(rummage_warnings INTERFACE
         -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer)
-    target_link_options(nordend_warnings INTERFACE -fsanitize=address,undefined)
+    target_link_options(rummage_warnings INTERFACE -fsanitize=address,undefined)
 endif()
 
-option(NORDEND_CLANG_TIDY "Run clang-tidy while building the nordend targets" OFF)
-if(NORDEND_CLANG_TIDY)
-    find_program(NORDEND_CLANG_TIDY_EXE NAMES clang-tidy REQUIRED)
-    set(CMAKE_CXX_CLANG_TIDY "${NORDEND_CLANG_TIDY_EXE}")
+option(RUMMAGE_CLANG_TIDY "Run clang-tidy while building the rummage targets" OFF)
+if(RUMMAGE_CLANG_TIDY)
+    find_program(RUMMAGE_CLANG_TIDY_EXE NAMES clang-tidy REQUIRED)
+    set(CMAKE_CXX_CLANG_TIDY "${RUMMAGE_CLANG_TIDY_EXE}")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -92,22 +92,33 @@ add_subdirectory(src/formats)   # the families of files read in the helper (imag
 add_subdirectory(src/thumbs)    # freedesktop thumbnail cache
 add_subdirectory(src/preview)   # Quick Look providers: images, text, information
 add_subdirectory(src/isolate)   # preview helpers: the parsers in separate processes (2b)
+option(RUMMAGE_MEDIA "Build the optional FFmpeg video preview helper" OFF)
+if(RUMMAGE_MEDIA)
+    # FFmpeg 6.1 introduced the codec-parameter side data used for video rotation.
+    pkg_check_modules(AVFORMAT REQUIRED IMPORTED_TARGET libavformat>=60.16.100)
+    pkg_check_modules(AVCODEC REQUIRED IMPORTED_TARGET libavcodec>=60.31.102)
+    pkg_check_modules(AVUTIL REQUIRED IMPORTED_TARGET libavutil>=58.29.100)
+    pkg_check_modules(SWSCALE REQUIRED IMPORTED_TARGET libswscale)
+    add_subdirectory(src/media)
+else()
+    file(REMOVE "${PROJECT_BINARY_DIR}/engines/media.toml")
+endif()
 add_subdirectory(src/platform)  # default applications (freedesktop), launching processes
 add_subdirectory(src/views)     # column view and grid
 
-# Renderer test scene (ROADMAP 1.4), shared by the app and nordend-snapshot.
-add_library(nordend_test_scene STATIC src/app/test_scene.cpp)
-target_include_directories(nordend_test_scene PUBLIC src/app)
-target_link_libraries(nordend_test_scene PUBLIC nordend::ui nordend::theme PRIVATE nordend::warnings)
+# Renderer test scene (ROADMAP 1.4), shared by the app and rummage-snapshot.
+add_library(rummage_test_scene STATIC src/app/test_scene.cpp)
+target_include_directories(rummage_test_scene PUBLIC src/app)
+target_link_libraries(rummage_test_scene PUBLIC rummage::ui rummage::theme PRIVATE rummage::warnings)
 
-# The commit Nordend is built from, for "About" (ROADMAP 7.5d): read when CMake configures, which
+# The commit rummage is built from, for "About" (ROADMAP 7.5d): read when CMake configures, which
 # it does again after every commit (it watches .git/logs/HEAD). Empty outside a git checkout.
-set(NORDEND_COMMIT "")
+set(RUMMAGE_COMMIT "")
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --short=7 HEAD
                     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                    OUTPUT_VARIABLE NORDEND_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE
+                    OUTPUT_VARIABLE RUMMAGE_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE
                     ERROR_QUIET)
     if(EXISTS "${PROJECT_SOURCE_DIR}/.git/logs/HEAD")
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
@@ -115,79 +126,79 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     endif()
 endif()
 
-add_executable(nordend src/app/main.cpp)
-target_compile_definitions(nordend PRIVATE NORDEND_VERSION="${PROJECT_VERSION}"
-                                           NORDEND_COMMIT="${NORDEND_COMMIT}")
-target_link_libraries(nordend
-    PRIVATE nordend::core nordend::ui nordend::theme nordend::views nordend::platform
-            nordend::isolate nordend_test_scene
-            nordend::warnings)
+add_executable(rummage src/app/main.cpp)
+target_compile_definitions(rummage PRIVATE RUMMAGE_VERSION="${PROJECT_VERSION}"
+                                           RUMMAGE_COMMIT="${RUMMAGE_COMMIT}")
+target_link_libraries(rummage
+    PRIVATE rummage::core rummage::ui rummage::theme rummage::views rummage::platform
+            rummage::isolate rummage_test_scene
+            rummage::warnings)
 
-add_executable(nordend-svg-render src/tools/svg_render.cpp)
-target_include_directories(nordend-svg-render PRIVATE tests)
-target_link_libraries(nordend-svg-render PRIVATE nordend::svg nordend::picture nordend::warnings)
+add_executable(rummage-svg-render src/tools/svg_render.cpp)
+target_include_directories(rummage-svg-render PRIVATE tests)
+target_link_libraries(rummage-svg-render PRIVATE rummage::svg rummage::picture rummage::warnings)
 
 # Development tool: offscreen render of the test scene or a folder list to a PPM file, and the
 # list scrolling benchmark. Not installed.
-add_executable(nordend-snapshot src/tools/snapshot.cpp)
-target_link_libraries(nordend-snapshot
-    PRIVATE nordend::core nordend::ui nordend::theme nordend::views nordend::platform
-            nordend::isolate nordend_test_scene nordend::warnings)
+add_executable(rummage-snapshot src/tools/snapshot.cpp)
+target_link_libraries(rummage-snapshot
+    PRIVATE rummage::core rummage::ui rummage::theme rummage::views rummage::platform
+            rummage::isolate rummage_test_scene rummage::warnings)
 
 # Development tool: directory loading benchmark (ROADMAP 3.1). Not installed.
-add_executable(nordend-bench-dir src/tools/bench_dir.cpp)
-target_link_libraries(nordend-bench-dir PRIVATE nordend::core nordend::fs nordend::warnings)
+add_executable(rummage-bench-dir src/tools/bench_dir.cpp)
+target_link_libraries(rummage-bench-dir PRIVATE rummage::core rummage::fs rummage::warnings)
 
 # Development tool: finding files benchmark (ROADMAP 8b). Not installed.
-add_executable(nordend-bench-find src/tools/bench_find.cpp)
-target_link_libraries(nordend-bench-find PRIVATE nordend::core nordend::fs nordend::views
-                                                 nordend::warnings)
+add_executable(rummage-bench-find src/tools/bench_find.cpp)
+target_link_libraries(rummage-bench-find PRIVATE rummage::core rummage::fs rummage::views
+                                                 rummage::warnings)
 
-# Development tool: start-up benchmark, runs nordend and times each step of its start
+# Development tool: start-up benchmark, runs rummage and times each step of its start
 # (ROADMAP 7.6). Not installed.
-add_executable(nordend-bench-start src/tools/bench_start.cpp)
-target_link_libraries(nordend-bench-start PRIVATE nordend::warnings)
+add_executable(rummage-bench-start src/tools/bench_start.cpp)
+target_link_libraries(rummage-bench-start PRIVATE rummage::warnings)
 
 # Development tool: MIME detection check against GLib (ROADMAP 3.2). Not installed.
-add_executable(nordend-mime src/tools/mime.cpp)
-target_link_libraries(nordend-mime PRIVATE nordend::core nordend::fs nordend::warnings)
+add_executable(rummage-mime src/tools/mime.cpp)
+target_link_libraries(rummage-mime PRIVATE rummage::core rummage::fs rummage::warnings)
 
 # Development tool: live directory model, prints changes (ROADMAP 3.3). Not installed.
-add_executable(nordend-watch src/tools/watch.cpp)
-target_link_libraries(nordend-watch PRIVATE nordend::core nordend::fs nordend::warnings)
+add_executable(rummage-watch src/tools/watch.cpp)
+target_link_libraries(rummage-watch PRIVATE rummage::core rummage::fs rummage::warnings)
 
 # Development tool: decodes images, prints sizes and timings (ROADMAP 5.1). Not installed.
-add_executable(nordend-decode src/tools/decode.cpp)
-target_link_libraries(nordend-decode PRIVATE nordend::core nordend::formats::image nordend::warnings)
-target_include_directories(nordend-decode PRIVATE ${PROJECT_SOURCE_DIR}/src/formats/image/src)
+add_executable(rummage-decode src/tools/decode.cpp)
+target_link_libraries(rummage-decode PRIVATE rummage::core rummage::formats::image rummage::warnings)
+target_include_directories(rummage-decode PRIVATE ${PROJECT_SOURCE_DIR}/src/formats/image/src)
 
 # Development tool: thumbnails through the freedesktop cache (ROADMAP 5.2). Not installed.
-add_executable(nordend-thumb src/tools/thumb.cpp)
-target_link_libraries(nordend-thumb PRIVATE nordend::thumbs nordend::formats::image nordend::warnings)
+add_executable(rummage-thumb src/tools/thumb.cpp)
+target_link_libraries(rummage-thumb PRIVATE rummage::thumbs rummage::formats::image rummage::warnings)
 
 # Development tool: which application opens a file or a type, and how (ROADMAP 6.1). Not
 # installed.
-add_executable(nordend-open src/tools/open.cpp)
-target_link_libraries(nordend-open PRIVATE nordend::core nordend::fs nordend::platform nordend::warnings)
+add_executable(rummage-open src/tools/open.cpp)
+target_link_libraries(rummage-open PRIVATE rummage::core rummage::fs rummage::platform rummage::warnings)
 
 # Development tool: the copy and move engine from the command line, timed (ROADMAP 6.3). Not
 # installed.
-add_executable(nordend-transfer src/tools/transfer.cpp)
-target_link_libraries(nordend-transfer PRIVATE nordend::core nordend::fs nordend::warnings)
+add_executable(rummage-transfer src/tools/transfer.cpp)
+target_link_libraries(rummage-transfer PRIVATE rummage::core rummage::fs rummage::warnings)
 
 # Development tool: JPEG decoding, wuffs against TurboJPEG scaling (ROADMAP 5.2). Not installed;
 # built only when libjpeg-turbo-devel is there.
 if(TURBOJPEG_FOUND)
-    add_executable(nordend-bench-jpeg src/tools/bench_jpeg.cpp)
-    target_link_libraries(nordend-bench-jpeg
-        PRIVATE nordend::formats::image PkgConfig::TURBOJPEG nordend::warnings)
+    add_executable(rummage-bench-jpeg src/tools/bench_jpeg.cpp)
+    target_link_libraries(rummage-bench-jpeg
+        PRIVATE rummage::formats::image PkgConfig::TURBOJPEG rummage::warnings)
 endif()
 
 # ---------------------------------------------------------------------------
 # Tests (doctest, system package). Skipped with a notice when doctest is missing.
 # ---------------------------------------------------------------------------
-option(NORDEND_BUILD_TESTS "Build the unit tests" ON)
-if(NORDEND_BUILD_TESTS)
+option(RUMMAGE_BUILD_TESTS "Build the unit tests" ON)
+if(RUMMAGE_BUILD_TESTS)
     find_package(doctest CONFIG QUIET)
     if(doctest_FOUND)
         enable_testing()
@@ -197,35 +208,35 @@ if(NORDEND_BUILD_TESTS)
     endif()
 endif()
 
-if(NORDEND_FUZZ)
+if(RUMMAGE_FUZZ)
     add_subdirectory(tests/fuzz)
 endif()
 
 # Known third-party leak suppressions, compiled into every executable of a sanitizer build.
-if(NORDEND_SANITIZER)
-    foreach(executable nordend nordend-preview nordend-snapshot nordend-bench-dir nordend-mime
-            nordend-watch nordend-decode nordend-thumb nordend-open nordend-transfer)
+if(RUMMAGE_SANITIZER)
+    foreach(executable rummage rummage-preview rummage-snapshot rummage-bench-dir rummage-mime
+            rummage-watch rummage-decode rummage-thumb rummage-open rummage-transfer)
         target_sources(${executable} PRIVATE src/core/src/lsan_suppressions.cpp)
     endforeach()
 endif()
 
-install(TARGETS nordend RUNTIME DESTINATION bin)
-# The preview helper (ROADMAP 2b), found by nordend in ../libexec/nordend/.
-install(TARGETS nordend-preview RUNTIME DESTINATION libexec/nordend)
-# The desktop entry (app id "nordend"): menus, and the default for folders (inode/directory).
-install(FILES data/nordend.desktop DESTINATION share/applications)
-# Its icon, named after the app id (the desktop entry's Icon=nordend).
-install(FILES data/nordend.svg DESTINATION share/icons/hicolor/scalable/apps)
-# The Noctalia template that writes ~/.config/nordend/colors.toml (README, "On Noctalia").
-install(FILES data/noctalia/nordend DESTINATION share/nordend/noctalia)
+install(TARGETS rummage RUNTIME DESTINATION bin)
+# The preview helper (ROADMAP 2b), found by rummage in ../libexec/rummage/.
+install(TARGETS rummage-preview RUNTIME DESTINATION libexec/rummage)
+# The desktop entry (app id "rummage"): menus, and the default for folders (inode/directory).
+install(FILES data/rummage.desktop DESTINATION share/applications)
+# Its icon, named after the app id (the desktop entry's Icon=rummage).
+install(FILES data/rummage.svg DESTINATION share/icons/hicolor/scalable/apps)
+# The Noctalia template that writes ~/.config/rummage/colors.toml (README, "On Noctalia").
+install(FILES data/noctalia/rummage DESTINATION share/rummage/noctalia)
 
 # Full reference, also embedded for per-user first-run setup.
-install(FILES docs/config.example.toml DESTINATION share/nordend)
+install(FILES docs/config.example.toml DESTINATION share/rummage)
 
 # Optional FileChooser backend; desktops select it in portals.conf.
-configure_file(data/org.freedesktop.impl.portal.desktop.nordend.service.in
-               org.freedesktop.impl.portal.desktop.nordend.service @ONLY)
-install(CODE "configure_file(\"${PROJECT_SOURCE_DIR}/data/org.freedesktop.impl.portal.desktop.nordend.service.in\" \"${CMAKE_CURRENT_BINARY_DIR}/org.freedesktop.impl.portal.desktop.nordend.service\" @ONLY)")
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/org.freedesktop.impl.portal.desktop.nordend.service"
+configure_file(data/org.freedesktop.impl.portal.desktop.rummage.service.in
+               org.freedesktop.impl.portal.desktop.rummage.service @ONLY)
+install(CODE "configure_file(\"${PROJECT_SOURCE_DIR}/data/org.freedesktop.impl.portal.desktop.rummage.service.in\" \"${CMAKE_CURRENT_BINARY_DIR}/org.freedesktop.impl.portal.desktop.rummage.service\" @ONLY)")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/org.freedesktop.impl.portal.desktop.rummage.service"
         DESTINATION share/dbus-1/services)
-install(FILES data/nordend.portal DESTINATION share/xdg-desktop-portal/portals)
+install(FILES data/rummage.portal DESTINATION share/xdg-desktop-portal/portals)

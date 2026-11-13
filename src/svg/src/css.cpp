@@ -2,7 +2,7 @@
 
 #include "internal.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 namespace {
 void charge(std::size_t& work, std::size_t amount) {
     require(amount <= 10000000 - work);
@@ -408,4 +408,4 @@ Colour colour(std::string_view text, Colour current) {
             static_cast<double>((rgb >> 8U) & 255U) / 255, static_cast<double>(rgb & 255U) / 255,
             1};
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

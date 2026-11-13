@@ -1,7 +1,7 @@
 #include "internal.hpp"
-#include "nordend/svg/svg.hpp"
+#include "rummage/svg/svg.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 Document::Document(std::string_view input) : nodes(xml(input)), sheet(stylesheet(nodes)) {
     styles.resize(nodes.size());
     paths.resize(nodes.size());
@@ -705,4 +705,4 @@ picture::Image render(std::span<const std::uint8_t> data, int pixels,
         return {};
     }
 }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

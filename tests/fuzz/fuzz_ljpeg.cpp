@@ -1,4 +1,4 @@
-// Fuzzes Nordend's own lossless JPEG decoder (ROADMAP 2d) alone: headers, Huffman tables, the
+// Fuzzes rummage's own lossless JPEG decoder (ROADMAP 2d) alone: headers, Huffman tables, the
 // entropy-coded data, predictors, restarts.
 #include <cstddef>
 #include <cstdint>
@@ -7,7 +7,7 @@
 
 #include "dng/ljpeg.hpp"
 
-namespace dng = nordend::formats::image::dng;
+namespace dng = rummage::formats::image::dng;
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     const std::span<const std::uint8_t> bytes{data, size};

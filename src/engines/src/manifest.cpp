@@ -8,9 +8,9 @@
 #include <toml++/toml.hpp>
 #include <utility>
 
-#include "nordend/engines/engines.hpp"
+#include "rummage/engines/engines.hpp"
 
-namespace nordend::engines {
+namespace rummage::engines {
 namespace {
 
 // A manifest that is not one: what is wrong, and where.
@@ -121,7 +121,7 @@ Manifest read_manifest(std::string_view source, const toml::table& root) {
     }
     if (number->get() != kProtocol) {
         fail(source, protocol,
-             std::format("protocol {}, Nordend speaks {}", number->get(), kProtocol));
+             std::format("protocol {}, rummage speaks {}", number->get(), kProtocol));
     }
 
     Manifest manifest;
@@ -175,4 +175,4 @@ std::optional<Manifest> parse_manifest(std::string_view text, std::string_view s
     return std::nullopt;
 }
 
-}  // namespace nordend::engines
+}  // namespace rummage::engines

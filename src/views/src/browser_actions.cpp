@@ -1,10 +1,10 @@
 #include <algorithm>
 #include <utility>
 
-#include "nordend/core/i18n.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/i18n.hpp"
+#include "rummage/views/browser.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 
 void Browser::set_context_menu(core::MenuLayout layout) {
     menu_layout_ = std::move(layout);
@@ -13,8 +13,7 @@ void Browser::set_context_menu(core::MenuLayout layout) {
 }
 
 std::vector<MenuItem> Browser::configured_menu(
-    std::vector<MenuItem> items,
-    const std::optional<std::vector<core::MenuNode>>& specific) const {
+    std::vector<MenuItem> items, const std::optional<std::vector<core::MenuNode>>& specific) const {
     const auto& layout = specific ? specific : menu_layout_.items;
     return layout ? arrange_menu(items, *layout) : std::move(items);
 }
@@ -73,7 +72,11 @@ std::vector<MenuItem> Browser::action_items(const core::ActionContext& context) 
         item.enabled = action.kind == core::Action::Kind::copy_location || !action_available_ ||
                        action_available_(action, context);
         if (!item.enabled) {
-            item.label += i18n::tr(" (not installed)");
+            const bool archive = action.kind == core::Action::Kind::extract_here ||
+                                 action.kind == core::Action::Kind::extract_to;
+            item.label += archive ? std::string{" (setup required)"} : i18n::tr(" (not installed)");
+            // Let built-in extraction explain which dependency is missing.
+            item.enabled = archive;
         }
         item.action = [this, action, context] { invoke_action(action, context); };
         if (action.placement == core::Action::Placement::menu) {
@@ -102,7 +105,8 @@ void Browser::invoke_action(const core::Action& action, const core::ActionContex
         }
         copy_text(context.targets.empty() ? context.directory.string() : std::move(text));
     } else if (action_handoff_) {
-        if (action_available_ && !action_available_(action, context)) {
+        if (action.kind == core::Action::Kind::external && action_available_ &&
+            !action_available_(action, context)) {
             show_message(
                 std::string{i18n::tr("No installed program supports this action and selection")},
                 true);
@@ -119,4 +123,4 @@ void Browser::run_action(std::string_view id) {
     }
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

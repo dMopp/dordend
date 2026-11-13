@@ -30,7 +30,7 @@ Probed probe(const char* what) {
     posix_spawn_file_actions_t actions{};
     posix_spawn_file_actions_init(&actions);
     posix_spawn_file_actions_adddup2(&actions, ends[1], STDOUT_FILENO);
-    std::string program = NORDEND_SANDBOX_PROBE;
+    std::string program = RUMMAGE_SANDBOX_PROBE;
     std::string arg = what;
     std::array<char*, 3> argv{program.data(), arg.data(), nullptr};
     pid_t pid = -1;

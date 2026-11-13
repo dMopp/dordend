@@ -9,7 +9,7 @@
 
 #include <doctest/doctest.h>
 
-namespace nordend::test {
+namespace rummage::test {
 
 // A temporary directory, removed with everything in it.
 struct TempDir {
@@ -17,7 +17,7 @@ struct TempDir {
 
     TempDir() {
         std::string pattern =
-            (std::filesystem::temp_directory_path() / "nordend-test-XXXXXX").string();
+            (std::filesystem::temp_directory_path() / "rummage-test-XXXXXX").string();
         REQUIRE(mkdtemp(pattern.data()) != nullptr);
         path = pattern;
     }
@@ -41,4 +41,4 @@ struct TempDir {
     }
 };
 
-}  // namespace nordend::test
+}  // namespace rummage::test

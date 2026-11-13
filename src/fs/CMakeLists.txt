@@ -1,4 +1,4 @@
-add_library(nordend_fs
+add_library(rummage_fs
     src/directory.cpp
     src/directory_model.cpp
     src/directory_watcher.cpp
@@ -14,7 +14,7 @@ add_library(nordend_fs
     src/transfer_queue.cpp
     src/trash.cpp
     src/walk.cpp)
-add_library(nordend::fs ALIAS nordend_fs)
+add_library(rummage::fs ALIAS rummage_fs)
 
-target_include_directories(nordend_fs PUBLIC include)
-target_link_libraries(nordend_fs PUBLIC nordend::core PRIVATE nordend::warnings)
+target_include_directories(rummage_fs PUBLIC include)
+target_link_libraries(rummage_fs PUBLIC rummage::core PRIVATE rummage::warnings)

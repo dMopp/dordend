@@ -1,4 +1,4 @@
-#include "nordend/core/memory.hpp"
+#include "rummage/core/memory.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -10,7 +10,7 @@
 #include <set>
 #include <string_view>
 
-namespace nordend::core {
+namespace rummage::core {
 namespace {
 
 // "Rss:   1234 kB" -> 1234 * 1024; "drm-memory-vram:  50 KiB" the same.
@@ -227,4 +227,4 @@ std::vector<std::string> describe(const MemoryReport& report) {
 
 void give_back_free_memory() { malloc_trim(0); }
 
-}  // namespace nordend::core
+}  // namespace rummage::core

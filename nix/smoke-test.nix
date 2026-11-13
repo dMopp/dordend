@@ -10,7 +10,7 @@
   dejavu_fonts,
   writeShellScriptBin,
 }:
-runCommand "nordend-installed-smoke"
+runCommand "rummage-installed-smoke"
   {
     nativeBuildInputs = [
       bash

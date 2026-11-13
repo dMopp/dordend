@@ -1,4 +1,4 @@
-#include "nordend/views/undo.hpp"
+#include "rummage/views/undo.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -12,20 +12,20 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::ui::KeyEvent;
-using nordend::ui::Modifiers;
-using nordend::views::Browser;
-using nordend::views::FileOperation;
-using nordend::views::Folder;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::ui::KeyEvent;
+using rummage::ui::Modifiers;
+using rummage::views::Browser;
+using rummage::views::FileOperation;
+using rummage::views::Folder;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -77,11 +77,11 @@ struct Fixture {
     fs::path album = root / "album";
     fs::path trash = dir.path / "Trash";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
 
     Fixture() {
         fs::create_directories(photos);
@@ -244,11 +244,11 @@ TEST_CASE("undo: what changed meanwhile is said, and undo goes on working") {
 
 TEST_CASE("undo: what the messages say") {
     using Kind = FileOperation::Kind;
-    CHECK(nordend::views::describe({.kind = Kind::trash,
+    CHECK(rummage::views::describe({.kind = Kind::trash,
                                     .items = {{.from = "/a/x.txt", .to = "/T/files/x.2.txt"},
                                               {.from = "/a/y.txt", .to = "/T/files/y.txt"}}}) ==
           "2 items moved to the trash");
-    CHECK(nordend::views::describe(
+    CHECK(rummage::views::describe(
               {.kind = Kind::move, .items = {{.from = "/a/x.txt", .to = "/b/x.txt"}}}) ==
           "“x.txt” back in b");
 }

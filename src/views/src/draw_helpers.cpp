@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 
-namespace nordend::views {
+namespace rummage::views {
 
 float text_width(ui::Renderer& renderer, std::string_view text, float size) {
     return renderer.fonts().layout(text, size, renderer.scale()).width / renderer.scale();
@@ -36,4 +36,4 @@ std::vector<ui::ColorRun> colour_runs(std::span<const text::Span> spans,
     return runs;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

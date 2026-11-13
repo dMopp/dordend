@@ -1,11 +1,11 @@
-#include "nordend/views/folder.hpp"
+#include "rummage/views/folder.hpp"
 
 #include <algorithm>
 #include <iterator>
 #include <utility>
 #include <vector>
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 // Sniffing batches stay small so a fast scroll does not queue minutes of reads.
@@ -412,4 +412,4 @@ void Folder::sniff(std::size_t first, std::size_t last) {
         });
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

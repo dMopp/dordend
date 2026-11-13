@@ -1,4 +1,4 @@
-#include "nordend/fs/erase.hpp"
+#include "rummage/fs/erase.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -13,17 +13,17 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/transfer.hpp"
-#include "nordend/fs/trash.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/transfer.hpp"
+#include "rummage/fs/trash.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::CancelToken;
-using nordend::fs::ErasePlan;
-using nordend::fs::TransferKind;
-using nordend::fs::TransferRequest;
-using nordend::fs::TransferResult;
-using nordend::test::TempDir;
+using rummage::core::CancelToken;
+using rummage::fs::ErasePlan;
+using rummage::fs::TransferKind;
+using rummage::fs::TransferRequest;
+using rummage::fs::TransferResult;
+using rummage::test::TempDir;
 namespace fs = std::filesystem;
 
 namespace {
@@ -54,7 +54,7 @@ TransferRequest erase(const fs::path& source, Names names) {
 
 void trash(const fs::path& source, const Names& names, const fs::path& home,
            const fs::path& top = {}) {
-    const TransferResult result = nordend::fs::run_trash({.kind = TransferKind::trash,
+    const TransferResult result = rummage::fs::run_trash({.kind = TransferKind::trash,
                                                           .source = source,
                                                           .names = names,
                                                           .destination = home,
@@ -82,7 +82,7 @@ TEST_CASE("erase: files and folders go for good, sidecars along, links not follo
     fs::permissions(photos / "Trip" / "locked", fs::perms::owner_read | fs::perms::owner_exec);
 
     const TransferRequest request = erase(photos, {"P1.ORF", "Trip", "missing"});
-    const ErasePlan plan = nordend::fs::plan_erase(request, CancelToken{});
+    const ErasePlan plan = rummage::fs::plan_erase(request, CancelToken{});
     CHECK(plan.names == Names{"P1.ORF", "Trip"});
     CHECK(plan.items ==
           std::vector<fs::path>{photos / "P1.ORF", photos / "P1.ORF.xmp", photos / "Trip"});
@@ -92,7 +92,7 @@ TEST_CASE("erase: files and folders go for good, sidecars along, links not follo
     CHECK(plan.bytes == 3 + 3 + 4 + 2);  // the hard link once
     CHECK(plan.errors.size() == 1);
 
-    const TransferResult result = nordend::fs::run_erase(request, CancelToken{}, {});
+    const TransferResult result = rummage::fs::run_erase(request, CancelToken{}, {});
     CHECK(result.errors.size() == 1);  // "missing"
     CHECK(result.placed == Names{"P1.ORF", "Trip"});
     CHECK(result.files_done == 8);
@@ -105,14 +105,14 @@ TEST_CASE("erase: a sidecar picked with its photo counts once; cancelled, nothin
     make(dir.path / "P1.ORF", "raw");
     make(dir.path / "P1.ORF.xmp", "xmp");
     const TransferRequest request = erase(dir.path, {"P1.ORF.xmp", "P1.ORF"});
-    const ErasePlan plan = nordend::fs::plan_erase(request, CancelToken{});
+    const ErasePlan plan = rummage::fs::plan_erase(request, CancelToken{});
     CHECK(plan.names == Names{"P1.ORF"});
     CHECK(plan.items.size() == 2);
     CHECK(plan.sidecars == 0);  // asked for: nothing goes along unasked
 
     CancelToken stopped;
     stopped.cancel();
-    const TransferResult result = nordend::fs::run_erase(request, stopped, {});
+    const TransferResult result = rummage::fs::run_erase(request, stopped, {});
     CHECK(result.cancelled);
     CHECK(result.placed.empty());
     CHECK(listing(dir.path) == Names{"P1.ORF", "P1.ORF.xmp"});
@@ -131,14 +131,14 @@ TEST_CASE("erase: from the trash folder, the .trashinfo and directorysizes follo
 
     const TransferRequest request{
         .kind = TransferKind::erase,
-        .source = nordend::fs::trash_path(),
+        .source = rummage::fs::trash_path(),
         .names = {(home / "files" / "P1.ORF").string(), (home / "files" / "Trip").string()},
         .destination = {},
         .force_copy = false};
-    const ErasePlan plan = nordend::fs::plan_erase(request, CancelToken{});
+    const ErasePlan plan = rummage::fs::plan_erase(request, CancelToken{});
     CHECK(plan.names == Names{"P1.ORF", "Trip"});
     CHECK(plan.sidecars == 1);
-    const TransferResult result = nordend::fs::run_erase(request, CancelToken{}, {});
+    const TransferResult result = rummage::fs::run_erase(request, CancelToken{}, {});
     CHECK(result.errors.empty());
     CHECK(result.placed == Names{"P1.ORF", "Trip"});
     CHECK(listing(home / "files") == Names{"Old"});
@@ -166,14 +166,14 @@ TEST_CASE("erase: emptying the trash empties every trash, orphans and directorys
     REQUIRE(fs::exists(home / "directorysizes"));
 
     TransferRequest request{.kind = TransferKind::empty_trash,
-                            .source = nordend::fs::trash_path(),
+                            .source = rummage::fs::trash_path(),
                             .names = {home.string(), disk_trash.string()},
                             .destination = {},
                             .force_copy = false};
-    const ErasePlan plan = nordend::fs::plan_erase(request, CancelToken{});
+    const ErasePlan plan = rummage::fs::plan_erase(request, CancelToken{});
     CHECK(plan.items.size() == 4);
     CHECK(plan.entries == 5);  // a.txt, Trip, b.txt, P1.ORF, no-info.txt
-    const TransferResult result = nordend::fs::run_erase(request, CancelToken{}, {});
+    const TransferResult result = rummage::fs::run_erase(request, CancelToken{}, {});
     CHECK(result.errors.empty());
     CHECK(result.files_done == 5);
     for (const fs::path& trash : {home, disk_trash}) {
@@ -181,7 +181,7 @@ TEST_CASE("erase: emptying the trash empties every trash, orphans and directorys
         CHECK(listing(trash / "info").empty());
         CHECK_FALSE(fs::exists(trash / "directorysizes"));
     }
-    CHECK(nordend::fs::list_trash(
+    CHECK(rummage::fs::list_trash(
               {.home = home, .tops = std::vector<fs::path>{disk}, .uid = geteuid()})
               .empty());
 }

@@ -3,7 +3,7 @@
 
 #include "internal.hpp"
 
-namespace nordend::svg {
+namespace rummage::svg {
 namespace {
 bool space(char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
 
@@ -232,4 +232,4 @@ private:
 }  // namespace
 
 std::vector<Node> xml(std::string_view input) { return Parser{input}.parse(); }
-}  // namespace nordend::svg
+}  // namespace rummage::svg

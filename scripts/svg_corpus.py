@@ -11,7 +11,7 @@ import time
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--renderer', default='build/nordend-svg-render')
+    parser.add_argument('--renderer', default='build/rummage-svg-render')
     parser.add_argument('--size', type=int, choices=(16, 48, 128))
     parser.add_argument('--corpus', type=Path, default=Path('tests/data/svg-corpus'))
     parser.add_argument('--report', type=Path)
@@ -23,7 +23,7 @@ def main():
     rows = list(csv.DictReader(manifest.open(), delimiter='\t'))
     results = []
     hashes = {}
-    with tempfile.TemporaryDirectory(prefix='nordend-svg-corpus-') as temp:
+    with tempfile.TemporaryDirectory(prefix='rummage-svg-corpus-') as temp:
         output = Path(temp) / 'actual.png'
         for size in (16, 48, 128):
             if args.size and args.size != size:

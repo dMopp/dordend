@@ -1,0 +1,36 @@
+# Template file for 'rummage'
+# rummage's xbps-src template for Void Linux. Copy this folder into a
+# void-packages checkout as srcpkgs/rummage, then: ./xbps-src pkg rummage
+pkgname=rummage
+version=0.5.0
+revision=1
+build_style=cmake
+# RUMMAGE_WERROR: a newer compiler's new warning must not break the package
+configure_args="-DRUMMAGE_MEDIA=ON -DRUMMAGE_BUILD_TESTS=OFF -DRUMMAGE_WERROR=OFF"
+hostmakedepends="pkgconf wayland-devel"
+makedepends="wayland-devel wayland-protocols libglvnd-devel libxkbcommon-devel
+ harfbuzz-devel freetype-devel fontconfig-devel tomlplusplus-devel
+ ffmpeg6-devel libwebp-devel libjxl-devel zlib-devel sdbus-c++-devel"
+# MIME types from shared-mime-info's database; udisks2 (disks in the sidebar)
+# and xdg-desktop-portal (desktop colours) are used when present
+depends="shared-mime-info hicolor-icon-theme"
+short_desc="Fast, native file manager for Wayland, made for photographers"
+maintainer="rummage maintainers <barrulus@users.noreply.github.com>"
+license="MIT"
+homepage="https://github.com/barrulus/rummage"
+distfiles="https://invalid.invalid/local-checkout/rummage-source.tar.gz"
+checksum=CHECKOUT_SHA256
+
+post_install() {
+	vlicense LICENSE
+}
+
+rummage-media_package() {
+    depends="rummage-${version}_${revision}"
+    short_desc="rummage optional video thumbnails and still previews"
+    pkg_install() {
+        vmove usr/libexec/rummage/rummage-media
+        vmove usr/share/rummage/engines/media.toml
+        vlicense LICENSE
+    }
+}

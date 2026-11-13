@@ -1,0 +1,9 @@
+usr/bin/*
+usr/libexec/rummage/rummage-preview
+usr/share/applications/*
+usr/share/icons/*
+usr/share/rummage/engines/base.toml
+usr/share/rummage/noctalia/*
+usr/share/rummage/config.example.toml
+usr/share/dbus-1/*
+usr/share/xdg-desktop-portal/*

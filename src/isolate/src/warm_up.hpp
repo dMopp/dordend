@@ -5,7 +5,7 @@
 
 #include <cstddef>
 
-namespace nordend::isolate {
+namespace rummage::isolate {
 
 struct WarmUpPicture {
     const char* name;
@@ -16,4 +16,4 @@ struct WarmUpPicture {
 extern const WarmUpPicture kWarmUp[];  // NOLINT(*-avoid-c-arrays): generated
 extern const std::size_t kWarmUpCount;
 
-}  // namespace nordend::isolate
+}  // namespace rummage::isolate

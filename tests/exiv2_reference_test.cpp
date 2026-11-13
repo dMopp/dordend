@@ -1,10 +1,10 @@
-// Nordend's own metadata readers (ROADMAP 2e) against the exiv2 code they replace
+// rummage's own metadata readers (ROADMAP 2e) against the exiv2 code they replace
 // (exiv2_reference.cpp): the same embedded previews (a JPEG's bytes, a TIFF one's pixels, size,
 // crop, orientation, full size; why none was found is only a log line, not compared)
 // and the same photo information, file by file. On the fixtures here, every file of the
-// NORDEND_RAW_SAMPLES folder and of the folders in NORDEND_EXTRA_SAMPLES (colon-separated: the
+// RUMMAGE_RAW_SAMPLES folder and of the folders in RUMMAGE_EXTRA_SAMPLES (colon-separated: the
 // author's own photos, never in the repository), when they are set. Built only when exiv2 is
-// installed (tests only: never linked into Nordend or its helper).
+// installed (tests only: never linked into rummage or its helper).
 #include "exiv2_reference.hpp"
 
 #include <algorithm>
@@ -21,25 +21,25 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/formats/image/photo.hpp"
-#include "nordend/formats/image/preview.hpp"
+#include "rummage/formats/image/photo.hpp"
+#include "rummage/formats/image/preview.hpp"
 #include "temp_dir.hpp"
 
 namespace fs = std::filesystem;
-namespace image = nordend::formats::image;
+namespace image = rummage::formats::image;
 
 namespace {
 
-const fs::path kFixtures = fs::path{NORDEND_TEST_DATA} / "image";
+const fs::path kFixtures = fs::path{RUMMAGE_TEST_DATA} / "image";
 
 // The files to compare: the fixtures, then every regular file of the sample folders.
 std::vector<fs::path> files() {
     std::vector<fs::path> out;
     std::vector<fs::path> folders{kFixtures};
-    if (const char* raw = std::getenv("NORDEND_RAW_SAMPLES"); raw != nullptr && *raw != '\0') {
+    if (const char* raw = std::getenv("RUMMAGE_RAW_SAMPLES"); raw != nullptr && *raw != '\0') {
         folders.emplace_back(raw);
     }
-    if (const char* extra = std::getenv("NORDEND_EXTRA_SAMPLES"); extra != nullptr) {
+    if (const char* extra = std::getenv("RUMMAGE_EXTRA_SAMPLES"); extra != nullptr) {
         std::string_view rest{extra};
         while (!rest.empty()) {
             const std::size_t colon = rest.find(':');
@@ -243,7 +243,7 @@ std::vector<std::uint8_t> tiff_with(std::vector<Field> image, std::vector<Field>
 }  // namespace
 
 TEST_CASE("exiv2 reference: every way a value is written, on TIFFs made here") {
-    const nordend::test::TempDir dir;
+    const rummage::test::TempDir dir;
 
     struct Case {
         const char* name;

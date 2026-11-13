@@ -1,10 +1,10 @@
-#include "nordend/ui/scroller.hpp"
+#include "rummage/ui/scroller.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 // Finger samples older than this do not count for the release velocity.
@@ -128,4 +128,4 @@ bool Scroller::advance(Clock::time_point now) {
     return offset_ != before;
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

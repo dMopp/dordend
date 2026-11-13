@@ -1,4 +1,4 @@
-#include "nordend/platform/notifications.hpp"
+#include "rummage/platform/notifications.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "bus_loop.hpp"
-#include "nordend/core/i18n.hpp"
-#include "nordend/platform/action_handoff.hpp"
+#include "rummage/core/i18n.hpp"
+#include "rummage/platform/action_handoff.hpp"
 
 namespace {
 using namespace std::chrono_literals;
@@ -36,12 +36,12 @@ struct Notice {
 
 int main() {
     // The checks below compare English texts, whatever the locale of the machine running them.
-    nordend::i18n::set_language(nordend::i18n::Language::english);
+    rummage::i18n::set_language(rummage::i18n::Language::english);
     try {
-        nordend::core::EventLoop loop;
-        nordend::platform::Notifications notifications{loop};
-        nordend::platform::ActionHandoff handoff{
-            loop, nordend::platform::Environment::from_environment(), [](std::string, bool) {}};
+        rummage::core::EventLoop loop;
+        rummage::platform::Notifications notifications{loop};
+        rummage::platform::ActionHandoff handoff{
+            loop, rummage::platform::Environment::from_environment(), [](std::string, bool) {}};
         std::vector<Notice> received;
         {
             auto connection = sdbus::createSessionBusConnection();
@@ -63,13 +63,13 @@ int main() {
                         return static_cast<std::uint32_t>(received.size());
                     }))
                 .forInterface("org.freedesktop.Notifications");
-            nordend::platform::BusLoop server{loop, *connection, "test-notifications"};
+            rummage::platform::BusLoop server{loop, *connection, "test-notifications"};
             server.pump();
-            nordend::core::Action action{.id = "compress",
+            rummage::core::Action action{.id = "compress",
                                          .label = "Compress <files> & folders",
                                          .argv = {"sh", "-c", "exit 0"},
                                          .mime = {},
-                                         .selection = nordend::core::Action::Selection::background,
+                                         .selection = rummage::core::Action::Selection::background,
                                          .notify_on_completion = true};
             handoff.run(action, {.directory = "/tmp", .targets = {}});
             action.label = "Compress";
@@ -91,10 +91,10 @@ int main() {
         require(received[1].body == "Program exited with status 7", "Wrong error message");
         for (std::size_t i = 0; i < received.size(); ++i) {
             const auto& notice = received[i];
-            require(notice.app == "Nordend" && notice.icon == "nordend", "Wrong app identity");
+            require(notice.app == "rummage" && notice.icon == "rummage", "Wrong app identity");
             require(notice.replaces == 0, "Concurrent notifications must not replace each other");
             require(notice.actions.empty() && notice.timeout == -1, "Wrong notification options");
-            require(notice.hints.at("desktop-entry").get<std::string>() == "nordend",
+            require(notice.hints.at("desktop-entry").get<std::string>() == "rummage",
                     "Wrong desktop entry");
             require(notice.hints.at("urgency").get<std::uint8_t>() == (i == 0 ? 1 : 2),
                     "Wrong notification urgency");

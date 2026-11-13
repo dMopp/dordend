@@ -1,4 +1,4 @@
-#include "nordend/picture/wuffs.hpp"
+#include "rummage/picture/wuffs.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,7 +10,7 @@
 #include "wuffs-v0.4.c"  // NOLINT(bugprone-suspicious-include): a header without WUFFS_IMPLEMENTATION
 #include "wuffs_config.hpp"
 
-namespace nordend::picture {
+namespace rummage::picture {
 namespace {
 
 // Decodes into the Image's own vector (no copy afterwards), as RGBA with straight alpha, and
@@ -99,4 +99,4 @@ std::optional<Image> decode_png(std::span<const std::uint8_t> data, std::string&
     return std::move(decoded.image);
 }
 
-}  // namespace nordend::picture
+}  // namespace rummage::picture

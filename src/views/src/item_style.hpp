@@ -5,13 +5,13 @@
 
 #include <optional>
 
-#include "nordend/fs/entry.hpp"
-#include "nordend/theme/palette.hpp"
-#include "nordend/ui/color.hpp"
-#include "nordend/ui/seat.hpp"
-#include "nordend/views/folder.hpp"
+#include "rummage/fs/entry.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/ui/color.hpp"
+#include "rummage/ui/seat.hpp"
+#include "rummage/views/folder.hpp"
 
-namespace nordend::views {
+namespace rummage::views {
 
 inline constexpr ui::Color kTransparent{.r = 0.0F, .g = 0.0F, .b = 0.0F, .a = 0.0F};
 
@@ -82,4 +82,4 @@ inline SelectMode select_mode(const ui::Modifiers& modifiers, SelectMode ctrl) {
     return modifiers.ctrl ? ctrl : SelectMode::replace;
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

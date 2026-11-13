@@ -1,11 +1,11 @@
-#include "nordend/platform/exec.hpp"
+#include "rummage/platform/exec.hpp"
 
 #include <array>
 #include <utility>
 
-#include "nordend/thumbs/cache.hpp"
+#include "rummage/thumbs/cache.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 // How a terminal runs a command: its program and the arguments before the command.
@@ -271,4 +271,4 @@ std::optional<std::vector<std::string>> terminal_alone(const Environment& enviro
     return line;
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

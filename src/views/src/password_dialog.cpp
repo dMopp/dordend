@@ -1,5 +1,5 @@
-#include "nordend/core/i18n.hpp"
-#include "nordend/views/password_dialog.hpp"
+#include "rummage/core/i18n.hpp"
+#include "rummage/views/password_dialog.hpp"
 
 #include <algorithm>
 #include <tuple>
@@ -7,7 +7,7 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 
-namespace nordend::views {
+namespace rummage::views {
 namespace {
 
 constexpr float kCardWidth = 460.0F;
@@ -422,4 +422,4 @@ void PasswordDialog::draw(ui::Renderer& renderer, const ui::Rect& bounds,
     renderer.pop_clip();
 }
 
-}  // namespace nordend::views
+}  // namespace rummage::views

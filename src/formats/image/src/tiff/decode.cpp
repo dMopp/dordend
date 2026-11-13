@@ -7,9 +7,9 @@
 #include <cstring>
 
 #include "codecs.hpp"
-#include "nordend/picture/wuffs.hpp"
+#include "rummage/picture/wuffs.hpp"
 
-namespace nordend::formats::image::tiff {
+namespace rummage::formats::image::tiff {
 namespace {
 
 constexpr std::uint64_t kCfa = 32803;
@@ -631,4 +631,4 @@ std::optional<std::span<const std::uint8_t>> jpeg_in_tiff(std::span<const std::u
     return strip;
 }
 
-}  // namespace nordend::formats::image::tiff
+}  // namespace rummage::formats::image::tiff

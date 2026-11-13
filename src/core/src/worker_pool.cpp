@@ -1,10 +1,10 @@
-#include "nordend/core/worker_pool.hpp"
+#include "rummage/core/worker_pool.hpp"
 
 #include <algorithm>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::core {
+namespace rummage::core {
 
 WorkerPool::WorkerPool(EventLoop& loop, unsigned threads) : loop_{loop} {
     if (threads == 0) {
@@ -68,4 +68,4 @@ void WorkerPool::worker_main() {
     }
 }
 
-}  // namespace nordend::core
+}  // namespace rummage::core

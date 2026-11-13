@@ -21,7 +21,7 @@ def thumbnail(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--renderer', default='build/nordend-svg-render')
+    parser.add_argument('--renderer', default='build/rummage-svg-render')
     parser.add_argument('--corpus', type=Path, default=Path('tests/data/svg-corpus'))
     parser.add_argument('--selection', type=Path, default=Path('tests/data/svg-review.tsv'))
     parser.add_argument('--output', type=Path, default=Path('build/svg-review'))

@@ -8,23 +8,23 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/platform/portal.hpp"
-#include "nordend/theme/desktop.hpp"
-#include "nordend/theme/theme.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/platform/portal.hpp"
+#include "rummage/theme/desktop.hpp"
+#include "rummage/theme/theme.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::platform::Appearance;
-using nordend::platform::appearance_from;
-using nordend::test::TempDir;
-using nordend::theme::Color;
-using nordend::theme::contrast;
-using nordend::theme::Desktop;
-using nordend::theme::desktop_palette;
-using nordend::theme::kDefaultAccent;
-using nordend::theme::Palette;
-using nordend::theme::Theme;
+using rummage::core::EventLoop;
+using rummage::platform::Appearance;
+using rummage::platform::appearance_from;
+using rummage::test::TempDir;
+using rummage::theme::Color;
+using rummage::theme::contrast;
+using rummage::theme::Desktop;
+using rummage::theme::desktop_palette;
+using rummage::theme::kDefaultAccent;
+using rummage::theme::Palette;
+using rummage::theme::Theme;
 
 namespace {
 
@@ -158,7 +158,7 @@ TEST_CASE("Theme: the desktop's look without colors.toml, the file's colours wit
 
 TEST_CASE("portal: the real session bus answers or has no portal (reads only)") {
     EventLoop loop;
-    const nordend::platform::DesktopPortal portal{loop, [] {}};
+    const rummage::platform::DesktopPortal portal{loop, [] {}};
     if (!portal.available()) {
         MESSAGE("no session bus, portal or appearance settings: skipped");
         return;

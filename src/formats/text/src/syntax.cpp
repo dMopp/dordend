@@ -1,4 +1,4 @@
-#include "nordend/formats/text/syntax.hpp"
+#include "rummage/formats/text/syntax.hpp"
 
 #include <algorithm>
 #include <array>
@@ -14,13 +14,13 @@
 #include <vector>
 
 #include "languages.hpp"
-#include "nordend/text/text.hpp"
+#include "rummage/text/text.hpp"
 
-namespace nordend::formats::text {
+namespace rummage::formats::text {
 namespace {
 
-using nordend::text::Span;
-using nordend::text::Style;
+using rummage::text::Span;
+using rummage::text::Style;
 
 // Where a line ends inside something that goes on to the next.
 struct State {
@@ -1867,11 +1867,11 @@ const Language* language_for_fence(std::string_view name) {
 
 std::string_view language_name(const Language& language) { return language.name; }
 
-void highlight(nordend::text::Text& text, const Language& language) {
+void highlight(rummage::text::Text& text, const Language& language) {
     text.language = language.name;
     text.spans.assign(text.lines.size(), {});
     // A minified file: its language said, its lines left plain.
-    if (nordend::text::looks_minified(text)) {
+    if (rummage::text::looks_minified(text)) {
         return;
     }
     const Tables& tables = tables_of(*language.syntax);
@@ -1881,7 +1881,7 @@ void highlight(nordend::text::Text& text, const Language& language) {
     }
 }
 
-void colour(nordend::text::Text& text, std::string_view name, std::string_view mime) {
+void colour(rummage::text::Text& text, std::string_view name, std::string_view mime) {
     const Language* language =
         language_for(name, mime, text.lines.empty() ? std::string_view{} : text.lines.front());
     if (language != nullptr) {
@@ -1889,4 +1889,4 @@ void colour(nordend::text::Text& text, std::string_view name, std::string_view m
     }
 }
 
-}  // namespace nordend::formats::text
+}  // namespace rummage::formats::text

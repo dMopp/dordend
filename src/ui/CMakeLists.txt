@@ -9,14 +9,14 @@ if(NOT WAYLAND_PROTOCOLS_DIR OR NOT WAYLAND_SCANNER)
     message(FATAL_ERROR "wayland-protocols and wayland-scanner are required (wayland-devel)")
 endif()
 
-set(NORDEND_PROTOCOL_DIR ${CMAKE_CURRENT_BINARY_DIR}/protocols)
-file(MAKE_DIRECTORY ${NORDEND_PROTOCOL_DIR})
+set(RUMMAGE_PROTOCOL_DIR ${CMAKE_CURRENT_BINARY_DIR}/protocols)
+file(MAKE_DIRECTORY ${RUMMAGE_PROTOCOL_DIR})
 
-set(NORDEND_PROTOCOL_SOURCES "")
-function(nordend_wayland_protocol xml)
+set(RUMMAGE_PROTOCOL_SOURCES "")
+function(rummage_wayland_protocol xml)
     get_filename_component(name ${xml} NAME_WE)
-    set(header ${NORDEND_PROTOCOL_DIR}/${name}-client-protocol.h)
-    set(code ${NORDEND_PROTOCOL_DIR}/${name}-protocol.c)
+    set(header ${RUMMAGE_PROTOCOL_DIR}/${name}-client-protocol.h)
+    set(code ${RUMMAGE_PROTOCOL_DIR}/${name}-protocol.c)
     add_custom_command(
         OUTPUT ${header}
         COMMAND ${WAYLAND_SCANNER} client-header ${xml} ${header}
@@ -25,49 +25,49 @@ function(nordend_wayland_protocol xml)
         OUTPUT ${code}
         COMMAND ${WAYLAND_SCANNER} private-code ${xml} ${code}
         DEPENDS ${xml} VERBATIM)
-    set(NORDEND_PROTOCOL_SOURCES ${NORDEND_PROTOCOL_SOURCES} ${header} ${code} PARENT_SCOPE)
+    set(RUMMAGE_PROTOCOL_SOURCES ${RUMMAGE_PROTOCOL_SOURCES} ${header} ${code} PARENT_SCOPE)
 endfunction()
 
-nordend_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml)
-nordend_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-foreign/xdg-foreign-unstable-v2.xml)
-nordend_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/staging/xdg-dialog/xdg-dialog-v1.xml)
-nordend_wayland_protocol(
+rummage_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml)
+rummage_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-foreign/xdg-foreign-unstable-v2.xml)
+rummage_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/staging/xdg-dialog/xdg-dialog-v1.xml)
+rummage_wayland_protocol(
     ${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml)
-nordend_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/stable/viewporter/viewporter.xml)
-nordend_wayland_protocol(
+rummage_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/stable/viewporter/viewporter.xml)
+rummage_wayland_protocol(
     ${WAYLAND_PROTOCOLS_DIR}/staging/fractional-scale/fractional-scale-v1.xml)
-nordend_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/staging/cursor-shape/cursor-shape-v1.xml)
-nordend_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/staging/xdg-activation/xdg-activation-v1.xml)
+rummage_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/staging/cursor-shape/cursor-shape-v1.xml)
+rummage_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/staging/xdg-activation/xdg-activation-v1.xml)
 # cursor-shape references zwp_tablet_tool_v2: its glue code must be linked too.
-nordend_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/stable/tablet/tablet-v2.xml)
+rummage_wayland_protocol(${WAYLAND_PROTOCOLS_DIR}/stable/tablet/tablet-v2.xml)
 
-add_library(nordend_wayland_protocols STATIC ${NORDEND_PROTOCOL_SOURCES})
-target_include_directories(nordend_wayland_protocols SYSTEM PUBLIC ${NORDEND_PROTOCOL_DIR})
-target_link_libraries(nordend_wayland_protocols PUBLIC PkgConfig::WAYLAND)
+add_library(rummage_wayland_protocols STATIC ${RUMMAGE_PROTOCOL_SOURCES})
+target_include_directories(rummage_wayland_protocols SYSTEM PUBLIC ${RUMMAGE_PROTOCOL_DIR})
+target_link_libraries(rummage_wayland_protocols PUBLIC PkgConfig::WAYLAND)
 
 # ---------------------------------------------------------------------------
 # The icon fonts (third_party/tabler-icons, ROADMAP 7.4), compiled into the program.
 # ---------------------------------------------------------------------------
-set(NORDEND_EMBEDDED_SOURCES "")
-function(nordend_embed input symbol)
+set(RUMMAGE_EMBEDDED_SOURCES "")
+function(rummage_embed input symbol)
     set(output ${CMAKE_CURRENT_BINARY_DIR}/embedded/${symbol}.cpp)
     add_custom_command(
         OUTPUT ${output}
         COMMAND ${CMAKE_COMMAND} -DINPUT=${input} -DOUTPUT=${output} -DSYMBOL=${symbol}
                 -P ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
         DEPENDS ${input} ${PROJECT_SOURCE_DIR}/cmake/embed.cmake VERBATIM)
-    set(NORDEND_EMBEDDED_SOURCES ${NORDEND_EMBEDDED_SOURCES} ${output} PARENT_SCOPE)
+    set(RUMMAGE_EMBEDDED_SOURCES ${RUMMAGE_EMBEDDED_SOURCES} ${output} PARENT_SCOPE)
 endfunction()
 
-nordend_embed(${PROJECT_SOURCE_DIR}/third_party/tabler-icons/tabler-icons.ttf tabler_icons)
-nordend_embed(${PROJECT_SOURCE_DIR}/third_party/tabler-icons/tabler-icons-filled.ttf
+rummage_embed(${PROJECT_SOURCE_DIR}/third_party/tabler-icons/tabler-icons.ttf tabler_icons)
+rummage_embed(${PROJECT_SOURCE_DIR}/third_party/tabler-icons/tabler-icons-filled.ttf
               tabler_icons_filled)
 
 # ---------------------------------------------------------------------------
 # ui: Wayland connection, windows and (from ROADMAP 1.2) rendering.
 # ---------------------------------------------------------------------------
-add_library(nordend_ui
-    ${NORDEND_EMBEDDED_SOURCES}
+add_library(rummage_ui
+    ${RUMMAGE_EMBEDDED_SOURCES}
     src/activation.cpp
     src/clipboard.cpp
     src/display.cpp
@@ -84,12 +84,12 @@ add_library(nordend_ui
     src/window.cpp
     src/wl_ptr.cpp
     src/xcursor.cpp)
-add_library(nordend::ui ALIAS nordend_ui)
+add_library(rummage::ui ALIAS rummage_ui)
 
-target_include_directories(nordend_ui PUBLIC include PRIVATE src)
-target_link_libraries(nordend_ui PRIVATE nordend::svg nordend::picture)
-target_link_libraries(nordend_ui
-    PUBLIC nordend::core nordend_wayland_protocols PkgConfig::EGL PkgConfig::GLESV2
+target_include_directories(rummage_ui PUBLIC include PRIVATE src)
+target_link_libraries(rummage_ui PRIVATE rummage::svg rummage::picture)
+target_link_libraries(rummage_ui
+    PUBLIC rummage::core rummage_wayland_protocols PkgConfig::EGL PkgConfig::GLESV2
            PkgConfig::XKBCOMMON
-    PRIVATE nordend::warnings PkgConfig::HARFBUZZ PkgConfig::FREETYPE
+    PRIVATE rummage::warnings PkgConfig::HARFBUZZ PkgConfig::FREETYPE
             PkgConfig::FONTCONFIG)

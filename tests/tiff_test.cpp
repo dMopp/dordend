@@ -12,19 +12,19 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/formats/image/decode.hpp"
-#include "nordend/formats/image/load.hpp"
-#include "nordend/picture/wuffs.hpp"
+#include "rummage/formats/image/decode.hpp"
+#include "rummage/formats/image/load.hpp"
+#include "rummage/picture/wuffs.hpp"
 #include "temp_dir.hpp"
 
 namespace fs = std::filesystem;
-namespace image = nordend::formats::image;
-namespace picture = nordend::picture;
-using nordend::test::TempDir;
+namespace image = rummage::formats::image;
+namespace picture = rummage::picture;
+using rummage::test::TempDir;
 
 namespace {
 
-const fs::path kTiff = fs::path{NORDEND_TEST_DATA} / "image" / "tiff";
+const fs::path kTiff = fs::path{RUMMAGE_TEST_DATA} / "image" / "tiff";
 
 std::vector<std::uint8_t> read_bytes(const fs::path& path) {
     std::ifstream in{path, std::ios::binary};

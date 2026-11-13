@@ -15,11 +15,14 @@
 
 #include "protocol.hpp"
 
-namespace protocol = nordend::isolate::protocol;
+namespace protocol = rummage::isolate::protocol;
 
 int main(int argc, char** argv) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     const std::string_view mode{argv[argc - 1]};
+    if (mode == "missing-libraries") {
+        return 127;
+    }
     if (mode == "no-sandbox") {
         return protocol::kSandboxFailedExit;  // as a helper that could not build its cage
     }

@@ -1,4 +1,4 @@
-#include "nordend/views/quick_look.hpp"
+#include "rummage/views/quick_look.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -18,28 +18,28 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/theme/palette.hpp"
-#include "nordend/ui/icons.hpp"
-#include "nordend/ui/offscreen.hpp"
-#include "nordend/ui/renderer.hpp"
-#include "nordend/ui/text.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/theme/palette.hpp"
+#include "rummage/ui/icons.hpp"
+#include "rummage/ui/offscreen.hpp"
+#include "rummage/ui/renderer.hpp"
+#include "rummage/ui/text.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::core::WorkerPool;
-using nordend::views::Browser;
-using nordend::views::QuickLook;
+using rummage::core::EventLoop;
+using rummage::core::WorkerPool;
+using rummage::views::Browser;
+using rummage::views::QuickLook;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
 namespace {
 
-const fs::path kData = fs::path{NORDEND_TEST_DATA} / "image";
+const fs::path kData = fs::path{RUMMAGE_TEST_DATA} / "image";
 
 bool run_until(EventLoop& loop, const std::function<bool()>& done) {
     bool ok = false;
@@ -58,13 +58,13 @@ bool run_until(EventLoop& loop, const std::function<bool()>& done) {
 
 // dir/{sub/, a.png (48x32), b.jpg (EXIF orientation 6: 32x48 upright), notes.txt}
 struct Fixture {
-    nordend::test::TempDir dir;
+    rummage::test::TempDir dir;
     EventLoop loop;
     WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
 
     explicit Fixture(bool sniff = true) {
         fs::create_directory(dir.path / "sub");
@@ -83,8 +83,8 @@ struct Fixture {
     bool settle() {
         return run_until(loop, [this] {
             const auto& folder = browser.columns().column(0).folder();
-            for (const nordend::fs::Entry& entry : folder.entries()) {
-                if (folder.mime_of(entry) == nordend::fs::kUnknownMime) {
+            for (const rummage::fs::Entry& entry : folder.entries()) {
+                if (folder.mime_of(entry) == rummage::fs::kUnknownMime) {
                     return false;
                 }
             }
@@ -92,8 +92,8 @@ struct Fixture {
         });
     }
 
-    void press(xkb_keysym_t key, nordend::ui::Modifiers modifiers = {}) {
-        nordend::ui::KeyEvent event;
+    void press(xkb_keysym_t key, rummage::ui::Modifiers modifiers = {}) {
+        rummage::ui::KeyEvent event;
         event.keysym = key;
         event.modifiers = modifiers;
         browser.key(event, Browser::Clock::now());
@@ -131,7 +131,7 @@ TEST_CASE("quick look: Space opens it on the cursor, arrows walk, Space and Esca
     REQUIRE(f.settle());
     CHECK_FALSE(f.image_size());
     REQUIRE(look.content() != nullptr);
-    const auto* text = std::get_if<nordend::preview::Text>(look.content());
+    const auto* text = std::get_if<rummage::preview::Text>(look.content());
     REQUIRE(text != nullptr);
     CHECK(text->lines == std::vector<std::string>{"notes"});
 
@@ -176,9 +176,9 @@ TEST_CASE("quick look: works over the grid, and a click closes it") {
     CHECK(f.browser.quick_look().shown() == "a.png");
     f.press(XKB_KEY_Right);
     CHECK(f.browser.quick_look().shown() == "b.jpg");
-    nordend::ui::PointerEvent click;
-    click.kind = nordend::ui::PointerEvent::Kind::press;
-    click.button = nordend::ui::PointerButton::left;
+    rummage::ui::PointerEvent click;
+    click.kind = rummage::ui::PointerEvent::Kind::press;
+    click.button = rummage::ui::PointerButton::left;
     f.browser.pointer(click, Browser::Clock::now());
     CHECK_FALSE(f.browser.quick_look().is_open());
 }
@@ -188,7 +188,7 @@ TEST_CASE("quick look: an image whose type is still unknown is shown once it is 
     f.press(XKB_KEY_Down);
     f.press(XKB_KEY_Down);  // a.png: its name alone does not decide its type
     auto& folder = f.browser.columns().column(0).folder();
-    REQUIRE(folder.mime_of(*folder.cursor_entry()) == nordend::fs::kUnknownMime);
+    REQUIRE(folder.mime_of(*folder.cursor_entry()) == rummage::fs::kUnknownMime);
     f.press(XKB_KEY_space);
     REQUIRE(f.browser.quick_look().is_open());
     REQUIRE(f.settle());  // Quick Look asked for its type; meanwhile, the information card
@@ -206,15 +206,15 @@ TEST_CASE("quick look: a folder's card counts its entries; a wheel turn over tex
     f.press(XKB_KEY_space);
     REQUIRE(f.settle());
     REQUIRE(look.content() != nullptr);
-    const auto* info = std::get_if<nordend::preview::Info>(look.content());
+    const auto* info = std::get_if<rummage::preview::Info>(look.content());
     REQUIRE(info != nullptr);
     CHECK(info->items == std::optional<std::uint64_t>{0});
     CHECK(info->permissions.front() == 'd');
 
     f.press(XKB_KEY_End);  // notes.txt
     REQUIRE(f.settle());
-    nordend::ui::PointerEvent wheel;
-    wheel.kind = nordend::ui::PointerEvent::Kind::scroll;
+    rummage::ui::PointerEvent wheel;
+    wheel.kind = rummage::ui::PointerEvent::Kind::scroll;
     wheel.wheel_y = 3.0F;
     f.browser.pointer(wheel, Browser::Clock::now());
     CHECK(look.is_open());  // scrolling does not close it
@@ -224,9 +224,9 @@ TEST_CASE("quick look: a folder's card counts its entries; a wheel turn over tex
 TEST_CASE("quick look: Ctrl+A and Ctrl+C take a text page's text, not the files") {
     Fixture f;
     std::ofstream{f.dir.path / "notes.txt"} << "first line\nsecond line\n";
-    std::vector<nordend::views::SystemClipboard::Format> offered;
-    nordend::views::SystemClipboard clipboard;
-    clipboard.offer = [&](std::vector<nordend::views::SystemClipboard::Format> formats) {
+    std::vector<rummage::views::SystemClipboard::Format> offered;
+    rummage::views::SystemClipboard clipboard;
+    clipboard.offer = [&](std::vector<rummage::views::SystemClipboard::Format> formats) {
         offered = std::move(formats);
     };
     f.browser.set_system_clipboard(std::move(clipboard));
@@ -255,16 +255,16 @@ TEST_CASE("quick look: Ctrl+A and Ctrl+C take a text page's text, not the files"
 TEST_CASE("quick look: on a text page the pointer selects; a click beside it closes") {
     constexpr std::int32_t width = 1000;
     constexpr std::int32_t height = 700;
-    std::unique_ptr<nordend::ui::Offscreen> gl;
+    std::unique_ptr<rummage::ui::Offscreen> gl;
     try {
-        gl = std::make_unique<nordend::ui::Offscreen>(width, height);
+        gl = std::make_unique<rummage::ui::Offscreen>(width, height);
     } catch (const std::runtime_error& error) {
         MESSAGE("no offscreen OpenGL: " << error.what());
         return;
     }
-    nordend::ui::FontSystem fonts;
-    nordend::ui::Renderer renderer{fonts};
-    nordend::ui::IconSet icons{fonts};
+    rummage::ui::FontSystem fonts;
+    rummage::ui::Renderer renderer{fonts};
+    rummage::ui::IconSet icons{fonts};
     Fixture f;
     // Ten lines of the same words: the page's middle is on one of them.
     std::ofstream notes{f.dir.path / "notes.txt"};
@@ -280,21 +280,21 @@ TEST_CASE("quick look: on a text page the pointer selects; a click beside it clo
     REQUIRE(look.shows_text());
     const auto draw = [&] {
         renderer.begin_frame(width, height, 1.0F, {});
-        f.browser.draw(renderer, {0.0F, 0.0F, width, height}, nordend::theme::Palette{}, icons,
+        f.browser.draw(renderer, {0.0F, 0.0F, width, height}, rummage::theme::Palette{}, icons,
                        Browser::Clock::now());
         renderer.end_frame();
     };
     draw();
-    const auto pointer = [&](nordend::ui::PointerEvent::Kind kind, float x, float y, int clicks) {
-        nordend::ui::PointerEvent event;
+    const auto pointer = [&](rummage::ui::PointerEvent::Kind kind, float x, float y, int clicks) {
+        rummage::ui::PointerEvent event;
         event.kind = kind;
         event.x = x;
         event.y = y;
-        event.button = nordend::ui::PointerButton::left;
+        event.button = rummage::ui::PointerButton::left;
         event.click_count = clicks;
         f.browser.pointer(event, Browser::Clock::now());
     };
-    using Kind = nordend::ui::PointerEvent::Kind;
+    using Kind = rummage::ui::PointerEvent::Kind;
     // A double click in the middle of the page: a whole word, Quick Look still open.
     const float middle_x = width / 2.0F;
     const float middle_y = (height - 44.0F) / 2.0F;
@@ -318,16 +318,16 @@ TEST_CASE("quick look: on a text page the pointer selects; a click beside it clo
 TEST_CASE("quick look: a log opens at its end; keys and Shift+wheel move a text page") {
     constexpr std::int32_t width = 1000;
     constexpr std::int32_t height = 700;
-    std::unique_ptr<nordend::ui::Offscreen> gl;
+    std::unique_ptr<rummage::ui::Offscreen> gl;
     try {
-        gl = std::make_unique<nordend::ui::Offscreen>(width, height);
+        gl = std::make_unique<rummage::ui::Offscreen>(width, height);
     } catch (const std::runtime_error& error) {
         MESSAGE("no offscreen OpenGL: " << error.what());
         return;
     }
-    nordend::ui::FontSystem fonts;
-    nordend::ui::Renderer renderer{fonts};
-    nordend::ui::IconSet icons{fonts};
+    rummage::ui::FontSystem fonts;
+    rummage::ui::Renderer renderer{fonts};
+    rummage::ui::IconSet icons{fonts};
     Fixture f;
     // A log longer than what is read (256 KiB), lines longer than the page is wide.
     {
@@ -340,13 +340,13 @@ TEST_CASE("quick look: a log opens at its end; keys and Shift+wheel move a text 
     REQUIRE(run_until(f.loop, [&] {
         const auto& entries = f.browser.columns().column(0).folder().entries();
         return std::ranges::any_of(
-            entries, [](const nordend::fs::Entry& entry) { return entry.name == "z.log"; });
+            entries, [](const rummage::fs::Entry& entry) { return entry.name == "z.log"; });
     }));
     REQUIRE(f.settle());
     auto& look = f.browser.quick_look();
     const auto draw = [&] {
         renderer.begin_frame(width, height, 1.0F, {});
-        f.browser.draw(renderer, {0.0F, 0.0F, width, height}, nordend::theme::Palette{}, icons,
+        f.browser.draw(renderer, {0.0F, 0.0F, width, height}, rummage::theme::Palette{}, icons,
                        Browser::Clock::now());
         renderer.end_frame();
     };
@@ -354,7 +354,7 @@ TEST_CASE("quick look: a log opens at its end; keys and Shift+wheel move a text 
     f.press(XKB_KEY_space);
     REQUIRE(f.settle());
     REQUIRE(look.shows_text());
-    const auto* text = std::get_if<nordend::preview::Text>(look.content());
+    const auto* text = std::get_if<rummage::preview::Text>(look.content());
     REQUIRE(text != nullptr);
     CHECK(text->tail);
     CHECK(text->lines.back().starts_with("2026-11-09 12:00:00 line 3999 "));
@@ -385,8 +385,8 @@ TEST_CASE("quick look: a log opens at its end; keys and Shift+wheel move a text 
     // Shift+wheel: sideways, the lines being wider than the page.
     auto& sideways = look.text_sideways();
     CHECK(sideways.max_offset() > 0.0F);
-    nordend::ui::PointerEvent wheel;
-    wheel.kind = nordend::ui::PointerEvent::Kind::scroll;
+    rummage::ui::PointerEvent wheel;
+    wheel.kind = rummage::ui::PointerEvent::Kind::scroll;
     wheel.x = width / 2.0F;
     wheel.y = height / 2.0F;
     wheel.wheel_y = 2.0F;

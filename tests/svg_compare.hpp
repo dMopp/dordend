@@ -4,9 +4,9 @@
 #include <cmath>
 #include <cstddef>
 
-#include "nordend/picture/image.hpp"
+#include "rummage/picture/image.hpp"
 
-namespace nordend::test {
+namespace rummage::test {
 struct SvgDifference {
     int maximum{255};
     double fraction{1};
@@ -39,4 +39,4 @@ inline SvgDifference svg_difference(const picture::Image& actual, const picture:
         static_cast<double>(different) / (static_cast<double>(actual.width) * actual.height);
     return result;
 }
-}  // namespace nordend::test
+}  // namespace rummage::test

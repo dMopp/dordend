@@ -1,4 +1,4 @@
-#include "nordend/theme/desktop.hpp"
+#include "rummage/theme/desktop.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,7 +6,7 @@
 
 #include "oklch.hpp"
 
-namespace nordend::theme {
+namespace rummage::theme {
 namespace {
 
 double luminance(Color color) {
@@ -183,4 +183,4 @@ Palette desktop_palette(const Desktop& desktop) {
     return p;
 }
 
-}  // namespace nordend::theme
+}  // namespace rummage::theme

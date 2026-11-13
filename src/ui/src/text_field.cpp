@@ -1,12 +1,12 @@
-#include "nordend/ui/text_field.hpp"
+#include "rummage/ui/text_field.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-#include "nordend/ui/text.hpp"
+#include "rummage/ui/text.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 constexpr float kCaretWidth = 1.5F;
@@ -239,23 +239,21 @@ bool TextField::key(const KeyEvent& event) {
     return false;
 }
 
-std::string TextField::drawn(std::size_t bytes) const {
+std::string TextField::display_text(std::size_t bytes) const {
     bytes = std::min(bytes, text_.size());
-    if (!masked_) {
+    if (!masked_)
         return text_.substr(0, bytes);
-    }
-    std::string dots;
-    for (std::size_t at = 0; at < bytes; at = next(at)) {
-        dots += "\u2022";
-    }
-    return dots;
+    std::string bullets;
+    for (std::size_t at = 0; at < bytes; at = next(at))
+        bullets += "•";
+    return bullets;
 }
 
 float TextField::width_of(FontSystem& fonts, std::size_t bytes) const {
     if (bytes == 0) {
         return 0.0F;
     }
-    return fonts.layout(drawn(bytes), size_, scale_).width / scale_;
+    return fonts.layout(display_text(bytes), size_, scale_).width / scale_;
 }
 
 void TextField::click(float x, bool extend) {
@@ -278,15 +276,16 @@ void TextField::click(float x, bool extend) {
     move_to(best, extend);
 }
 
-void TextField::draw(Renderer& renderer, const Rect& rect, float size, const FieldColors& colors) {
+void TextField::draw(Renderer& renderer, const Rect& rect, float size, const FieldColors& colors,
+                     bool masked) {
+    masked_ = masked || always_masked_;
     bounds_ = rect;
     size_ = size;
     scale_ = renderer.scale();
     fonts_ = &renderer.fonts();
-    renderer.draw_box(rect, {.fill = colors.background,
-                             .radius = Corners::all(4.0F),
-                             .border_width = 1.5F,
-                             .border = colors.border});
+    renderer.draw_box(
+        rect,
+        {.fill = colors.background, .radius = {}, .border_width = 1.5F, .border = colors.border});
 
     // Sideways scroll: the caret stays inside, and a text that fits is not scrolled.
     const Rect inner = rect.inset(kPadding);
@@ -310,10 +309,10 @@ void TextField::draw(Renderer& renderer, const Rect& rect, float size, const Fie
         const float to = width_of(*fonts_, last);
         renderer.fill_rect({x + from, line_y, to - from, line}, colors.selection);
     }
-    renderer.draw_text(drawn(text_.size()), x, rect.y + ((rect.height - size) / 2.0F) - 2.0F, size,
-                       colors.text);
+    renderer.draw_text(display_text(text_.size()), x, rect.y + ((rect.height - size) / 2.0F) - 2.0F,
+                       size, colors.text);
     renderer.fill_rect({x + caret_x, line_y, kCaretWidth, line}, colors.caret);
     renderer.pop_clip();
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

@@ -8,19 +8,19 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/picture/wuffs.hpp"
-#include "nordend/svg/svg.hpp"
+#include "rummage/picture/wuffs.hpp"
+#include "rummage/svg/svg.hpp"
 #include "svg_compare.hpp"
 
 namespace {
 auto svg(std::string_view body, std::string_view attrs = "width='64' height='64'", int size = 64) {
     const std::string source = "<svg xmlns='http://www.w3.org/2000/svg' " + std::string(attrs) +
                                ">" + std::string(body) + "</svg>";
-    return nordend::svg::render(
+    return rummage::svg::render(
         {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, size);
 }
 
-std::array<unsigned, 4> pixel(const nordend::picture::Image& image, unsigned x, unsigned y) {
+std::array<unsigned, 4> pixel(const rummage::picture::Image& image, unsigned x, unsigned y) {
     REQUIRE(x < image.width);
     REQUIRE(y < image.height);
     const auto at = (static_cast<std::size_t>(y) * image.width + x) * 4;
@@ -28,7 +28,7 @@ std::array<unsigned, 4> pixel(const nordend::picture::Image& image, unsigned x, 
 }
 
 std::vector<std::uint8_t> bytes(const std::string& name) {
-    std::ifstream f{std::string(NORDEND_TEST_DATA) + "/svg/" + name, std::ios::binary};
+    std::ifstream f{std::string(RUMMAGE_TEST_DATA) + "/svg/" + name, std::ios::binary};
     REQUIRE(f.good());
     return {std::istreambuf_iterator<char>{f}, std::istreambuf_iterator<char>{}};
 }
@@ -40,9 +40,9 @@ TEST_CASE("svg stage1: committed shape and paint references") {
           "linear-gradient", "gradient-inheritance", "radial-gradient", "gradient-repeat", "uses",
           "transforms", "visibility", "aspect-ratio", "units"}) {
         CAPTURE(name);
-        const auto image = nordend::svg::render(bytes(name + ".svg"), 64);
-        const auto reference = nordend::picture::decode_wuffs(bytes(name + ".png"), 4096);
-        const auto difference = nordend::test::svg_difference(image, reference.image);
+        const auto image = rummage::svg::render(bytes(name + ".svg"), 64);
+        const auto reference = rummage::picture::decode_wuffs(bytes(name + ".png"), 4096);
+        const auto difference = rummage::test::svg_difference(image, reference.image);
         CAPTURE(difference.maximum);
         CAPTURE(difference.fraction);
         CHECK(difference.passes());
@@ -220,7 +220,7 @@ TEST_CASE("svg stage1: dash fragments that collapse to one fixed point are safe"
 TEST_CASE("svg stage1: the stroker tolerates curves below its internal precision") {
     constexpr std::string_view source =
         "<svg viewBox='0 0 64 64'><circle cx='44' cy='12' r='.1' stroke='purple'/></svg>";
-    const auto image = nordend::svg::render(
+    const auto image = rummage::svg::render(
         {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()}, 16);
     REQUIRE(image.width == 16);
     REQUIRE(image.height == 16);

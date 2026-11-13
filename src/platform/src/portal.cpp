@@ -1,4 +1,4 @@
-#include "nordend/platform/portal.hpp"
+#include "rummage/platform/portal.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -10,9 +10,9 @@
 #include <vector>
 
 #include "bus_loop.hpp"
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 constexpr std::string_view kService = "org.freedesktop.portal.Desktop";
@@ -189,4 +189,4 @@ bool DesktopPortal::available() const noexcept { return impl_->available; }
 
 const Appearance& DesktopPortal::appearance() const noexcept { return impl_->appearance; }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

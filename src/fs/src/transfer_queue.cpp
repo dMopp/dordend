@@ -1,4 +1,4 @@
-#include "nordend/fs/transfer_queue.hpp"
+#include "rummage/fs/transfer_queue.hpp"
 
 #include <condition_variable>
 #include <cstdint>
@@ -7,10 +7,10 @@
 #include <optional>
 #include <utility>
 
-#include "nordend/fs/erase.hpp"
-#include "nordend/fs/trash.hpp"
+#include "rummage/fs/erase.hpp"
+#include "rummage/fs/trash.hpp"
 
-namespace nordend::fs {
+namespace rummage::fs {
 
 struct TransferQueue::Shared {
     std::mutex mutex;
@@ -159,4 +159,4 @@ void TransferQueue::work() {
     }
 }
 
-}  // namespace nordend::fs
+}  // namespace rummage::fs

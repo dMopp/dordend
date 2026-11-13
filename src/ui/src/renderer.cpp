@@ -1,4 +1,4 @@
-#include "nordend/ui/renderer.hpp"
+#include "rummage/ui/renderer.hpp"
 
 #include <GLES3/gl3.h>
 #include <algorithm>
@@ -12,9 +12,9 @@
 #include <string>
 #include <unordered_map>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 // Boxes: one instanced quad per primitive. The fragment shader evaluates the signed distance to
@@ -758,4 +758,4 @@ std::size_t Renderer::atlas_bytes() noexcept {
     return texels * (1 + 4);  // R8 coverage, RGBA8 color
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

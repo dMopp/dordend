@@ -13,26 +13,26 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/fs/transfer.hpp"
-#include "nordend/fs/trash.hpp"
-#include "nordend/views/browser.hpp"
-#include "nordend/views/shortcuts.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/fs/transfer.hpp"
+#include "rummage/fs/trash.hpp"
+#include "rummage/views/browser.hpp"
+#include "rummage/views/shortcuts.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::CancelToken;
-using nordend::core::EventLoop;
-using nordend::fs::TransferKind;
-using nordend::fs::TrashSources;
-using nordend::test::TempDir;
-using nordend::views::Browser;
-using nordend::views::Folder;
+using rummage::core::CancelToken;
+using rummage::core::EventLoop;
+using rummage::fs::TransferKind;
+using rummage::fs::TrashSources;
+using rummage::test::TempDir;
+using rummage::views::Browser;
+using rummage::views::Folder;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
-namespace scope = nordend::views::scope;
+namespace scope = rummage::views::scope;
 
 namespace {
 
@@ -67,8 +67,8 @@ bool run_until(EventLoop& loop, const std::function<bool()>& done) {
     return ok;
 }
 
-nordend::ui::KeyEvent key(xkb_keysym_t keysym, nordend::ui::Modifiers modifiers = {}) {
-    nordend::ui::KeyEvent event;
+rummage::ui::KeyEvent key(xkb_keysym_t keysym, rummage::ui::Modifiers modifiers = {}) {
+    rummage::ui::KeyEvent event;
     event.keysym = keysym;
     event.modifiers = modifiers;
     return event;
@@ -81,12 +81,12 @@ struct Fixture {
     fs::path home = dir.path / "home";
     fs::path photos = home / "photos";
     fs::path disk = dir.path / "disk";
-    TrashSources before = nordend::fs::trash_sources();
+    TrashSources before = rummage::fs::trash_sources();
     TrashSources sources{
         .home = home / ".local/share/Trash", .tops = std::vector<fs::path>{disk}, .uid = geteuid()};
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     std::unique_ptr<Browser> browser;
 
     Fixture() {
@@ -94,19 +94,19 @@ struct Fixture {
             make(photos / name, name);
         }
         fs::create_directories(disk / "shots");
-        nordend::fs::set_trash_sources(sources);
+        rummage::fs::set_trash_sources(sources);
         browser = std::make_unique<Browser>(
-            loop, pool, watcher, nordend::fs::MimeDatabase::load(), [] {},
-            [](nordend::ui::CursorShape /*shape*/) {});
+            loop, pool, watcher, rummage::fs::MimeDatabase::load(), [] {},
+            [](rummage::ui::CursorShape /*shape*/) {});
         browser->set_home_trash(sources.home);
         browser->set_places(
             {{.label = "Home", .path = home, .icon = "home"},
-             {.label = "Trash", .path = nordend::fs::trash_path(), .icon = "trash"}});
+             {.label = "Trash", .path = rummage::fs::trash_path(), .icon = "trash"}});
     }
 
     ~Fixture() {
         browser.reset();
-        nordend::fs::set_trash_sources(before);
+        rummage::fs::set_trash_sources(before);
     }
 
     Fixture(const Fixture&) = delete;
@@ -118,7 +118,7 @@ struct Fixture {
         return run_until(loop, [&] { return !browser->loading(); });
     }
 
-    bool press(const nordend::ui::KeyEvent& event) const {
+    bool press(const rummage::ui::KeyEvent& event) const {
         return browser->key(event, Browser::Clock::now());
     }
 
@@ -143,7 +143,7 @@ struct Fixture {
 TEST_CASE("erase: Shift+Delete asks; Escape keeps everything, Enter deletes with the sidecar") {
     Fixture f;
     const std::shared_ptr<Folder> folder = f.show(f.photos, "P1.ORF");
-    nordend::views::ConfirmDialog& card = f.browser->confirm_dialog();
+    rummage::views::ConfirmDialog& card = f.browser->confirm_dialog();
 
     CHECK(f.press(key(XKB_KEY_Delete, {.shift = true})));
     REQUIRE(card.is_open());
@@ -167,13 +167,13 @@ TEST_CASE("erase: Shift+Delete asks; Escape keeps everything, Enter deletes with
     CHECK(f.browser->status_bar().message().starts_with("Deleted “P1.ORF” permanently"));
     CHECK(listing(f.sources.home / "files").empty());  // nothing went to the trash
     REQUIRE(run_until(f.loop, [&] { return folder->entries().size() == 2; }));
-    const nordend::fs::Entry* const cursor = folder->cursor_entry();
+    const rummage::fs::Entry* const cursor = folder->cursor_entry();
     CHECK((cursor != nullptr && cursor->name == "P2.ORF"));
 }
 
 TEST_CASE("erase: every key listed for the card works on it") {
     Fixture f;
-    for (const nordend::views::Shortcut& shortcut : nordend::views::shortcuts()) {
+    for (const rummage::views::Shortcut& shortcut : rummage::views::shortcuts()) {
         if ((shortcut.scope & scope::kConfirm) == 0) {
             continue;
         }
@@ -197,8 +197,8 @@ TEST_CASE("erase: in the trash folder, Delete and Empty Trash delete for good") 
     Fixture f;
     make(f.disk / "shots" / "P9.ORF", "raw");
     const auto trash = [&](const fs::path& directory, const Names& names, const fs::path& top) {
-        const nordend::fs::TransferResult result =
-            nordend::fs::run_trash({.kind = TransferKind::trash,
+        const rummage::fs::TransferResult result =
+            rummage::fs::run_trash({.kind = TransferKind::trash,
                                     .source = directory,
                                     .names = names,
                                     .destination = f.sources.home,
@@ -212,7 +212,7 @@ TEST_CASE("erase: in the trash folder, Delete and Empty Trash delete for good") 
     const fs::path disk_trash = f.disk / std::format(".Trash-{}", geteuid());
 
     // Delete on a photo: it goes with its sidecar, the rest stays.
-    const std::shared_ptr<Folder> folder = f.show(nordend::fs::trash_path(), "P1.ORF");
+    const std::shared_ptr<Folder> folder = f.show(rummage::fs::trash_path(), "P1.ORF");
     REQUIRE(folder->entries().size() == 5);
     CHECK(f.press(key(XKB_KEY_Delete)));
     REQUIRE(f.browser->confirm_dialog().is_open());

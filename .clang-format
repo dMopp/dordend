@@ -29,7 +29,7 @@ EmptyLineBeforeAccessModifier: LogicalBlock
 InsertNewlineAtEOF: true
 LineEnding: LF
 
-# Own header first (automatic), then C/C++ standard, then third-party, then nordend/.
+# Own header first (automatic), then C/C++ standard, then third-party, then rummage/.
 IncludeBlocks: Regroup
 SortIncludes: CaseSensitive
 IncludeCategories:
@@ -37,7 +37,7 @@ IncludeCategories:
     Priority: 3
   - Regex: '^<'
     Priority: 2
-  - Regex: '^"nordend/'
+  - Regex: '^"rummage/'
     Priority: 4
   - Regex: '.*'
     Priority: 4

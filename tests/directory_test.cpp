@@ -1,4 +1,4 @@
-#include "nordend/fs/directory.hpp"
+#include "rummage/fs/directory.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -8,22 +8,22 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/sort.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/sort.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::CancelToken;
-using nordend::core::EventLoop;
-using nordend::core::WorkerPool;
-using nordend::fs::Entry;
-using nordend::fs::EntryKind;
-using nordend::fs::Listing;
-using nordend::fs::load_directory;
-using nordend::fs::read_directory;
-using nordend::fs::ReadOptions;
-using nordend::fs::ReadResult;
-using nordend::test::TempDir;
+using rummage::core::CancelToken;
+using rummage::core::EventLoop;
+using rummage::core::WorkerPool;
+using rummage::fs::Entry;
+using rummage::fs::EntryKind;
+using rummage::fs::Listing;
+using rummage::fs::load_directory;
+using rummage::fs::read_directory;
+using rummage::fs::ReadOptions;
+using rummage::fs::ReadResult;
+using rummage::test::TempDir;
 using namespace std::chrono_literals;
 
 namespace {
@@ -38,7 +38,7 @@ std::vector<Entry> read_all(const std::filesystem::path& path, ReadResult& resul
         }
         std::ranges::move(chunk, std::back_inserter(entries));
     });
-    std::ranges::sort(entries, nordend::fs::SortOrder{});
+    std::ranges::sort(entries, rummage::fs::SortOrder{});
     return entries;
 }
 

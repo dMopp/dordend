@@ -1,13 +1,13 @@
-#include "nordend/ui/display.hpp"
+#include "rummage/ui/display.hpp"
 
 #include <algorithm>
 #include <poll.h>
 #include <stdexcept>
 #include <string_view>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
-namespace nordend::ui {
+namespace rummage::ui {
 namespace {
 
 // Highest version of each global whose events we handle. Binding above this would let the
@@ -55,7 +55,7 @@ Display::Display() : display_{wl_display_connect(nullptr)} {
         throw std::runtime_error{"compositor does not offer xdg_wm_base (xdg-shell)"};
     }
     if (!decoration_manager_) {
-        log::info("compositor does not offer xdg-decoration: Nordend draws its own title bar");
+        log::info("compositor does not offer xdg-decoration: rummage draws its own title bar");
     }
     if (!viewporter_ || !fractional_scale_manager_) {
         log::warn("compositor does not offer fractional-scale + viewporter: rendering at scale 1");
@@ -144,7 +144,7 @@ void Display::on_global(void* data, wl_registry* registry, std::uint32_t name,
 
 void Display::on_global_remove(void* /*data*/, wl_registry* /*registry*/, std::uint32_t name) {
     // The globals we bind are never hot-unplugged; outputs and seats will be handled when
-    // Nordend starts tracking them.
+    // rummage starts tracking them.
     log::debug("global {} removed", name);
 }
 
@@ -152,4 +152,4 @@ void Display::on_ping(void* /*data*/, xdg_wm_base* wm_base, std::uint32_t serial
     xdg_wm_base_pong(wm_base, serial);
 }
 
-}  // namespace nordend::ui
+}  // namespace rummage::ui

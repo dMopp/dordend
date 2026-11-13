@@ -1,4 +1,4 @@
-#include "nordend/platform/launcher.hpp"
+#include "rummage/platform/launcher.hpp"
 
 #include <csignal>
 #include <fcntl.h>
@@ -9,11 +9,11 @@
 #include <unistd.h>
 #include <utility>
 
-#include "nordend/core/log.hpp"
+#include "rummage/core/log.hpp"
 
 extern char** environ;  // NOLINT(readability-redundant-declaration): unistd.h hides it in C++
 
-namespace nordend::platform {
+namespace rummage::platform {
 namespace {
 
 // posix_spawn's attributes and file actions, released on every path.
@@ -37,7 +37,7 @@ struct SpawnSetup {
     posix_spawn_file_actions_t actions{};
 };
 
-// Nordend's environment with env's variables replacing or added to it.
+// rummage's environment with env's variables replacing or added to it.
 std::vector<std::string> child_environment(std::span<const std::string> env) {
     const auto name_of = [](std::string_view variable) {
         return variable.substr(0, variable.find('='));
@@ -73,7 +73,7 @@ std::vector<char*> c_array(std::vector<std::string>& strings) {
 Launcher::Launcher(core::EventLoop& loop) : loop_{loop} {}
 
 Launcher::~Launcher() {
-    // The children go on; Nordend only stops listening.
+    // The children go on; rummage only stops listening.
     for (auto& [pidfd, child] : children_) {
         loop_.remove(child.source);
         close(pidfd);
@@ -83,9 +83,9 @@ Launcher::~Launcher() {
 std::error_code Launcher::spawn(const std::vector<std::string>& argv,
                                 const std::filesystem::path& directory,
                                 std::span<const std::string> env, std::function<void(Exit)> on_exit,
-                                int stdout_fd, int stderr_fd, int stdin_fd) {
+                                int stdout_fd, int stderr_fd, int stdin_fd, int archive_fd) {
     if (argv.empty() || (stdout_fd != -1 && stdout_fd < 3) || (stderr_fd != -1 && stderr_fd < 3) ||
-        (stdin_fd != -1 && stdin_fd < 3)) {
+        (stdin_fd != -1 && stdin_fd < 3) || (archive_fd != -1 && archive_fd < 3)) {
         return std::make_error_code(std::errc::invalid_argument);
     }
     SpawnSetup setup;
@@ -108,7 +108,9 @@ std::error_code Launcher::spawn(const std::vector<std::string>& argv,
                                              fd == STDIN_FILENO ? O_RDONLY : O_WRONLY, 0);
         }
     }
-    posix_spawn_file_actions_addclosefrom_np(&setup.actions, STDERR_FILENO + 1);
+    if (archive_fd >= 3)
+        posix_spawn_file_actions_adddup2(&setup.actions, archive_fd, 3);
+    posix_spawn_file_actions_addclosefrom_np(&setup.actions, archive_fd >= 3 ? 4 : 3);
     if (!directory.empty()) {
         posix_spawn_file_actions_addchdir_np(&setup.actions, directory.c_str());
     }
@@ -158,4 +160,4 @@ void Launcher::reap(int pidfd) {
     }
 }
 
-}  // namespace nordend::platform
+}  // namespace rummage::platform

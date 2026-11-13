@@ -1,4 +1,4 @@
-#include "nordend/core/file_watcher.hpp"
+#include "rummage/core/file_watcher.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -6,12 +6,12 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
+#include "rummage/core/event_loop.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::core::FileWatcher;
-using nordend::test::TempDir;
+using rummage::core::EventLoop;
+using rummage::core::FileWatcher;
+using rummage::test::TempDir;
 using namespace std::chrono_literals;
 
 namespace {
@@ -64,7 +64,7 @@ TEST_CASE("file watcher: write, other files, coalescing, rename, removal") {
 
 TEST_CASE("file watcher creates a missing directory") {
     const TempDir dir;
-    const std::filesystem::path file = dir.path / "nordend" / "colors.toml";
+    const std::filesystem::path file = dir.path / "rummage" / "colors.toml";
     EventLoop loop;
     int calls = 0;
     const FileWatcher watcher{loop, file, [&] { ++calls; }, 20ms};

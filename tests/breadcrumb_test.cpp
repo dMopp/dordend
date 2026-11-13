@@ -1,4 +1,4 @@
-#include "nordend/views/breadcrumb.hpp"
+#include "rummage/views/breadcrumb.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -9,19 +9,19 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/core/event_loop.hpp"
-#include "nordend/core/worker_pool.hpp"
-#include "nordend/fs/directory_watcher.hpp"
-#include "nordend/fs/mime.hpp"
-#include "nordend/views/browser.hpp"
+#include "rummage/core/event_loop.hpp"
+#include "rummage/core/worker_pool.hpp"
+#include "rummage/fs/directory_watcher.hpp"
+#include "rummage/fs/mime.hpp"
+#include "rummage/views/browser.hpp"
 #include "temp_dir.hpp"
 
-using nordend::core::EventLoop;
-using nordend::test::TempDir;
-using nordend::views::Browser;
-using nordend::views::Crumb;
-using nordend::views::crumbs_of;
-using nordend::views::Folder;
+using rummage::core::EventLoop;
+using rummage::test::TempDir;
+using rummage::views::Browser;
+using rummage::views::Crumb;
+using rummage::views::crumbs_of;
+using rummage::views::Folder;
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -43,7 +43,7 @@ bool run_until(EventLoop& loop, const std::function<bool()>& done) {
 }
 
 std::string cursor_name(const Folder& folder) {
-    const nordend::fs::Entry* entry = folder.cursor_entry();
+    const rummage::fs::Entry* entry = folder.cursor_entry();
     return entry == nullptr ? std::string{} : entry->name;
 }
 
@@ -52,11 +52,11 @@ struct Fixture {
     TempDir dir;
     fs::path root = dir.path / "root";
     EventLoop loop;
-    nordend::core::WorkerPool pool{loop, 2};
-    nordend::fs::DirectoryWatcher watcher{loop};
+    rummage::core::WorkerPool pool{loop, 2};
+    rummage::fs::DirectoryWatcher watcher{loop};
     Browser browser{loop,    pool,
-                    watcher, nordend::fs::MimeDatabase::load(),
-                    [] {},   [](nordend::ui::CursorShape /*shape*/) {}};
+                    watcher, rummage::fs::MimeDatabase::load(),
+                    [] {},   [](rummage::ui::CursorShape /*shape*/) {}};
 
     Fixture() { fs::create_directories(root / "a" / "b" / "c"); }
 

@@ -5,17 +5,17 @@
 
 #include <doctest/doctest.h>
 
-#include "nordend/thumbs/cache.hpp"
-#include "nordend/thumbs/md5.hpp"
+#include "rummage/thumbs/cache.hpp"
+#include "rummage/thumbs/md5.hpp"
 #include "temp_dir.hpp"
 
-namespace thumbs = nordend::thumbs;
+namespace thumbs = rummage::thumbs;
 namespace fs = std::filesystem;
-using nordend::test::TempDir;
+using rummage::test::TempDir;
 
 namespace {
 
-const fs::path kData = fs::path{NORDEND_TEST_DATA} / "image";
+const fs::path kData = fs::path{RUMMAGE_TEST_DATA} / "image";
 
 int mode_of(const fs::path& path) {
     struct stat info{};
@@ -65,7 +65,7 @@ TEST_CASE("thumbs: made once, then read from the cache until the file changes") 
     TempDir dir;
     const fs::path photo = dir.path / "photo one.jpg";
     fs::copy_file(kData / "with-thumbnail.jpg", photo);
-    const thumbs::Cache cache{dir.path / "thumbnails", "nordend-test"};
+    const thumbs::Cache cache{dir.path / "thumbnails", "rummage-test"};
 
     // 480x320 with a 192x128 EXIF thumbnail: enough for 128, so the thumbnail comes from it,
     // scaled to fit, then turned upright (orientation 6).
@@ -101,12 +101,12 @@ TEST_CASE("thumbs: a failure is remembered until the file changes, make() tries 
     TempDir dir;
     const fs::path broken = dir.path / "broken.jpg";
     fs::copy_file(kData / "truncated.jpg", broken);
-    const thumbs::Cache cache{dir.path / "thumbnails", "nordend-test"};
+    const thumbs::Cache cache{dir.path / "thumbnails", "rummage-test"};
 
     const thumbs::Thumbnail first = cache.get(broken, thumbs::Size::large);
     CHECK(first.source == thumbs::Source::failed);
     CHECK(first.image.empty());
-    CHECK(fs::exists(dir.path / "thumbnails" / "fail" / "nordend-test" /
+    CHECK(fs::exists(dir.path / "thumbnails" / "fail" / "rummage-test" /
                      (thumbs::md5_hex(thumbs::file_uri(broken)) + ".png")));
     CHECK(cache.get(broken, thumbs::Size::large).error == "failed before, and unchanged since");
     CHECK(cache.make(broken, thumbs::Size::large).error != "failed before, and unchanged since");
@@ -122,7 +122,7 @@ TEST_CASE("thumbs: a failure is remembered until the file changes, make() tries 
 
 TEST_CASE("thumbs: the cache never thumbnails its own files") {
     TempDir dir;
-    const thumbs::Cache cache{dir.path / "thumbnails", "nordend-test"};
+    const thumbs::Cache cache{dir.path / "thumbnails", "rummage-test"};
     const fs::path photo = dir.path / "a.png";
     fs::copy_file(kData / "blocks.png", photo);
     REQUIRE(cache.get(photo, thumbs::Size::normal).source == thumbs::Source::decoded);
