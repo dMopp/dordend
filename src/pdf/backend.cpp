@@ -1,7 +1,8 @@
-// PDF parsing lives only in rummage-pdf, after the same cage as rummage-preview: MuPDF draws the
-// first page. MuPDF carries its own fonts, so nothing has to be opened inside the cage. Only
-// MuPDF's PDF parser is used (no content sniffing into its other formats), its memory is
-// budgeted, reading is bounded in bytes and time, and JavaScript is never enabled.
+// PDF parsing lives only in rummage-pdf, after the same cage as rummage-preview: PDFium draws the
+// first page. PDFium carries the standard fonts, and the system font provider is empty, so nothing
+// has to be opened inside the cage. PDFium parses only PDF, has no JavaScript in this build (no
+// V8), reads through pread bounded in bytes and time, and draws progressively so a page that takes
+// too long is stopped at a deadline.
 #include "backend.hpp"
 
 #include <algorithm>
@@ -10,206 +11,89 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
-#include <memory>
+#include <fpdf_progressive.h>
+#include <fpdf_sysfontinfo.h>
+#include <fpdfview.h>
+#include <limits>
+#include <string_view>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
-
-extern "C" {
-#include <mupdf/fitz.h>
-#include <mupdf/pdf.h>
-}
 
 namespace rummage::isolate::backend {
 namespace {
 constexpr std::int64_t kMaxPixels = 32'000'000;
 constexpr std::uint32_t kMaxSide = 2048;
 constexpr std::uint64_t kReadBudget = std::uint64_t{512} * 1024 * 1024;
-constexpr std::size_t kStore = std::size_t{256} * 1024 * 1024;
-constexpr std::size_t kChunk = 64 * 1024;
-// All MuPDF may hold at once, the store included: a compressed bomb fails here, quickly,
-// long before the cage's 4 GiB address space.
-constexpr std::size_t kMemoryBudget = std::size_t{1024} * 1024 * 1024;
 using Clock = std::chrono::steady_clock;
+constexpr std::chrono::seconds kDeadline{7};
 
-fz_context* context = nullptr;  // one for the helper's life: fonts and colour spaces stay loaded
-
-// MuPDF's allocator: malloc with the size in a header, counted against kMemoryBudget. One
-// thread, so plain counters.
-constexpr std::size_t kHeader = alignof(std::max_align_t);
-std::size_t allocated = 0;
-bool refused = false;  // an allocation went over the budget since the last request
-
-void* budget_malloc(void*, std::size_t size) {
-    if (size > kMemoryBudget - allocated || size > SIZE_MAX - kHeader) {
-        refused = true;
-        return nullptr;
-    }
-    auto* block = static_cast<unsigned char*>(std::malloc(size + kHeader));
-    if (block == nullptr) {
-        return nullptr;
-    }
-    std::memcpy(block, &size, sizeof(size));
-    allocated += size;
-    return block + kHeader;
-}
-
-std::size_t size_of(void* pointer) {
-    std::size_t size = 0;
-    std::memcpy(&size, static_cast<unsigned char*>(pointer) - kHeader, sizeof(size));
-    return size;
-}
-
-void budget_free(void*, void* pointer) {
-    if (pointer != nullptr) {
-        allocated -= size_of(pointer);
-        std::free(static_cast<unsigned char*>(pointer) - kHeader);
-    }
-}
-
-void* budget_realloc(void* user, void* pointer, std::size_t size) {
-    if (pointer == nullptr) {
-        return budget_malloc(user, size);
-    }
-    if (size == 0) {
-        budget_free(user, pointer);
-        return nullptr;
-    }
-    const std::size_t old = size_of(pointer);
-    if (size > old && (size - old > kMemoryBudget - allocated || size > SIZE_MAX - kHeader)) {
-        refused = true;
-        return nullptr;
-    }
-    auto* block = static_cast<unsigned char*>(
-        std::realloc(static_cast<unsigned char*>(pointer) - kHeader, size + kHeader));
-    if (block == nullptr) {
-        return nullptr;
-    }
-    std::memcpy(block, &size, sizeof(size));
-    allocated = allocated - old + size;
-    return block + kHeader;
-}
-
-fz_alloc_context budget{nullptr, budget_malloc, budget_realloc, budget_free};
+bool started = false;
 
 // A file read through its descriptor with pread, bounded in bytes and time.
 struct Source {
     int fd{-1};
-    std::int64_t size{0};
     std::uint64_t read{0};
-    Clock::time_point deadline{Clock::now() + std::chrono::seconds{7}};
-    unsigned char buffer[kChunk]{};
+    Clock::time_point deadline{Clock::now() + kDeadline};
+    bool exhausted{false};
 };
 
-int next(fz_context* ctx, fz_stream* stream, std::size_t) {
-    auto& source = *static_cast<Source*>(stream->state);
-    if (Clock::now() >= source.deadline || source.read >= kReadBudget) {
-        fz_throw(ctx, FZ_ERROR_LIMIT, "pdf reading budget exhausted");
+int get_block(void* param, unsigned long position, unsigned char* buffer, unsigned long size) {
+    auto& source = *static_cast<Source*>(param);
+    if (Clock::now() >= source.deadline || source.read + size > kReadBudget) {
+        source.exhausted = true;
+        return 0;
     }
-    ssize_t got = 0;
-    do {
-        got = ::pread(source.fd, source.buffer, sizeof(source.buffer), stream->pos);
-    } while (got < 0 && errno == EINTR);
-    if (got < 0) {
-        fz_throw(ctx, FZ_ERROR_SYSTEM, "pdf read failed");
+    unsigned long done = 0;
+    while (done < size) {
+        const ssize_t got =
+            ::pread(source.fd, buffer + done, size - done, static_cast<off_t>(position + done));
+        if (got < 0 && errno == EINTR) {
+            continue;
+        }
+        if (got <= 0) {
+            return 0;
+        }
+        done += static_cast<unsigned long>(got);
     }
-    if (got == 0) {
-        return EOF;
-    }
-    source.read += static_cast<std::uint64_t>(got);
-    stream->rp = source.buffer;
-    stream->wp = source.buffer + got;
-    stream->pos += got;
-    return *stream->rp++;
+    source.read += size;
+    return 1;
 }
 
-// fz_seek turns SEEK_CUR into SEEK_SET before it calls this.
-void seek(fz_context* ctx, fz_stream* stream, std::int64_t offset, int whence) {
-    auto& source = *static_cast<Source*>(stream->state);
-    const std::int64_t base = whence == SEEK_END ? source.size : 0;
-    if ((whence != SEEK_SET && whence != SEEK_END) || offset < -base ||
-        offset > source.size - base) {
-        fz_throw(ctx, FZ_ERROR_ARGUMENT, "pdf seek out of range");
-    }
-    stream->pos = base + offset;
-    stream->rp = stream->wp = source.buffer;
-}
-
-void keep(fz_context*, void*) {}  // the Source belongs to make_picture
-
-void quiet(void*, const char*) {}
-
-// What MuPDF made, before it becomes a picture::Loaded: plain values only, since fz_try jumps.
-struct Drawn {
-    fz_pixmap* pixmap{nullptr};
-    picture::Failure failure{picture::Failure::none};
-    const char* detail{""};
+// Drawing pauses here; past the deadline it is not resumed.
+struct Pause : IFSDK_PAUSE {
+    Clock::time_point deadline;
 };
 
-Drawn draw_first_page(fz_stream* stream, std::uint32_t width, std::uint32_t height) {
-    fz_context* ctx = context;
-    Drawn drawn;
-    fz_document* document = nullptr;
-    fz_page* page = nullptr;
-    fz_var(document);
-    fz_var(page);
-    fz_var(drawn);
-    fz_try(ctx) {
-        // The PDF parser itself, not fz_open_document: no sniffing into MuPDF's other formats.
-        document = &pdf_open_document_with_stream(ctx, stream)->super;
-        if (fz_needs_password(ctx, document) != 0) {
-            drawn.failure = picture::Failure::locked;
-            drawn.detail = "pdf is password protected";
-        } else if (fz_count_pages(ctx, document) < 1) {
-            drawn.failure = picture::Failure::damaged;
-            drawn.detail = "pdf without pages";
-        } else {
-            page = fz_load_page(ctx, document, 0);
-            const fz_rect bounds = fz_bound_page(ctx, page);
-            const float page_width = bounds.x1 - bounds.x0;
-            const float page_height = bounds.y1 - bounds.y0;
-            if (!std::isfinite(page_width) || !std::isfinite(page_height) || page_width < 1.0F ||
-                page_height < 1.0F) {
-                drawn.failure = picture::Failure::damaged;
-                drawn.detail = "empty pdf page";
-            } else {
-                float scale = std::min(static_cast<float>(width) / page_width,
-                                       static_cast<float>(height) / page_height);
-                const double pixels =
-                    static_cast<double>(page_width * scale) * static_cast<double>(page_height * scale);
-                if (pixels > static_cast<double>(kMaxPixels)) {
-                    scale *=
-                        static_cast<float>(std::sqrt(static_cast<double>(kMaxPixels) / pixels));
-                }
-                const fz_matrix ctm =
-                    fz_concat(fz_translate(-bounds.x0, -bounds.y0), fz_scale(scale, scale));
-                // White paper below the page: alpha 0 clears to white.
-                drawn.pixmap = fz_new_pixmap_from_page(ctx, page, ctm, fz_device_rgb(ctx), 0);
-            }
-        }
-    }
-    fz_always(ctx) {
-        fz_drop_page(ctx, page);
-        fz_drop_document(ctx, document);
-    }
-    fz_catch(ctx) {
-        drawn.pixmap = nullptr;
-        if (refused) {
-            drawn.failure = picture::Failure::too_large;
-            drawn.detail = "pdf memory budget exhausted";
-        } else if (fz_caught(ctx) == FZ_ERROR_LIMIT) {
-            drawn.failure = picture::Failure::unavailable;
-            drawn.detail = "pdf reading budget exhausted";
-        } else {
-            drawn.failure = picture::Failure::damaged;
-            drawn.detail = "unreadable pdf";
-        }
-    }
-    return drawn;
+FPDF_BOOL need_to_pause(IFSDK_PAUSE* pause) {
+    return Clock::now() >= static_cast<Pause*>(pause)->deadline ? 1 : 0;
 }
+
+// No system fonts: every lookup finds nothing, so PDFium uses its built-in fonts.
+void enum_fonts(FPDF_SYSFONTINFO*, void*) {}
+
+void* map_font(FPDF_SYSFONTINFO*, int, FPDF_BOOL, int, int, const char*, FPDF_BOOL*) {
+    return nullptr;
+}
+
+void* get_font(FPDF_SYSFONTINFO*, const char*) { return nullptr; }
+
+unsigned long get_font_data(FPDF_SYSFONTINFO*, void*, unsigned int, unsigned char*, unsigned long) {
+    return 0;
+}
+
+unsigned long get_face_name(FPDF_SYSFONTINFO*, void*, char*, unsigned long) { return 0; }
+
+int get_font_charset(FPDF_SYSFONTINFO*, void*) { return 0; }
+
+void delete_font(FPDF_SYSFONTINFO*, void*) {}
+
+void release(FPDF_SYSFONTINFO*) {}
+
+FPDF_SYSFONTINFO no_system_fonts{1,          release,       enum_fonts,    map_font,
+                                 get_font,   get_font_data, get_face_name, get_font_charset,
+                                 delete_font};
 
 picture::Loaded failure(picture::Failure reason, const char* detail) {
     picture::Loaded value;
@@ -218,36 +102,132 @@ picture::Loaded failure(picture::Failure reason, const char* detail) {
     return value;
 }
 
-// A page drawn into RGB, as straight RGBA no larger than width x height.
-picture::Image rgba_of(fz_pixmap* pixmap, std::uint32_t width, std::uint32_t height) {
-    fz_context* ctx = context;
-    const int n = fz_pixmap_components(ctx, pixmap);
-    const int w = std::min(fz_pixmap_width(ctx, pixmap), static_cast<int>(width));
-    const int h = std::min(fz_pixmap_height(ctx, pixmap), static_cast<int>(height));
-    if (n != 3 || w <= 0 || h <= 0) {
-        return {};
-    }
-    const std::ptrdiff_t stride = fz_pixmap_stride(ctx, pixmap);
-    const unsigned char* samples = fz_pixmap_samples(ctx, pixmap);
-    picture::Image image{.width = static_cast<std::uint32_t>(w),
-                         .height = static_cast<std::uint32_t>(h),
-                         .rgba = std::vector<std::uint8_t>(static_cast<std::size_t>(w) *
-                                                           static_cast<std::size_t>(h) * 4)};
-    std::uint8_t* out = image.rgba.data();
-    for (int y = 0; y < h; ++y) {
-        const unsigned char* row = samples + (y * stride);
-        for (int x = 0; x < w; ++x) {
-            *out++ = row[x * 3];
-            *out++ = row[(x * 3) + 1];
-            *out++ = row[(x * 3) + 2];
-            *out++ = 255;
+struct Document {
+    FPDF_DOCUMENT handle{nullptr};
+
+    explicit Document(FPDF_DOCUMENT document) : handle(document) {}
+
+    Document(const Document&) = delete;
+    Document& operator=(const Document&) = delete;
+
+    ~Document() {
+        if (handle != nullptr) {
+            FPDF_CloseDocument(handle);
         }
     }
-    return image;
+};
+
+struct Page {
+    FPDF_PAGE handle{nullptr};
+
+    explicit Page(FPDF_PAGE page) : handle(page) {}
+
+    Page(const Page&) = delete;
+    Page& operator=(const Page&) = delete;
+
+    ~Page() {
+        if (handle != nullptr) {
+            FPDF_ClosePage(handle);
+        }
+    }
+};
+
+struct Bitmap {
+    FPDF_BITMAP handle{nullptr};
+
+    explicit Bitmap(FPDF_BITMAP bitmap) : handle(bitmap) {}
+
+    Bitmap(const Bitmap&) = delete;
+    Bitmap& operator=(const Bitmap&) = delete;
+
+    ~Bitmap() {
+        if (handle != nullptr) {
+            FPDFBitmap_Destroy(handle);
+        }
+    }
+};
+
+picture::Loaded draw(Source& source, std::int64_t size, std::uint32_t width, std::uint32_t height) {
+    FPDF_FILEACCESS access{};
+    access.m_FileLen = static_cast<unsigned long>(size);
+    access.m_GetBlock = get_block;
+    access.m_Param = &source;
+    const Document document{FPDF_LoadCustomDocument(&access, nullptr)};
+    if (document.handle == nullptr) {
+        const unsigned long error = FPDF_GetLastError();
+        if (error == FPDF_ERR_PASSWORD) {
+            return failure(picture::Failure::locked, "pdf is password protected");
+        }
+        if (source.exhausted) {
+            return failure(picture::Failure::unavailable, "pdf reading budget exhausted");
+        }
+        return failure(picture::Failure::damaged, "unreadable pdf");
+    }
+    if (FPDF_GetPageCount(document.handle) < 1) {
+        return failure(picture::Failure::damaged, "pdf without pages");
+    }
+    const Page page{FPDF_LoadPage(document.handle, 0)};
+    if (page.handle == nullptr) {
+        return failure(source.exhausted ? picture::Failure::unavailable : picture::Failure::damaged,
+                       "unreadable pdf page");
+    }
+    // The size as shown, with the page's own rotation.
+    const double page_width = FPDF_GetPageWidthF(page.handle);
+    const double page_height = FPDF_GetPageHeightF(page.handle);
+    if (!std::isfinite(page_width) || !std::isfinite(page_height) || page_width < 1.0 ||
+        page_height < 1.0) {
+        return failure(picture::Failure::damaged, "empty pdf page");
+    }
+    double scale = std::min(static_cast<double>(width) / page_width,
+                            static_cast<double>(height) / page_height);
+    const double pixels = page_width * scale * page_height * scale;
+    if (pixels > static_cast<double>(kMaxPixels)) {
+        scale *= std::sqrt(static_cast<double>(kMaxPixels) / pixels);
+    }
+    const auto w = static_cast<std::uint32_t>(
+        std::clamp(std::lround(page_width * scale), 1L, static_cast<long>(width)));
+    const auto h = static_cast<std::uint32_t>(
+        std::clamp(std::lround(page_height * scale), 1L, static_cast<long>(height)));
+
+    picture::Image image{.width = w,
+                         .height = h,
+                         .rgba = std::vector<std::uint8_t>(static_cast<std::size_t>(w) * h * 4)};
+    // PDFium draws straight into the image: BGRx with reversed byte order is RGBx.
+    const Bitmap bitmap{FPDFBitmap_CreateEx(static_cast<int>(w), static_cast<int>(h),
+                                            FPDFBitmap_BGRx, image.rgba.data(),
+                                            static_cast<int>(w * 4))};
+    if (bitmap.handle == nullptr) {
+        return failure(picture::Failure::too_large, "pdf bitmap could not be made");
+    }
+    FPDFBitmap_FillRect(bitmap.handle, 0, 0, static_cast<int>(w), static_cast<int>(h),
+                        0xFFFFFFFF);  // white paper
+    Pause pause{};
+    pause.version = 1;
+    pause.NeedToPauseNow = need_to_pause;
+    pause.deadline = source.deadline;
+    int status = FPDF_RenderPageBitmap_Start(bitmap.handle, page.handle, 0, 0, static_cast<int>(w),
+                                             static_cast<int>(h), 0,
+                                             FPDF_ANNOT | FPDF_REVERSE_BYTE_ORDER, &pause);
+    while (status == FPDF_RENDER_TOBECONTINUED && Clock::now() < pause.deadline) {
+        status = FPDF_RenderPage_Continue(page.handle, &pause);
+    }
+    FPDF_RenderPage_Close(page.handle);
+    if (status != FPDF_RENDER_DONE) {
+        return failure(status == FPDF_RENDER_TOBECONTINUED ? picture::Failure::unavailable
+                                                           : picture::Failure::damaged,
+                       status == FPDF_RENDER_TOBECONTINUED ? "pdf drawing took too long"
+                                                           : "pdf drawing failed");
+    }
+    for (std::size_t i = 3; i < image.rgba.size(); i += 4) {
+        image.rgba[i] = 255;
+    }
+    picture::Loaded loaded;
+    loaded.image = std::move(image);
+    return loaded;
 }
 
 // One page with text in the standard Helvetica, for the warm-up.
-constexpr char kWarmUpPdf[] =
+constexpr std::string_view kWarmUpPdf =
     "%PDF-1.4\n"
     "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
     "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
@@ -259,73 +239,44 @@ constexpr char kWarmUpPdf[] =
 }  // namespace
 
 void warm_up() {
-    context = fz_new_context(&budget, nullptr, kStore);
-    if (context == nullptr) {
-        return;
+    FPDF_LIBRARY_CONFIG config{};
+    config.version = 2;
+    FPDF_InitLibraryWithConfig(&config);
+    FPDF_SetSystemFontInfo(&no_system_fonts);
+    started = true;
+    // Draw once before the cage closes: whatever PDFium sets up on first use (the built-in font,
+    // colour management) is set up now.
+    const Document document{FPDF_LoadMemDocument64(kWarmUpPdf.data(), kWarmUpPdf.size(), nullptr)};
+    if (document.handle != nullptr) {
+        const Page page{FPDF_LoadPage(document.handle, 0)};
+        if (page.handle != nullptr) {
+            const Bitmap bitmap{FPDFBitmap_Create(64, 32, 0)};
+            if (bitmap.handle != nullptr) {
+                FPDF_RenderPageBitmap(bitmap.handle, page.handle, 0, 0, 64, 32, 0, FPDF_ANNOT);
+            }
+        }
     }
-    fz_set_warning_callback(context, quiet, nullptr);
-    fz_set_error_callback(context, quiet, nullptr);
-    // Draw once before the cage closes: whatever MuPDF sets up on first use (the built-in font,
-    // colour management) is set up now. The document is repaired, which is fine here.
-    fz_stream* stream = nullptr;
-    fz_var(stream);
-    fz_try(context) {
-        stream = fz_open_memory(context, reinterpret_cast<const unsigned char*>(kWarmUpPdf),
-                                sizeof(kWarmUpPdf) - 1);
-    }
-    fz_catch(context) { stream = nullptr; }
-    if (stream != nullptr) {
-        const Drawn drawn = draw_first_page(stream, 64, 64);
-        fz_drop_pixmap(context, drawn.pixmap);
-        fz_drop_stream(context, stream);
-    }
-    fz_empty_store(context);
 }
 
 picture::Loaded make_picture(int fd, std::uint32_t width, std::uint32_t height) {
     if (width == 0 || height == 0) {
         return failure(picture::Failure::too_large, "empty pdf preview size");
     }
-    if (context == nullptr) {
-        return failure(picture::Failure::unavailable, "mupdf could not start");
+    if (!started) {
+        return failure(picture::Failure::unavailable, "pdfium could not start");
     }
-    refused = false;
     width = std::min(width, kMaxSide);
     height = std::min(height, kMaxSide);
     struct stat st{};
     if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0) {
         return failure(picture::Failure::unreadable, "pdf input is not a regular file");
     }
-    auto source = std::make_unique<Source>();
-    source->fd = fd;
-    source->size = st.st_size;
-    fz_stream* stream = nullptr;
-    fz_var(stream);
-    fz_try(context) {
-        stream = fz_new_stream(context, source.get(), next, keep);
-        stream->seek = seek;
+    if (static_cast<std::uint64_t>(st.st_size) > std::numeric_limits<unsigned long>::max()) {
+        return failure(picture::Failure::too_large, "pdf too large");
     }
-    fz_catch(context) { stream = nullptr; }
-    if (stream == nullptr) {
-        return failure(picture::Failure::unavailable, "allocation failed");
-    }
-    const Drawn drawn = draw_first_page(stream, width, height);
-    fz_drop_stream(context, stream);
-    picture::Loaded loaded;
-    if (drawn.pixmap == nullptr) {
-        loaded = failure(
-            drawn.failure == picture::Failure::none ? picture::Failure::damaged : drawn.failure,
-            drawn.detail);
-    } else {
-        loaded.image = rgba_of(drawn.pixmap, width, height);
-        fz_drop_pixmap(context, drawn.pixmap);
-        if (loaded.image.empty()) {
-            loaded = failure(picture::Failure::damaged, "unexpected pdf pixmap");
-        }
-    }
-    // Pages share nothing worth keeping; give the store back between files.
-    fz_empty_store(context);
-    return loaded;
+    Source source;
+    source.fd = fd;
+    return draw(source, st.st_size, width, height);
 }
 
 picture::PhotoInfo photo_info(int) { return {}; }

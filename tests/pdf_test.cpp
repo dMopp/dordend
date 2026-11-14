@@ -35,12 +35,12 @@ TEST_CASE("pdf: actual sandbox draws the first page, rotated pages and built-in 
     CHECK(rotated.image.width == 64);
     CHECK(rotated.image.height == 128);
 
-    // Helvetica is not embedded: MuPDF's own font draws it, without opening a file in the cage.
+    // Helvetica is not embedded: PDFium's own font draws it, without opening a file in the cage.
     auto text = helpers.load({.path = fixtures / "text.pdf", .max_width = 200, .max_height = 200});
     REQUIRE(text.failure == picture::Failure::none);
     std::size_t ink = 0;
     for (std::size_t i = 0; i < text.image.rgba.size(); i += 4) {
-        ink += text.image.rgba[i] < 100;
+        ink += text.image.rgba[i] < 100 ? 1U : 0U;
     }
     CHECK(text.image.rgba[0] == 255);  // white paper
     CHECK(ink > 200);
@@ -134,7 +134,17 @@ TEST_CASE("pdf: the cache remembers why a PDF failed, for the icon's mark") {
 // Security review: hostile files. Each must end in bounded time, never take the app down, and
 // leave the helper pool working for the next file.
 namespace {
-const fs::path attacks = fixtures / "attack";
+const fs::path kAttacks = fixtures / "attack";
+
+// Seconds a check may take: sanitizer builds run decoders, and Helpers' timeouts, five times
+// slower (Helpers::Helpers).
+double seconds(double plain) {
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+    return plain * 5.0;
+#else
+    return plain;
+#endif
+}
 
 struct Timed {
     picture::Loaded loaded;
@@ -161,11 +171,11 @@ TEST_CASE("pdf security: decompression bombs hit the memory budget, quickly") {
         {.program = RUMMAGE_PDF_HELPER, .args = {}, .timeout = std::chrono::seconds{8}}};
     for (const char* name : {"bomb-font.pdf", "bomb-image.pdf"}) {
         INFO(name);
-        const Timed run = timed_load(helpers, attacks / name);
+        const Timed run = timed_load(helpers, kAttacks / name);
         INFO(run.loaded.detail << ", " << run.seconds << " s");
         // Not killed by the timeout: the helper itself stopped the bomb.
         CHECK(run.loaded.failure != picture::Failure::unavailable);
-        CHECK(run.seconds < 7.0);
+        CHECK(run.seconds < seconds(7.0));
         still_works(helpers);
     }
 }
@@ -173,22 +183,22 @@ TEST_CASE("pdf security: decompression bombs hit the memory budget, quickly") {
 TEST_CASE("pdf security: endless drawing is cut off by the helper timeout") {
     isolate::Helpers helpers{
         {.program = RUMMAGE_PDF_HELPER, .args = {}, .timeout = std::chrono::seconds{8}}};
-    const Timed run = timed_load(helpers, attacks / "bomb-cpu.pdf");
+    const Timed run = timed_load(helpers, kAttacks / "bomb-cpu.pdf");
     INFO(run.loaded.detail << ", " << run.seconds << " s");
-    CHECK(run.seconds < 10.0);
+    CHECK(run.seconds < seconds(10.0));
     still_works(helpers);
 }
 
 TEST_CASE("pdf security: JavaScript never runs, external stream files are never read") {
     isolate::Helpers helpers{
         {.program = RUMMAGE_PDF_HELPER, .args = {}, .timeout = std::chrono::seconds{8}}};
-    const Timed script = timed_load(helpers, attacks / "javascript.pdf");
+    const Timed script = timed_load(helpers, kAttacks / "javascript.pdf");
     INFO(script.loaded.detail);
     REQUIRE(script.loaded.failure == picture::Failure::none);  // while(true){} did not run
-    CHECK(script.seconds < 2.0);
+    CHECK(script.seconds < seconds(2.0));
     CHECK(script.loaded.image.rgba[0] > 220);
 
-    const Timed external = timed_load(helpers, attacks / "external.pdf");
+    const Timed external = timed_load(helpers, kAttacks / "external.pdf");
     INFO(external.loaded.detail);
     if (external.loaded.failure == picture::Failure::none) {
         // The page's only content is /F (/etc/passwd): nothing of it is drawn.
@@ -203,13 +213,13 @@ TEST_CASE("pdf security: JavaScript never runs, external stream files are never 
 TEST_CASE("pdf security: recursion, deep nesting and absurd pages end safely") {
     isolate::Helpers helpers{
         {.program = RUMMAGE_PDF_HELPER, .args = {}, .timeout = std::chrono::seconds{8}}};
-    for (const char* name : {"recursive-form.pdf", "recursive-pages.pdf", "deep.pdf",
-                             "huge-page.pdf", "tiny-page.pdf", "nan-page.pdf", "no-pages.pdf",
-                             "lying-count.pdf"}) {
+    for (const char* name :
+         {"recursive-form.pdf", "recursive-pages.pdf", "deep.pdf", "huge-page.pdf", "tiny-page.pdf",
+          "nan-page.pdf", "no-pages.pdf", "lying-count.pdf"}) {
         INFO(name);
-        const Timed run = timed_load(helpers, attacks / name);
+        const Timed run = timed_load(helpers, kAttacks / name);
         INFO(run.loaded.detail << ", " << run.seconds << " s");
-        CHECK(run.seconds < 7.0);
+        CHECK(run.seconds < seconds(7.0));
         CHECK(run.loaded.failure != picture::Failure::unavailable);  // the helper did not die
         if (run.loaded.failure == picture::Failure::none) {
             CHECK(run.loaded.image.width <= 256);
@@ -219,18 +229,18 @@ TEST_CASE("pdf security: recursion, deep nesting and absurd pages end safely") {
         }
         still_works(helpers);
     }
-    CHECK(timed_load(helpers, attacks / "no-pages.pdf").loaded.failure ==
+    CHECK(timed_load(helpers, kAttacks / "no-pages.pdf").loaded.failure ==
           picture::Failure::damaged);
-    // A page tree that claims two billion pages is refused as damaged, not walked.
-    CHECK(timed_load(helpers, attacks / "lying-count.pdf").loaded.failure ==
-          picture::Failure::damaged);
+    // A page tree that claims two billion pages is not walked: only page one is drawn.
+    const Timed lying = timed_load(helpers, kAttacks / "lying-count.pdf");
+    CHECK(lying.seconds < seconds(2.0));
 }
 
-TEST_CASE("pdf security: only PDF is parsed, never MuPDF's other formats") {
+TEST_CASE("pdf security: only PDF is parsed, other formats named .pdf are refused") {
     isolate::Helpers helpers{{.program = RUMMAGE_PDF_HELPER, .args = {}}};
     for (const char* name : {"cbz-named.pdf", "svg-named.pdf", "html-named.pdf"}) {
         INFO(name);
-        const Timed run = timed_load(helpers, attacks / name);
+        const Timed run = timed_load(helpers, kAttacks / name);
         INFO(run.loaded.detail);
         CHECK(run.loaded.failure == picture::Failure::damaged);
     }

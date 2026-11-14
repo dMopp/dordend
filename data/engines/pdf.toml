@@ -1,4 +1,4 @@
-# The PDF engine: the first page of a PDF, drawn by MuPDF in rummage-pdf's cage. Optional, like
+# The PDF engine: the first page of a PDF, drawn by PDFium in rummage-pdf's cage. Optional, like
 # the media engine: built with -DRUMMAGE_PDF=ON, installed as its own component.
 [engine]
 name = "pdf"

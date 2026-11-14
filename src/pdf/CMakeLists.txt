@@ -1,8 +1,8 @@
-# The only target that links MuPDF. The application works without this optional package.
+# The only target that links PDFium. The application works without this optional package.
 add_executable(rummage-pdf backend.cpp
     ../isolate/src/helper_main.cpp ../isolate/src/protocol.cpp ../isolate/src/sandbox.cpp)
 target_include_directories(rummage-pdf PRIVATE ../isolate/src)
-target_link_libraries(rummage-pdf PRIVATE rummage::picture rummage::text PkgConfig::MUPDF
+target_link_libraries(rummage-pdf PRIVATE rummage::picture rummage::text pdfium
     rummage::warnings)
 set_target_properties(rummage-pdf PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 install(TARGETS rummage-pdf RUNTIME DESTINATION libexec/rummage COMPONENT pdf)
